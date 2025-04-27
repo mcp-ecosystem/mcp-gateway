@@ -71,3 +71,7 @@ packages/react-devtools-timeline/dist
 *.pid
 data
 dist
+
+# mcp-gateway configs
+configs/apiserver.yaml
+configs/mcp-gateway.yaml
