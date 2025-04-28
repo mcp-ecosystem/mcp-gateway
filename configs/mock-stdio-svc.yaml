@@ -1,0 +1,46 @@
+name: "mock-stdio-svc"
+
+routers:
+  - server: "mock-stdio-svc"
+    prefix: "/mcp/stdio"
+    cors:
+      allowOrigins:
+        - "*"
+      allowMethods:
+        - "GET"
+        - "POST"
+        - "OPTIONS"
+      allowHeaders:
+        - "Content-Type"
+        - "Authorization"
+        - "Mcp-Session-Id"
+      exposeHeaders:
+        - "Mcp-Session-Id"
+      allowCredentials: true
+
+servers:
+  - name: "mock-stdio-svc"
+    namespace: "stdio-service"
+    description: "Mock Stdio Service"
+
+stdio_configs:
+  - name: "ampa-maps"
+    command: "npx"
+    args:
+      - "-y"
+      - "@amap/amap-maps-mcp-server"
+    env:
+      - name: "AMAP_MAPS_API_KEY"
+        value: ""
+  - name: "github"
+    command: "npx"
+    args:
+      - "-y"
+      - "@github/github-mcp-server"
+    env:
+      - name: "GITHUB_PERSONAL_ACCESS_TOKEN"
+        value: ""
+
+sse_configs:
+  - name: "web-search"
+    url: "http://localhost:5236/web-search"
