@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
@@ -16,12 +17,14 @@ type (
 	}
 
 	MCPConfig struct {
-		Name      string         `yaml:"name" gorm:"primaryKey"`
-		CreatedAt time.Time      `yaml:"created_at"`
-		UpdatedAt time.Time      `yaml:"updated_at"`
-		Routers   []RouterConfig `yaml:"routers" gorm:"type:json"`
-		Servers   []ServerConfig `yaml:"servers" gorm:"type:json"`
-		Tools     []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		Name         string                `yaml:"name" gorm:"primaryKey"`
+		CreatedAt    time.Time             `yaml:"created_at"`
+		UpdatedAt    time.Time             `yaml:"updated_at"`
+		ProtoType    cnst.ProtoType        `yaml:"proto_type" gorm:"type:varchar(64); required"`
+		Routers      []RouterConfig        `yaml:"routers" gorm:"type:json"`
+		Servers      []ServerConfig        `yaml:"servers" gorm:"type:json"`
+		Tools        []ToolConfig          `yaml:"tools" gorm:"type:json"`
+		StdioServers StdioMcpServerConfigs `yaml:"stdio_servers" gorm:"type:json"`
 	}
 
 	RouterConfig struct {
@@ -65,6 +68,14 @@ type (
 		Type        string `yaml:"type"`
 		Description string `yaml:"description"`
 		Default     string `yaml:"default"`
+	}
+
+	StdioMcpServerConfigs map[string]map[string]StdioServerConfig
+
+	StdioServerConfig struct {
+		Command string            `json:"command"`
+		Args    []string          `json:"args"`
+		Env     map[string]string `json:"env"`
 	}
 )
 

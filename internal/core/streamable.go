@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	texttemplate "text/template"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
 	"github.com/google/uuid"
 
