@@ -40,3 +40,11 @@ notifier:
     db: ${NOTIFIER_REDIS_DB:0}
     topic: "${NOTIFIER_REDIS_TOPIC:mcp-gateway:reload}"
 
+# Session storage configuration
+session:
+  type: "${SESSION_STORAGE_TYPE:memory}"  # memory or redis
+  redis:
+    addr: "${SESSION_REDIS_ADDR:localhost:6379}"
+    password: "${SESSION_REDIS_PASSWORD:}"
+    db: ${SESSION_REDIS_DB:0}
+    topic: "${SESSION_REDIS_TOPIC:mcp-gateway:session}"

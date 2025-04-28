@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
@@ -12,23 +15,42 @@ import (
 	"go.uber.org/zap"
 )
 
-// Server represents the MCP server
-type Server struct {
-	logger   *zap.Logger
-	renderer *template.Renderer
-	sessions sync.Map
-	tools    []mcp.ToolSchema
-	toolMap  map[string]*config.ToolConfig
-	// prefixToTools maps prefix to allowed tools for each MCP server
-	prefixToTools map[string][]mcp.ToolSchema
-	// prefixToServerConfig maps prefix to server config for each MCP server
-	prefixToServerConfig map[string]*config.ServerConfig
-	// sessionToPrefix maps session ID to MCP server prefix
-	sessionToPrefix sync.Map
-}
+type (
+	// Server represents the MCP server
+	Server struct {
+		logger   *zap.Logger
+		renderer *template.Renderer
+		sessions sync.Map
+		tools    []mcp.ToolSchema
+		toolMap  map[string]*config.ToolConfig
+		// prefixToTools maps prefix to allowed tools for each MCP server
+		prefixToTools map[string][]mcp.ToolSchema
+		// prefixToServerConfig maps prefix to server config for each MCP server
+		prefixToServerConfig map[string]*config.ServerConfig
+		// sessionToPrefix maps session ID to MCP server prefix
+		sessionToPrefix sync.Map
+
+		// sessionStore manages all active sessions
+		sessionStore   session.Store
+		memorySessions map[string]*sessionDataInMemory
+		sLock          sync.RWMutex
+	}
+
+	sessionDataInMemory struct {
+		flusher http.Flusher
+		conn    session.Connection
+		meta    *session.Meta
+	}
+)
 
 // NewServer creates a new MCP server
-func NewServer(logger *zap.Logger) *Server {
+func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error) {
+	// Initialize session store
+	sessionStore, err := session.NewStore(logger, &cfg.Session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize session store: %w", err)
+	}
+
 	return &Server{
 		logger:               logger,
 		renderer:             template.NewRenderer(),
@@ -36,7 +58,9 @@ func NewServer(logger *zap.Logger) *Server {
 		toolMap:              make(map[string]*config.ToolConfig),
 		prefixToTools:        make(map[string][]mcp.ToolSchema),
 		prefixToServerConfig: make(map[string]*config.ServerConfig),
-	}
+		sessionStore:         sessionStore,
+		memorySessions:       make(map[string]*sessionDataInMemory),
+	}, nil
 }
 
 // RegisterRoutes registers routes with the given router for MCP servers
@@ -45,11 +69,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine, cfg *config.MCPConfig) error
 	router.Use(s.recoveryMiddleware())
 
 	// Initialize tool map and list for MCP servers
-	for i := range cfg.Tools {
-		tool := &cfg.Tools[i]
-		s.toolMap[tool.Name] = tool
-		s.tools = append(s.tools, tool.ToToolSchema())
-	}
+	s.LoadConfig(cfg)
 
 	// Build prefix to tools mapping for MCP servers
 	prefixMap := make(map[string]string)
@@ -97,14 +117,13 @@ func (s *Server) Shutdown(_ context.Context) error {
 }
 
 // LoadConfig loads the MCP server configuration
-func (s *Server) LoadConfig(cfg *config.MCPConfig) error {
+func (s *Server) LoadConfig(cfg *config.MCPConfig) {
 	// Initialize tool map and list for MCP servers
 	for i := range cfg.Tools {
 		tool := &cfg.Tools[i]
 		s.toolMap[tool.Name] = tool
 		s.tools = append(s.tools, tool.ToToolSchema())
 	}
-	return nil
 }
 
 // UpdateConfig updates the server configuration
@@ -115,11 +134,7 @@ func (s *Server) UpdateConfig(cfg *config.MCPConfig) error {
 	s.prefixToTools = make(map[string][]mcp.ToolSchema)
 
 	// Initialize tool map and list for MCP servers
-	for i := range cfg.Tools {
-		tool := &cfg.Tools[i]
-		s.toolMap[tool.Name] = tool
-		s.tools = append(s.tools, tool.ToToolSchema())
-	}
+	s.LoadConfig(cfg)
 
 	// Build prefix to tools mapping for MCP servers
 	prefixMap := make(map[string]string)

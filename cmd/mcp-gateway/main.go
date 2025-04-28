@@ -186,9 +186,13 @@ func run() {
 			zap.Error(err))
 	}
 
-	srv := core.NewServer(logger)
-	router := gin.Default()
+	srv, err := core.NewServer(logger, cfg)
+	if err != nil {
+		logger.Fatal("failed to create server",
+			zap.Error(err))
+	}
 
+	router := gin.Default()
 	if err := srv.RegisterRoutes(router, mcpCfg); err != nil {
 		logger.Fatal("failed to register routes",
 			zap.Error(err))

@@ -1,21 +1,39 @@
 package config
 
 import (
-	"github.com/mcp-ecosystem/mcp-gateway/pkg/helper"
 	"os"
 	"regexp"
+
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/helper"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
 
-type MCPGatewayConfig struct {
-	Port       int            `yaml:"port"`
-	ReloadPort int            `yaml:"reload_port"`
-	PID        string         `yaml:"pid"`
-	Storage    StorageConfig  `yaml:"storage"`
-	Notifier   NotifierConfig `yaml:"notifier"`
-}
+type (
+	MCPGatewayConfig struct {
+		Port       int            `yaml:"port"`
+		ReloadPort int            `yaml:"reload_port"`
+		PID        string         `yaml:"pid"`
+		Storage    StorageConfig  `yaml:"storage"`
+		Notifier   NotifierConfig `yaml:"notifier"`
+		Session    SessionConfig  `yaml:"session"`
+	}
+
+	// SessionConfig represents the session storage configuration
+	SessionConfig struct {
+		Type  string             `yaml:"type"`  // "memory" or "redis"
+		Redis SessionRedisConfig `yaml:"redis"` // Redis configuration
+	}
+
+	// SessionRedisConfig represents the Redis configuration for session storage
+	SessionRedisConfig struct {
+		Addr     string `yaml:"addr"`
+		Password string `yaml:"password"`
+		DB       int    `yaml:"db"`
+		Topic    string `yaml:"topic"`
+	}
+)
 
 type Type interface {
 	MCPGatewayConfig | APIServerConfig
