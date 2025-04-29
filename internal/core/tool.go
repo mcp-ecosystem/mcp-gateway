@@ -102,10 +102,11 @@ func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, reque
 
 		var respData map[string]any
 		if err := json.Unmarshal(respBody, &respData); err != nil {
-			return "", fmt.Errorf("failed to parse response JSON: %w", err)
+			// TODO: ignore the error for now, in case the response is not JSON
 		}
 
 		tmplCtx.Response.Data = respData
+		tmplCtx.Response.Body = string(respBody)
 		var respBuf bytes.Buffer
 		if err := respTmpl.Execute(&respBuf, tmplCtx); err != nil {
 			return "", fmt.Errorf("failed to execute response body template: %w", err)

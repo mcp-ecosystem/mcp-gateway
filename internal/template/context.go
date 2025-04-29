@@ -15,6 +15,7 @@ type (
 	}
 	ResponseWrapper struct {
 		Data any `json:"data"`
+		Body any `json:"body"`
 	}
 )
 

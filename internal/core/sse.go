@@ -45,20 +45,11 @@ func (s *Server) handleSSE(c *gin.Context) {
 		Type:      "sse",
 		Extra:     nil,
 	}
-	conn, err := s.sessionStore.Register(c.Request.Context(), meta)
+	conn, err := s.sessions.Register(c.Request.Context(), meta)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store sess"})
 		return
 	}
-
-	s.sLock.Lock()
-	s.memorySessions[meta.ID] = &sessionDataInMemory{
-		flusher: flusher,
-		conn:    conn,
-		meta:    meta,
-	}
-	s.sLock.Unlock()
-	s.sessionToPrefix.Store(sessionID, prefix)
 
 	// Send the initial endpoint event
 	_, _ = fmt.Fprintf(w, "event: endpoint\ndata: %s\r\n\r\n",
@@ -77,25 +68,22 @@ func (s *Server) handleSSE(c *gin.Context) {
 			flusher.Flush()
 		case <-r.Context().Done():
 			return
+		case <-s.shutdownCh:
+			return
 		}
 	}
 }
 
 // sendErrorResponse sends an error response through SSE channel and returns Accepted status
-func (s *Server) sendErrorResponse(c *gin.Context, sess *sessionDataInMemory, req mcp.JSONRPCRequest, errorMsg string) {
-	response := mcp.JSONRPCResponse{
+func (s *Server) sendErrorResponse(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, errorMsg string) {
+	response := mcp.JSONRPCErrorSchema{
 		JSONRPCBaseResult: mcp.JSONRPCBaseResult{
 			JSONRPC: mcp.JSPNRPCVersion,
 			ID:      req.Id,
 		},
-		Result: mcp.CallToolResult{
-			IsError: true,
-			Content: []mcp.Content{
-				{
-					Type: "text",
-					Text: errorMsg,
-				},
-			},
+		Error: mcp.JSONRPCError{
+			Code:    mcp.ErrorCodeInternalError,
+			Message: errorMsg,
 		},
 	}
 	eventData, err := json.Marshal(response)
@@ -103,7 +91,7 @@ func (s *Server) sendErrorResponse(c *gin.Context, sess *sessionDataInMemory, re
 		c.String(http.StatusAccepted, mcp.Accepted)
 		return
 	}
-	err = sess.conn.Send(c.Request.Context(), &session.Message{
+	err = conn.Send(c.Request.Context(), &session.Message{
 		Event: "message",
 		Data:  eventData,
 	})
@@ -119,177 +107,100 @@ func (s *Server) handleMessage(c *gin.Context) {
 	// Parse the JSON-RPC message
 	var req mcp.JSONRPCRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendProtocolError(c, nil, mcp.ErrorCodeParseError, "Invalid JSON-RPC request", http.StatusBadRequest)
 		return
 	}
 
 	// Get the session ID from the query parameter
 	sessionId := c.Query("sessionId")
 	if sessionId == "" {
-		// TODO: the error response should be aligned with official specs
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidRequest, "Missing session ID", http.StatusBadRequest)
 		return
 	}
 
-	s.sLock.RLock()
-	sess, ok := s.memorySessions[sessionId]
-	s.sLock.RUnlock()
-	if !ok {
-		c.String(http.StatusAccepted, mcp.Accepted)
+	conn, err := s.sessions.Get(c.Request.Context(), sessionId)
+	if err != nil {
+		s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidRequest, "Invalid or expired session", http.StatusBadRequest)
 		return
 	}
 
 	switch req.Method {
 	case mcp.NotificationInitialized:
 		// Do nothing, just acknowledge
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendAcceptedResponse(c)
 	case mcp.Initialize:
 		var params mcp.InitializeRequestParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendErrorResponse(c, sess, req, "Invalid initialize parameters")
+			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid initialize parameters", http.StatusBadRequest)
 			return
 		}
 
-		response := mcp.InitializeResult{
-			JSONRPCBaseResult: mcp.JSONRPCBaseResult{
-				JSONRPC: mcp.JSPNRPCVersion,
-				ID:      req.Id,
-			},
-			Result: mcp.InitializedResult{
-				ProtocolVersion: mcp.LatestProtocolVersion,
-				ServerInfo: mcp.ImplementationSchema{
-					Name:    "mcp-gateway",
-					Version: "0.1.0",
-				},
+		result := mcp.InitializedResult{
+			ProtocolVersion: mcp.LatestProtocolVersion,
+			ServerInfo: mcp.ImplementationSchema{
+				Name:    "mcp-gateway",
+				Version: "0.1.0",
 			},
 		}
-
-		// Send response via SSE
-		eventData, err := json.Marshal(response)
-		if err != nil {
-			s.sendErrorResponse(c, sess, req, "Failed to marshal response")
-			return
-		}
-		err = sess.conn.Send(c.Request.Context(), &session.Message{
-			Event: "message",
-			Data:  eventData,
-		})
-		if err != nil {
-			c.String(http.StatusAccepted, mcp.Accepted)
-			return
-		}
-		// Also send HTTP response
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsList:
-		// Get the prefix for this session
-		prefixI, ok := s.sessionToPrefix.Load(sess.meta.ID)
-		if !ok {
-			s.sendErrorResponse(c, sess, req, "Session not found")
-			return
-		}
-		prefix := prefixI.(string)
-
 		// Get tools for this prefix
-		tools, ok := s.prefixToTools[prefix]
+		tools, ok := s.prefixToTools[conn.Meta().Prefix]
 		if !ok {
 			tools = []mcp.ToolSchema{} // Return empty list if prefix not found
 		}
 
-		response := mcp.JSONRPCResponse{
-			JSONRPCBaseResult: mcp.JSONRPCBaseResult{
-				JSONRPC: mcp.JSPNRPCVersion,
-				ID:      req.Id,
-			},
-			Result: mcp.ListToolsResult{
-				Tools: tools,
-			},
+		result := mcp.ListToolsResult{
+			Tools: tools,
 		}
-
-		// Send response via SSE
-		eventData, err := json.Marshal(response)
-		if err != nil {
-			s.sendErrorResponse(c, sess, req, "Failed to marshal response")
-			return
-		}
-		err = sess.conn.Send(c.Request.Context(), &session.Message{
-			Event: "message",
-			Data:  eventData,
-		})
-		if err != nil {
-			c.String(http.StatusAccepted, mcp.Accepted)
-			return
-		}
-		// Also send HTTP response
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
 		// Execute the tool and return the result
 		var params mcp.CallToolParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendErrorResponse(c, sess, req, "Invalid tool call parameters")
+			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid tool call parameters", http.StatusBadRequest)
 			return
 		}
 
 		// Find the tool in the precomputed map
 		tool, exists := s.toolMap[params.Name]
 		if !exists {
-			s.sendErrorResponse(c, sess, req, "Tool not found")
+			s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Tool not found", http.StatusNotFound)
 			return
 		}
 
 		// Convert arguments to map[string]any
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendErrorResponse(c, sess, req, "Invalid tool arguments")
+			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid tool arguments", http.StatusBadRequest)
 			return
 		}
 
-		prefixI, ok := s.sessionToPrefix.Load(sess.meta.ID)
+		serverCfg, ok := s.prefixToServerConfig[conn.Meta().Prefix]
 		if !ok {
-			s.sendErrorResponse(c, sess, req, "Session not found")
+			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInternalError, "Server configuration not found", http.StatusInternalServerError)
 			return
 		}
-		prefix := prefixI.(string)
-		serverCfg, ok := s.prefixToServerConfig[prefix]
 
 		// Execute the tool
 		result, err := s.executeTool(tool, args, c.Request, serverCfg.Config)
 		if err != nil {
-			s.sendErrorResponse(c, sess, req, fmt.Sprintf("Error: %s", err.Error()))
+			s.sendToolExecutionError(c, conn, req, err, true)
 			return
 		}
 
 		// Send the result
-		response := mcp.JSONRPCResponse{
-			JSONRPCBaseResult: mcp.JSONRPCBaseResult{
-				JSONRPC: mcp.JSPNRPCVersion,
-				ID:      req.Id,
-			},
-			Result: mcp.CallToolResult{
-				Content: []mcp.Content{
-					{
-						Type: "text",
-						Text: result,
-					},
+		toolResult := mcp.CallToolResult{
+			Content: []mcp.Content{
+				{
+					Type: "text",
+					Text: result,
 				},
 			},
+			IsError: false,
 		}
-		// Send response via SSE
-		eventData, err := json.Marshal(response)
-		if err != nil {
-			s.sendErrorResponse(c, sess, req, "Failed to marshal response")
-			return
-		}
-		err = sess.conn.Send(c.Request.Context(), &session.Message{
-			Event: "message",
-			Data:  eventData,
-		})
-		if err != nil {
-			c.String(http.StatusAccepted, mcp.Accepted)
-			return
-		}
-		// Also send HTTP response
-		c.String(http.StatusAccepted, mcp.Accepted)
+		s.sendSuccessResponse(c, conn, req, toolResult, true)
 	default:
-		s.sendErrorResponse(c, sess, req, "Unknown method")
+		s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Unknown method", http.StatusNotFound)
 	}
 }

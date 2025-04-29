@@ -89,7 +89,7 @@ func (s *RedisStore) handleUpdates() {
 			if exists {
 				select {
 				case conn.queue <- update.Message:
-					s.logger.Debug("sent message to connection queue",
+					s.logger.Info("sent message to connection queue",
 						zap.String("id", update.Meta.ID),
 						zap.String("event", update.Message.Event))
 				default:

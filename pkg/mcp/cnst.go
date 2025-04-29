@@ -36,3 +36,19 @@ const (
 	ResourcesTemplatesList = "resources/templates/list"
 	ResourcesRead          = "resources/read"
 )
+
+// Error codes for MCP protocol
+// Standard JSON-RPC error codes
+const (
+	ErrorCodeParseError     = -32700
+	ErrorCodeInvalidRequest = -32600
+	ErrorCodeMethodNotFound = -32601
+	ErrorCodeInvalidParams  = -32602
+	ErrorCodeInternalError  = -32603
+)
+
+// SDKs and applications error codes
+const (
+	ErrorCodeConnectionClosed = -32000
+	ErrorCodeRequestTimeout   = -32001
+)

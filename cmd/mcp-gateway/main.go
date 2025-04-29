@@ -116,17 +116,18 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 		Handler: newRouter,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("failed to shutdown old server",
-			zap.Error(err))
+			zap.Error(err),
+			zap.String("error_type", fmt.Sprintf("%T", err)))
 		return
 	}
 
 	httpServer = newServer
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("failed to start new server",
 				zap.Error(err))
 		}
@@ -135,7 +136,6 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 
 func run() {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -228,13 +228,30 @@ func run() {
 	for {
 		select {
 		case <-quit:
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			if err := httpServer.Shutdown(ctx); err != nil {
-				cancel()
+			logger.Info("Received shutdown signal, starting graceful shutdown")
+
+			// First cancel the main context to stop accepting new requests
+			cancel()
+
+			// Then shutdown the server with a timeout
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer shutdownCancel()
+
+			// Shutdown the MCP server first to close all SSE connections
+			err := srv.Shutdown(shutdownCtx)
+			if err != nil {
+				logger.Error("failed to shutdown MCP server",
+					zap.Error(err))
+			} else {
+				logger.Info("MCP server shutdown completed successfully")
+			}
+
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
 				logger.Error("failed to shutdown main server",
 					zap.Error(err))
+			} else {
+				logger.Info("Server shutdown completed successfully")
 			}
-			cancel()
 			return
 		case <-updateCh:
 			logger.Info("Received reload signal")
