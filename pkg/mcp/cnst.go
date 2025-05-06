@@ -1,22 +1,25 @@
 package mcp
 
+// Protocol versions
 const (
-	// Protocol versions
-	LatestProtocolVersion = "2024-11-05"
-	JSPNRPCVersion        = "2.0"
+	ProtocolVersion20250326 = "2025-03-26"
+	ProtocolVersion20241105 = "2024-11-05"
+	LatestProtocolVersion   = ProtocolVersion20241105
+	JSPNRPCVersion          = "2.0"
+)
 
-	// Methods
+// Methods
+const (
 	Initialize              = "initialize"
 	NotificationInitialized = "notifications/initialized"
 	Ping                    = "ping"
 	ToolsList               = "tools/list"
 	ToolsCall               = "tools/call"
+)
 
-	// Response
+// Response
+const (
 	Accepted = "Accepted"
-
-	ProtocolVersion20241105 = "2024-11-05"
-	ProtocolVersion20250326 = "2025-03-26"
 
 	NotificationRootsListChanged    = "notifications/roots/list_changed"
 	NotificationCancelled           = "notifications/cancelled"
@@ -51,4 +54,8 @@ const (
 const (
 	ErrorCodeConnectionClosed = -32000
 	ErrorCodeRequestTimeout   = -32001
+)
+
+const (
+	HeaderMcpSessionID = "Mcp-Session-Id"
 )

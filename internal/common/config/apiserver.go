@@ -8,6 +8,7 @@ type (
 		OpenAI   OpenAIConfig   `yaml:"openai"`
 		Storage  StorageConfig  `yaml:"storage"`
 		Notifier NotifierConfig `yaml:"notifier"`
+		Logger   LoggerConfig   `yaml:"logger"`
 	}
 
 	DatabaseConfig struct {

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
@@ -17,19 +19,9 @@ import (
 
 // handleSSE handles SSE connections
 func (s *Server) handleSSE(c *gin.Context) {
-	w := c.Writer
-	r := c.Request
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming unsupported"})
-		return
-	}
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
+	c.Writer.Header().Set("Connection", "keep-alive")
 
 	// Get the prefix from the request path
 	prefix := strings.TrimSuffix(c.Request.URL.Path, "/sse")
@@ -47,14 +39,18 @@ func (s *Server) handleSSE(c *gin.Context) {
 	}
 	conn, err := s.sessions.Register(c.Request.Context(), meta)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store sess"})
+		s.sendProtocolError(c, sessionID, "Failed to create SSE connection", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 		return
 	}
 
 	// Send the initial endpoint event
-	_, _ = fmt.Fprintf(w, "event: endpoint\ndata: %s\r\n\r\n",
-		fmt.Sprintf("%s/message?sessionId=%s", c.Request.URL.Path[:len(c.Request.URL.Path)-4], meta.ID))
-	flusher.Flush()
+	_, err = fmt.Fprintf(c.Writer, "event: endpoint\ndata: %s\n\n",
+		fmt.Sprintf("%s/message?sessionId=%s", strings.TrimSuffix(c.Request.URL.Path, "/sse"), meta.ID))
+	if err != nil {
+		s.sendProtocolError(c, sessionID, "Failed to initialize SSE connection", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		return
+	}
+	c.Writer.Flush()
 
 	// Main event loop
 	for {
@@ -62,11 +58,14 @@ func (s *Server) handleSSE(c *gin.Context) {
 		case event := <-conn.EventQueue():
 			switch event.Event {
 			case "message":
-				_, _ = fmt.Fprint(w, fmt.Sprintf("event: message\ndata: %s\n\n", event.Data))
+				_, err = fmt.Fprintf(c.Writer, "event: message\ndata: %s\n\n", event.Data)
+				if err != nil {
+					s.logger.Error("failed to send SSE message", zap.Error(err))
+				}
 			}
-			_, _ = fmt.Fprint(w, event)
-			flusher.Flush()
-		case <-r.Context().Done():
+			_, _ = fmt.Fprint(c.Writer, event)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
 			return
 		case <-s.shutdownCh:
 			return
@@ -104,34 +103,54 @@ func (s *Server) sendErrorResponse(c *gin.Context, conn session.Connection, req 
 
 // handleMessage processes incoming JSON-RPC messages
 func (s *Server) handleMessage(c *gin.Context) {
-	// Parse the JSON-RPC message
-	var req mcp.JSONRPCRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		s.sendProtocolError(c, nil, mcp.ErrorCodeParseError, "Invalid JSON-RPC request", http.StatusBadRequest)
-		return
-	}
+	s.logger.Debug("Received message", zap.String("method", c.Request.Method),
+		zap.String("path", c.Request.URL.Path))
 
 	// Get the session ID from the query parameter
 	sessionId := c.Query("sessionId")
 	if sessionId == "" {
-		s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidRequest, "Missing session ID", http.StatusBadRequest)
+		c.String(http.StatusNotFound, "Missing sessionId parameter")
+		s.sendProtocolError(c, nil, "Missing sessionId parameter", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
 		return
 	}
 
 	conn, err := s.sessions.Get(c.Request.Context(), sessionId)
 	if err != nil {
-		s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidRequest, "Invalid or expired session", http.StatusBadRequest)
+		c.String(http.StatusNotFound, "Session not found")
+		return
+	}
+	s.handlePostMessage(c, conn)
+}
+
+func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
+	if conn == nil {
+		c.String(http.StatusInternalServerError, "SSE connection not established")
+		return
+	}
+
+	// Validate Content-Type header
+	contentType := c.GetHeader("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		c.String(http.StatusNotAcceptable, "Unsupported Media Type: Content-Type must be application/json")
+		return
+	}
+
+	// TODO: support auth
+
+	// Parse the JSON-RPC message
+	var req mcp.JSONRPCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.String(http.StatusBadRequest, "Invalid message")
 		return
 	}
 
 	switch req.Method {
 	case mcp.NotificationInitialized:
-		// Do nothing, just acknowledge
 		s.sendAcceptedResponse(c)
 	case mcp.Initialize:
 		var params mcp.InitializeRequestParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid initialize parameters", http.StatusBadRequest)
+			s.sendProtocolError(c, req.Id, "Invalid initialize parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
@@ -158,27 +177,27 @@ func (s *Server) handleMessage(c *gin.Context) {
 		// Execute the tool and return the result
 		var params mcp.CallToolParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid tool call parameters", http.StatusBadRequest)
+			s.sendProtocolError(c, req.Id, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Find the tool in the precomputed map
 		tool, exists := s.toolMap[params.Name]
 		if !exists {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Tool not found", http.StatusNotFound)
+			s.sendProtocolError(c, req.Id, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 			return
 		}
 
 		// Convert arguments to map[string]any
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid tool arguments", http.StatusBadRequest)
+			s.sendProtocolError(c, req.Id, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		serverCfg, ok := s.prefixToServerConfig[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInternalError, "Server configuration not found", http.StatusInternalServerError)
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
@@ -201,6 +220,6 @@ func (s *Server) handleMessage(c *gin.Context) {
 		}
 		s.sendSuccessResponse(c, conn, req, toolResult, true)
 	default:
-		s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Unknown method", http.StatusNotFound)
+		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
 }

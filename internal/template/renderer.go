@@ -2,6 +2,9 @@ package template
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"text/template"
 )
 
@@ -17,16 +20,25 @@ func NewRenderer() *Renderer {
 	}
 }
 
+// generateTemplateName generates a unique name for a template based on its content
+func generateTemplateName(tmpl string) string {
+	hash := sha256.Sum256([]byte(tmpl))
+	return fmt.Sprintf("tmpl_%s", hex.EncodeToString(hash[:8]))
+}
+
 // Render renders a template with the given context
 func (r *Renderer) Render(tmpl string, ctx *Context) (string, error) {
-	t, ok := r.templates[tmpl]
+	name := generateTemplateName(tmpl)
+	t, ok := r.templates[name]
 	if !ok {
 		var err error
-		t, err = template.New("").Parse(tmpl)
+		t, err = template.New(name).Funcs(template.FuncMap{
+			"env": ctx.Env,
+		}).Parse(tmpl)
 		if err != nil {
 			return "", err
 		}
-		r.templates[tmpl] = t
+		r.templates[name] = t
 	}
 
 	var buf bytes.Buffer

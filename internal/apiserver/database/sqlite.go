@@ -9,7 +9,7 @@ import (
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 

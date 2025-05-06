@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 
 	"github.com/gin-gonic/gin"
@@ -49,6 +50,11 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 
 // RegisterRoutes registers routes with the given router for MCP servers
 func (s *Server) RegisterRoutes(router *gin.Engine, cfg *config.MCPConfig) error {
+	// Validate configuration before registering routes
+	if err := config.ValidateMCPConfig(cfg); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	router.Use(s.loggerMiddleware())
 	router.Use(s.recoveryMiddleware())
 
@@ -113,6 +119,11 @@ func (s *Server) LoadConfig(cfg *config.MCPConfig) {
 
 // UpdateConfig updates the server configuration
 func (s *Server) UpdateConfig(cfg *config.MCPConfig) error {
+	// Validate configuration before updating
+	if err := config.ValidateMCPConfig(cfg); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	// Clear existing tools
 	s.tools = make([]mcp.ToolSchema, 0)
 	s.toolMap = make(map[string]*config.ToolConfig)

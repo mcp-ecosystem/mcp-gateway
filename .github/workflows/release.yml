@@ -142,7 +142,7 @@ jobs:
           cp -r web-build release/linux-amd64/web
           # Create zip
           cd release/linux-amd64
-          zip -r ../linux-amd64.zip *
+          zip -r ../mcp-gateway-linux-amd64.zip .
 
       - name: Create Linux arm64 package
         run: |
@@ -166,7 +166,7 @@ jobs:
           cp -r web-build release/linux-arm64/web
           # Create zip
           cd release/linux-arm64
-          zip -r ../linux-arm64.zip *
+          zip -r ../mcp-gateway-linux-arm64.zip .
 
       - name: Create macOS amd64 package
         run: |
@@ -190,7 +190,7 @@ jobs:
           cp -r web-build release/darwin-amd64/web
           # Create zip
           cd release/darwin-amd64
-          zip -r ../darwin-amd64.zip *
+          zip -r ../mcp-gateway-darwin-amd64.zip .
 
       - name: Create macOS arm64 package
         run: |
@@ -214,7 +214,7 @@ jobs:
           cp -r web-build release/darwin-arm64/web
           # Create zip
           cd release/darwin-arm64
-          zip -r ../darwin-arm64.zip *
+          zip -r ../mcp-gateway-darwin-arm64.zip .
 
       - name: Create Windows amd64 package
         run: |
@@ -239,18 +239,18 @@ jobs:
           cp -r web-build release/windows-amd64/web
           # Create zip
           cd release/windows-amd64
-          zip -r ../windows-amd64.zip *
+          zip -r ../mcp-gateway-windows-amd64.zip .
 
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            release/linux-amd64.zip
-            release/linux-arm64.zip
-            release/darwin-amd64.zip
-            release/darwin-arm64.zip
-            release/windows-amd64.zip
+            release/mcp-gateway-linux-amd64.zip
+            release/mcp-gateway-linux-arm64.zip
+            release/mcp-gateway-darwin-amd64.zip
+            release/mcp-gateway-darwin-arm64.zip
+            release/mcp-gateway-windows-amd64.zip
           draft: false
           prerelease: false
           generate_release_notes: true

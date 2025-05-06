@@ -14,9 +14,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o /app/bin/apiserver ./cmd/apiserver
-RUN CGO_ENABLED=1 GOOS=linux go build -o /app/bin/mcp-gateway ./cmd/mcp-gateway
-RUN CGO_ENABLED=1 GOOS=linux go build -o /app/bin/mock-user-svc ./cmd/mock-user-svc
+RUN GOOS=linux go build -o /app/bin/apiserver ./cmd/apiserver
+RUN GOOS=linux go build -o /app/bin/mcp-gateway ./cmd/mcp-gateway
+RUN GOOS=linux go build -o /app/bin/mock-user-svc ./cmd/mock-user-svc
 
 FROM node:20.18.0 AS web-builder
 

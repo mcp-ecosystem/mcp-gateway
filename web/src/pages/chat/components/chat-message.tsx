@@ -165,7 +165,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   startContent={<Icon icon="lucide:play" />}
                   onPress={() => handleRunTool(tool)}
                 >
-                  运行工具
+                  Run Tool
                 </Button>
               )}
             </div>

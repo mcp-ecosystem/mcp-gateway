@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -68,6 +69,38 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 
 	if oldCfg.Name != cfg.Name {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "server name in configuration must match name parameter"})
+		return
+	}
+
+	// Get all existing configurations
+	configs, err := h.store.List(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to get existing configurations: " + err.Error(),
+		})
+		return
+	}
+
+	// Replace the old configuration with the new one
+	for i, c := range configs {
+		if c.Name == name {
+			configs[i] = &cfg
+			break
+		}
+	}
+
+	// Validate all configurations
+	if err := config.ValidateMCPConfigs(configs); err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "configuration validation failed: " + validationErr.Error(),
+			})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed to validate configurations: " + err.Error(),
+			})
+		}
 		return
 	}
 
@@ -143,6 +176,33 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 	_, err = h.store.Get(c.Request.Context(), cfg.Name)
 	if err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "MCP server already exists"})
+		return
+	}
+
+	// Get all existing configurations
+	configs, err := h.store.List(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to get existing configurations: " + err.Error(),
+		})
+		return
+	}
+
+	// Add the new configuration to the list
+	configs = append(configs, &cfg)
+
+	// Validate all configurations
+	if err := config.ValidateMCPConfigs(configs); err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "configuration validation failed: " + validationErr.Error(),
+			})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed to validate configurations: " + err.Error(),
+			})
+		}
 		return
 	}
 

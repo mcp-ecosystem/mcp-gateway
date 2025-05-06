@@ -1,6 +1,19 @@
 port: ${MCP_GATEWAY_PORT:5235}
 pid: "${MCP_GATEWAY_PID:/var/run/mcp-gateway.pid}"
 
+# Logger configuration
+logger:
+  level: "${LOGGER_LEVEL:info}"                                           # debug, info, warn, error
+  format: "${LOGGER_FORMAT:json}"                                         # json, console
+  output: "${LOGGER_OUTPUT:stdout}"                                       # stdout, file
+  file_path: "${LOGGER_FILE_PATH:/var/log/mcp-gateway/mcp-gateway.log}"   # path to log file when output is file
+  max_size: ${LOGGER_MAX_SIZE:100}                                        # max size of log file in MB
+  max_backups: ${LOGGER_MAX_BACKUPS:3}                                    # max number of backup files
+  max_age: ${LOGGER_MAX_AGE:7}                                            # max age of backup files in days
+  compress: ${LOGGER_COMPRESS:true}                                       # whether to compress backup files
+  color: ${LOGGER_COLOR:false}                                            # whether to use color in console output
+  stacktrace: ${LOGGER_STACKTRACE:true}                                   # whether to include stacktrace in error logs
+
 # Storage configuration
 storage:
   type: "${GATEWAY_STORAGE_TYPE:db}"  # disk or db

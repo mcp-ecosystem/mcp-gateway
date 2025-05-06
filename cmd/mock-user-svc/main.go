@@ -21,6 +21,13 @@ type User struct {
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Add new fields for testing
+	Preferences struct {
+		IsPublic  bool     `json:"isPublic"`
+		ShowEmail bool     `json:"showEmail"`
+		Theme     string   `json:"theme"`
+		Tags      []string `json:"tags"`
+	} `json:"preferences"`
 }
 
 var users = make(map[string]*User)
@@ -71,6 +78,12 @@ func run() {
 		user.ID = uuid.New().String()
 		user.CreatedAt = time.Now()
 
+		// Initialize default values
+		user.Preferences.IsPublic = false
+		user.Preferences.ShowEmail = true
+		user.Preferences.Theme = "light"
+		user.Preferences.Tags = []string{}
+
 		// Store user
 		users[user.Email] = &user
 
@@ -85,6 +98,31 @@ func run() {
 			return
 		}
 
+		c.JSON(http.StatusOK, user)
+	})
+
+	// Add new endpoint for updating user preferences
+	router.PUT("/users/:email/preferences", func(c *gin.Context) {
+		email := c.Param("email")
+		user, exists := users[email]
+		if !exists {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+
+		var preferences struct {
+			IsPublic  bool     `json:"isPublic"`
+			ShowEmail bool     `json:"showEmail"`
+			Theme     string   `json:"theme"`
+			Tags      []string `json:"tags"`
+		}
+
+		if err := c.ShouldBindJSON(&preferences); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		user.Preferences = preferences
 		c.JSON(http.StatusOK, user)
 	})
 

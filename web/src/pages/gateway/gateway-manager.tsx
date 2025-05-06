@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 
 import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers } from '../../services/api';
 
+import OpenAPIImport from './components/OpenAPIImport';
+
 declare global {
   interface Window {
     monaco: {
@@ -65,6 +67,7 @@ interface ToolConfig {
 export function GatewayManager() {
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
   const {isOpen: isCreateOpen, onOpen: onCreateOpen, onOpenChange: onCreateOpenChange} = useDisclosure();
+  const {isOpen: isImportOpen, onOpen: onImportOpen, onOpenChange: onImportOpenChange} = useDisclosure();
   const [mcpservers, setMCPServers] = React.useState<Gateway[]>([]);
   const [currentMCPServer, setCurrentMCPServer] = React.useState<Gateway | null>(null);
   const [editConfig, setEditConfig] = React.useState('');
@@ -220,6 +223,23 @@ export function GatewayManager() {
     }
   };
 
+  const handleImportSuccess = async () => {
+    try {
+      const servers = await getMCPServers();
+      setMCPServers(servers);
+      onImportOpenChange();
+      toast.success('OpenAPI specification imported successfully', {
+        duration: 3000,
+        position: 'bottom-right',
+      });
+    } catch {
+      toast.error('Failed to refresh server list', {
+        duration: 3000,
+        position: 'bottom-right',
+      });
+    }
+  };
+
   React.useEffect(() => {
     const parseConfigs = () => {
       const parsed = mcpservers.map(server => {
@@ -240,24 +260,31 @@ export function GatewayManager() {
   }, [mcpservers]);
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">MCP Servers Manager</h1>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Gateway Manager</h1>
         <div className="flex gap-2">
           <Button
             color="primary"
-            startContent={<Icon icon="lucide:plus" />}
             onPress={onCreateOpen}
+            startContent={<Icon icon="material-symbols:add" />}
           >
-            Add MCP Server
+            Create
           </Button>
           <Button
-            color="primary"
-            startContent={<Icon icon="lucide:refresh-cw" />}
+            color="secondary"
+            onPress={onImportOpen}
+            startContent={<Icon icon="material-symbols:upload" />}
+          >
+            Import OpenAPI
+          </Button>
+          <Button
+            color="default"
             onPress={handleSync}
             isLoading={isLoading}
+            startContent={<Icon icon="material-symbols:sync" />}
           >
-            Sync Configuration
+            Sync
           </Button>
         </div>
       </div>
@@ -490,6 +517,20 @@ export function GatewayManager() {
               </ModalFooter>
             </>
           )}
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isImportOpen} onOpenChange={onImportOpenChange} size="2xl">
+        <ModalContent>
+          <ModalHeader>Import OpenAPI Specification</ModalHeader>
+          <ModalBody>
+            <OpenAPIImport onSuccess={handleImportSuccess} />
+          </ModalBody>
+          <ModalFooter>
+            <Button color="danger" variant="light" onPress={() => onImportOpenChange()}>
+              Cancel
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </div>

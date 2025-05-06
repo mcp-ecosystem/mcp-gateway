@@ -11,14 +11,14 @@ import (
 )
 
 // sendProtocolError sends a protocol-level error response
-func (s *Server) sendProtocolError(c *gin.Context, id any, code int, message string, statusCode int) {
+func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statusCode int, bizCode int) {
 	response := mcp.JSONRPCErrorSchema{
 		JSONRPCBaseResult: mcp.JSONRPCBaseResult{
 			JSONRPC: mcp.JSPNRPCVersion,
 			ID:      id,
 		},
 		Error: mcp.JSONRPCError{
-			Code:    code,
+			Code:    bizCode,
 			Message: message,
 		},
 	}
@@ -61,7 +61,7 @@ func (s *Server) sendSuccessResponse(c *gin.Context, conn session.Connection, re
 func (s *Server) sendResponse(c *gin.Context, id any, conn session.Connection, response interface{}, isSSE bool) {
 	eventData, err := json.Marshal(response)
 	if err != nil {
-		s.sendProtocolError(c, id, mcp.ErrorCodeInternalError, "Failed to marshal response", http.StatusInternalServerError)
+		s.sendProtocolError(c, id, "Failed to marshal response", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (s *Server) sendResponse(c *gin.Context, id any, conn session.Connection, r
 			Data:  eventData,
 		})
 		if err != nil {
-			s.sendProtocolError(c, id, mcp.ErrorCodeInternalError, fmt.Sprintf("failed to send SSE message: %v", err), http.StatusInternalServerError)
+			s.sendProtocolError(c, id, fmt.Sprintf("failed to send SSE message: %v", err), http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 		c.String(http.StatusAccepted, mcp.Accepted)
@@ -81,6 +81,7 @@ func (s *Server) sendResponse(c *gin.Context, id any, conn session.Connection, r
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache") // , no-transform
 		c.Header("Connection", "keep-alive")
+		c.Header(mcp.HeaderMcpSessionID, conn.Meta().ID)
 		c.String(http.StatusOK, fmt.Sprintf("event: message\ndata: %s\n\n", eventData))
 	}
 }

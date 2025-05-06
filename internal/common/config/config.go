@@ -18,6 +18,7 @@ type (
 		Storage    StorageConfig  `yaml:"storage"`
 		Notifier   NotifierConfig `yaml:"notifier"`
 		Session    SessionConfig  `yaml:"session"`
+		Logger     LoggerConfig   `yaml:"logger"`
 	}
 
 	// SessionConfig represents the session storage configuration
@@ -32,6 +33,20 @@ type (
 		Password string `yaml:"password"`
 		DB       int    `yaml:"db"`
 		Topic    string `yaml:"topic"`
+	}
+
+	// LoggerConfig represents the logger configuration
+	LoggerConfig struct {
+		Level      string `yaml:"level"`       // debug, info, warn, error
+		Format     string `yaml:"format"`      // json, console
+		Output     string `yaml:"output"`      // stdout, file
+		FilePath   string `yaml:"file_path"`   // path to log file when output is file
+		MaxSize    int    `yaml:"max_size"`    // max size of log file in MB
+		MaxBackups int    `yaml:"max_backups"` // max number of backup files
+		MaxAge     int    `yaml:"max_age"`     // max age of backup files in days
+		Compress   bool   `yaml:"compress"`    // whether to compress backup files
+		Color      bool   `yaml:"color"`       // whether to use color in console output
+		Stacktrace bool   `yaml:"stacktrace"`  // whether to include stacktrace in error logs
 	}
 )
 

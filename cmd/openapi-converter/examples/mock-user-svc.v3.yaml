@@ -1,0 +1,104 @@
+openapi: 3.0.0
+info:
+  title: Mock User Service API
+  version: 1.0.0
+  description: A mock user management service.
+servers:
+- url: http://localhost:5236
+paths:
+  /users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid request
+  /users/email/{email}:
+    get:
+      summary: Get user by email
+      parameters:
+      - name: email
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+  /users/{email}/preferences:
+    put:
+      summary: Update user preferences
+      parameters:
+      - name: email
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferences'
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid request
+        '404':
+          description: User not found
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+    UserPreferences:
+      type: object
+      properties:
+        isPublic:
+          type: boolean
+          description: Whether the user profile is public
+        showEmail:
+          type: boolean
+          description: Whether to show email in profile
+        theme:
+          type: string
+          description: User interface theme
+          enum: [light, dark, system]
+        tags:
+          type: array
+          items:
+            type: string
+          description: User tags

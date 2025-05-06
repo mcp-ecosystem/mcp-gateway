@@ -1,76 +1,84 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"io"
 	"net/http"
 	"strings"
-	texttemplate "text/template"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 )
 
-// executeTool executes a tool with the given arguments
-func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (string, error) {
-	client := &http.Client{}
+// renderTemplate renders a template with the given context
+func renderTemplate(tmpl string, ctx *template.Context) (string, error) {
+	renderer := template.NewRenderer()
+	return renderer.Render(tmpl, ctx)
+}
 
+// prepareTemplateContext prepares the template context with request and config data
+func prepareTemplateContext(args map[string]any, request *http.Request, serverCfg map[string]string) (*template.Context, error) {
 	tmplCtx := template.NewContext()
-	tmplCtx.Args = args
+	tmplCtx.Args = preprocessArgs(args)
 
+	// Process server config templates
+	for k, v := range serverCfg {
+		rendered, err := renderTemplate(v, tmplCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render config template: %w", err)
+		}
+		serverCfg[k] = rendered
+	}
 	tmplCtx.Config = serverCfg
 
+	// Process request headers
 	for k, v := range request.Header {
 		if len(v) > 0 {
 			tmplCtx.Request.Headers[k] = v[0]
 		}
 	}
 
-	endpointTmpl, err := texttemplate.New("endpoint").Parse(tool.Endpoint)
+	return tmplCtx, nil
+}
+
+// prepareRequest prepares the HTTP request with templates and arguments
+func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
+	// Process endpoint template
+	endpoint, err := renderTemplate(tool.Endpoint, tmplCtx)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse endpoint template: %w", err)
+		return nil, fmt.Errorf("failed to render endpoint template: %w", err)
 	}
 
-	var endpointBuf bytes.Buffer
-	if err := endpointTmpl.Execute(&endpointBuf, tmplCtx); err != nil {
-		return "", fmt.Errorf("failed to execute endpoint template: %w", err)
-	}
-	endpoint := endpointBuf.String()
-
+	// Process request body template
 	var reqBody io.Reader
 	if tool.RequestBody != "" {
-		bodyTmpl, err := texttemplate.New("body").Parse(tool.RequestBody)
+		rendered, err := renderTemplate(tool.RequestBody, tmplCtx)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse request body template: %w", err)
+			return nil, fmt.Errorf("failed to render request body template: %w", err)
 		}
-
-		var bodyBuf bytes.Buffer
-		if err := bodyTmpl.Execute(&bodyBuf, tmplCtx); err != nil {
-			return "", fmt.Errorf("failed to execute request body template: %w", err)
-		}
-		reqBody = &bodyBuf
+		reqBody = strings.NewReader(rendered)
 	}
 
 	req, err := http.NewRequest(tool.Method, endpoint, reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	// Process header templates
 	for k, v := range tool.Headers {
-		headerTmpl, err := texttemplate.New("header").Parse(v)
+		rendered, err := renderTemplate(v, tmplCtx)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse header template: %w", err)
+			return nil, fmt.Errorf("failed to render header template: %w", err)
 		}
-
-		var headerBuf bytes.Buffer
-		if err := headerTmpl.Execute(&headerBuf, tmplCtx); err != nil {
-			return "", fmt.Errorf("failed to execute header template: %w", err)
-		}
-		req.Header.Set(k, headerBuf.String())
+		req.Header.Set(k, rendered)
 	}
 
+	return req, nil
+}
+
+// processArguments processes tool arguments and adds them to the request
+func processArguments(req *http.Request, tool *config.ToolConfig, args map[string]any) {
 	for _, arg := range tool.Args {
 		value := fmt.Sprint(args[arg.Name])
 		switch strings.ToLower(arg.Position) {
@@ -82,37 +90,94 @@ func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, reque
 			req.URL.RawQuery = q.Encode()
 		}
 	}
+}
 
+// preprocessResponseData processes response data to handle []any type
+func preprocessResponseData(data map[string]any) map[string]any {
+	processed := make(map[string]any)
+
+	for k, v := range data {
+		switch val := v.(type) {
+		case []any:
+			ss, _ := json.Marshal(val)
+			processed[k] = string(ss)
+		case map[string]any:
+			processed[k] = preprocessResponseData(val)
+		default:
+			processed[k] = v
+		}
+	}
+	return processed
+}
+
+// processResponse processes the HTTP response and applies response template if needed
+func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (string, error) {
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if tool.ResponseBody == "" {
+		return string(respBody), nil
+	}
+
+	var respData map[string]any
+	if err := json.Unmarshal(respBody, &respData); err != nil {
+		// TODO: ignore the error for now, in case the response is not JSON
+	}
+
+	// Preprocess response data to handle []any type
+	respData = preprocessResponseData(respData)
+	tmplCtx.Response.Data = respData
+	tmplCtx.Response.Body = string(respBody)
+
+	rendered, err := renderTemplate(tool.ResponseBody, tmplCtx)
+	if err != nil {
+		return "", fmt.Errorf("failed to render response body template: %w", err)
+	}
+	return rendered, nil
+}
+
+// executeTool executes a tool with the given arguments
+func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (string, error) {
+	// Prepare template context
+	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
+	if err != nil {
+		return "", err
+	}
+
+	// Prepare HTTP request
+	req, err := prepareRequest(tool, tmplCtx)
+	if err != nil {
+		return "", err
+	}
+
+	// Process arguments
+	processArguments(req, tool, args)
+
+	// Execute request
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+	// Process response
+	return processResponse(resp, tool, tmplCtx)
+}
+
+func preprocessArgs(args map[string]any) map[string]any {
+	processed := make(map[string]any)
+
+	for k, v := range args {
+		switch val := v.(type) {
+		case []any:
+			ss, _ := json.Marshal(val)
+			processed[k] = string(ss)
+		default:
+			processed[k] = v
+		}
 	}
-
-	if tool.ResponseBody != "" {
-		respTmpl, err := texttemplate.New("response").Parse(tool.ResponseBody)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse response body template: %w", err)
-		}
-
-		var respData map[string]any
-		if err := json.Unmarshal(respBody, &respData); err != nil {
-			// TODO: ignore the error for now, in case the response is not JSON
-		}
-
-		tmplCtx.Response.Data = respData
-		tmplCtx.Response.Body = string(respBody)
-		var respBuf bytes.Buffer
-		if err := respTmpl.Execute(&respBuf, tmplCtx); err != nil {
-			return "", fmt.Errorf("failed to execute response body template: %w", err)
-		}
-		return respBuf.String(), nil
-	}
-
-	return string(respBody), nil
+	return processed
 }

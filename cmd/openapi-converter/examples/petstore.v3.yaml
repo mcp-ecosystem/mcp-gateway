@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: Petstore API
+  description: A sample API that uses a petstore as an example to demonstrate features in the OpenAPI specification
+  version: 1.0.0
+servers:
+  - url: https://petstore.example.com/v1
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      operationId: listPets
+      responses:
+        '200':
+          description: A paged array of pets
+    post:
+      summary: Create a pet
+      operationId: createPet
+      responses:
+        '201':
+          description: Pet created
+    options:
+      summary: CORS support
+      responses:
+        '200':
+          description: CORS headers
+  /pets/{petId}:
+    get:
+      summary: Info for a specific pet
+      operationId: showPetById
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request
+        '404':
+          description: Pet not found
+    options:
+      summary: CORS support
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CORS headers 

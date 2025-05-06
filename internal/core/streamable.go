@@ -7,55 +7,131 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
+
+	"github.com/google/uuid"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // handleMCP handles MCP connections
 func (s *Server) handleMCP(c *gin.Context) {
 	switch c.Request.Method {
 	case http.MethodOptions:
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, DELETE")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
 		c.Status(http.StatusOK)
 		return
 
 	case http.MethodGet:
-		prefix := strings.TrimSuffix(c.Request.URL.Path, "/mcp")
-		if prefix == "" {
-			prefix = "/"
-		}
-
-		sessionID := c.GetHeader("Mcp-Session-Id")
-		if sessionID == "" {
-			sessionID = uuid.New().String()
-			c.Header("Mcp-Session-Id", sessionID)
-		}
-
-		// TODO: complete
+		s.handleGet(c)
 	case http.MethodPost:
-		var req mcp.JSONRPCRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			s.sendProtocolError(c, nil, mcp.ErrorCodeParseError, "Invalid JSON-RPC request", http.StatusBadRequest)
+		s.handlePost(c)
+		return
+	case http.MethodDelete:
+		s.handleDelete(c)
+		return
+
+	default:
+		c.Header("Allow", "GET, POST, DELETE")
+		s.sendProtocolError(c, nil, "Method not allowed", http.StatusMethodNotAllowed, mcp.ErrorCodeConnectionClosed)
+		return
+	}
+}
+
+// handleGet handles GET requests for SSE stream
+func (s *Server) handleGet(c *gin.Context) {
+	// Check Accept header for text/event-stream
+	acceptHeader := c.GetHeader("Accept")
+	if !strings.Contains(acceptHeader, "text/event-stream") {
+		s.sendProtocolError(c, nil, "Not Acceptable: Client must accept text/event-stream", http.StatusNotAcceptable, mcp.ErrorCodeInvalidRequest)
+		return
+	}
+
+	conn := s.getSession(c)
+	if conn == nil {
+		return
+	}
+
+	// TODO: replay events according to the last-event-id in request headers.
+
+	// TODO: only support one sse stream per session, we can detect it when sub the redis topic
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set(mcp.HeaderMcpSessionID, conn.Meta().ID)
+	c.Writer.Flush()
+
+	for {
+		select {
+		case event := <-conn.EventQueue():
+			switch event.Event {
+			case "message":
+				_, err := fmt.Fprintf(c.Writer, "event: message\ndata: %s\n\n", event.Data)
+				if err != nil {
+					s.logger.Error("failed to send SSE message", zap.Error(err))
+				}
+			}
+			_, _ = fmt.Fprint(c.Writer, event)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		case <-s.shutdownCh:
 			return
 		}
+	}
+}
 
-		sessionID := c.GetHeader("Mcp-Session-Id")
-		if sessionID == "" {
+// handlePost handles POST requests containing JSON-RPC messages
+func (s *Server) handlePost(c *gin.Context) {
+	// Validate Accept header
+	accept := c.GetHeader("Accept")
+	if !(strings.Contains(accept, "application/json") || strings.Contains(accept, "*/*")) ||
+		!(strings.Contains(accept, "text/event-stream") || strings.Contains(accept, "*/*")) {
+		s.sendProtocolError(c, nil,
+			"Not Acceptable: Client must accept both application/json and text/event-stream",
+			http.StatusNotAcceptable, mcp.ErrorCodeConnectionClosed)
+		return
+	}
+
+	// Validate Content-Type header
+	contentType := c.GetHeader("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		s.sendProtocolError(c, nil, "Unsupported Media Type: Content-Type must be application/json",
+			http.StatusUnsupportedMediaType, mcp.ErrorCodeConnectionClosed)
+		return
+	}
+
+	// TODO: support batch messages
+	var req mcp.JSONRPCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.sendProtocolError(c, nil, "Invalid JSON-RPC request",
+			http.StatusBadRequest, mcp.ErrorCodeParseError)
+		return
+	}
+
+	sessionID := c.GetHeader(mcp.HeaderMcpSessionID)
+
+	var (
+		conn session.Connection
+		err  error
+	)
+	if req.Method == mcp.Initialize {
+		if sessionID != "" {
+			// confirm if it's registered
+			conn, err = s.sessions.Get(c.Request.Context(), sessionID)
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to get session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+			if conn != nil {
+				s.sendProtocolError(c, req.Id, "Invalid Request: Server already initialized", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
+				return
+			}
+		} else {
 			sessionID = uuid.New().String()
-			c.Header("Mcp-Session-Id", sessionID)
-		}
-
-		var (
-			conn session.Connection
-			err  error
-		)
-		if req.Method == mcp.Initialize {
 			prefix := strings.TrimSuffix(c.Request.URL.Path, "/mcp")
 			if prefix == "" {
 				prefix = "/"
@@ -69,52 +145,46 @@ func (s *Server) handleMCP(c *gin.Context) {
 			}
 			conn, err = s.sessions.Register(c.Request.Context(), meta)
 			if err != nil {
-				s.sendProtocolError(c, req.Id, mcp.ErrorCodeInternalError, "Failed to create session", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			conn, err = s.sessions.Get(c.Request.Context(), sessionID)
-			if err != nil {
-				s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidRequest, "Invalid or expired session", http.StatusBadRequest)
+				s.sendProtocolError(c, req.Id, "Failed to create session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
 		}
-
-		if err := s.handleMCPRequest(c, req, conn); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInternalError, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		return
-	case http.MethodDelete:
-		sessionID := c.GetHeader("Mcp-Session-Id")
-		if sessionID == "" {
-			s.sendProtocolError(c, nil, mcp.ErrorCodeInvalidRequest, "Missing session ID", http.StatusBadRequest)
-			return
-		}
-
-		err := s.sessions.Unregister(c.Request.Context(), sessionID)
+		c.Header(mcp.HeaderMcpSessionID, sessionID)
+	} else {
+		conn, err = s.sessions.Get(c.Request.Context(), sessionID)
 		if err != nil {
-			s.sendProtocolError(c, nil, mcp.ErrorCodeInvalidRequest, "Invalid or expired session", http.StatusBadRequest)
+			s.sendProtocolError(c, req.Id, "Invalid Request: Session not found", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
 			return
 		}
-		c.String(http.StatusOK, "Session terminated")
-
-	default:
-		c.Header("Allow", "GET, POST, DELETE")
-		s.sendProtocolError(c, nil, mcp.ErrorCodeConnectionClosed, "Method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
+
+	s.handleMCPRequest(c, req, conn)
 }
 
-func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection) error {
+// handleDelete handles DELETE requests to terminate sessions
+func (s *Server) handleDelete(c *gin.Context) {
+	conn := s.getSession(c)
+	if conn == nil {
+		return
+	}
+
+	err := s.sessions.Unregister(c.Request.Context(), conn.Meta().ID)
+	if err != nil {
+		s.sendProtocolError(c, conn.Meta().ID, "Failed to terminate session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection) {
 	// Process the request based on its method
 	switch req.Method {
 	case mcp.Initialize:
 		// Handle initialization request
 		var params mcp.InitializeRequestParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, fmt.Sprintf("invalid initialize parameters: %v", err), http.StatusBadRequest)
-			return nil
+			s.sendProtocolError(c, req.Id, fmt.Sprintf("invalid initialize parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
 		}
 
 		s.sendSuccessResponse(c, conn, req, mcp.InitializedResult{
@@ -127,15 +197,14 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			},
 			ServerInfo: mcp.ImplementationSchema{
 				Name:    "mcp-gateway",
-				Version: "1.0.0",
+				Version: version.Get(),
 			},
 		}, false)
-		return nil
+		return
 
 	case mcp.NotificationInitialized:
-		c.Header("Content-Type", "application/json")
-		c.String(http.StatusAccepted, mcp.Accepted)
-		return nil
+		c.Status(http.StatusAccepted)
+		return
 
 	case mcp.ToolsList:
 		// Get tools for this prefix
@@ -147,34 +216,34 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		s.sendSuccessResponse(c, conn, req, mcp.ListToolsResult{
 			Tools: tools,
 		}, false)
-		return nil
+		return
 
 	case mcp.ToolsCall:
 		// Handle tool call request
 		var params mcp.CallToolParams
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, fmt.Sprintf("invalid tool call parameters: %v", err), http.StatusBadRequest)
-			return nil
+			s.sendProtocolError(c, req.Id, fmt.Sprintf("invalid tool call parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
 		}
 
 		// Find the tool in the precomputed map
 		tool, exists := s.toolMap[params.Name]
 		if !exists {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Tool not found", http.StatusNotFound)
-			return nil
+			s.sendProtocolError(c, req.Id, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
 		}
 
 		// Convert arguments to map[string]any
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInvalidParams, "Invalid tool arguments", http.StatusBadRequest)
-			return nil
+			s.sendProtocolError(c, req.Id, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
 		}
 
 		serverCfg, ok := s.prefixToServerConfig[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.Id, mcp.ErrorCodeInternalError, "Server config not found", http.StatusInternalServerError)
-			return nil
+			s.sendProtocolError(c, req.Id, "Server config not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
 		}
 
 		// Execute the tool
@@ -183,7 +252,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			s.logger.Error("failed to execute tool", zap.Error(err))
 			// For tool execution errors, return them in the result with isError=true
 			s.sendToolExecutionError(c, conn, req, err, false)
-			return nil
+			return
 		}
 
 		s.sendSuccessResponse(c, conn, req, mcp.CallToolResult{
@@ -195,10 +264,24 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			},
 			IsError: false,
 		}, false)
-		return nil
+		return
 
 	default:
-		s.sendProtocolError(c, req.Id, mcp.ErrorCodeMethodNotFound, "Method not found", http.StatusNotFound)
+		s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		return
+	}
+}
+
+func (s *Server) getSession(c *gin.Context) session.Connection {
+	sessionID := c.GetHeader(mcp.HeaderMcpSessionID)
+	if sessionID == "" {
+		s.sendProtocolError(c, nil, "Bad Request: Mcp-Session-Id header is required", http.StatusBadRequest, mcp.ErrorCodeConnectionClosed)
 		return nil
 	}
+	conn, err := s.sessions.Get(c.Request.Context(), sessionID)
+	if err != nil {
+		s.sendProtocolError(c, nil, "Session not found", http.StatusNotFound, mcp.ErrorCodeRequestTimeout)
+		return nil
+	}
+	return conn
 }

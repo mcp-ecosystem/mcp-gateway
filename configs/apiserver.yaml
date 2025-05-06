@@ -1,3 +1,16 @@
+# Logger configuration
+logger:
+  level: "${APISERVER_LOGGER_LEVEL:info}"                                         # debug, info, warn, error
+  format: "${APISERVER_LOGGER_FORMAT:json}"                                       # json, console
+  output: "${APISERVER_LOGGER_OUTPUT:stdout}"                                     # stdout, file
+  file_path: "${APISERVER_LOGGER_FILE_PATH:/var/log/mcp-gateway/apiserver.log}"   # path to log file when output is file
+  max_size: ${APISERVER_LOGGER_MAX_SIZE:100}                                      # max size of log file in MB
+  max_backups: ${APISERVER_LOGGER_MAX_BACKUPS:3}                                  # max number of backup files
+  max_age: ${APISERVER_LOGGER_MAX_AGE:7}                                          # max age of backup files in days
+  compress: ${APISERVER_LOGGER_COMPRESS:true}                                     # whether to compress backup files
+  color: ${APISERVER_LOGGER_COLOR:false}                                          # whether to use color in console output
+  stacktrace: ${APISERVER_LOGGER_STACKTRACE:true}                                 # whether to include stacktrace in error logs
+
 database:
   type: "${APISERVER_DB_TYPE:sqlite}"
   host: "${APISERVER_DB_HOST:localhost}"
