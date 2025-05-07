@@ -24,7 +24,7 @@ servers:
     description: "Mock Stdio Service"
 
 stdio_configs:
-  - name: "ampa-maps"
+  - name: "amap-maps"
     command: "npx"
     args:
       - "-y"

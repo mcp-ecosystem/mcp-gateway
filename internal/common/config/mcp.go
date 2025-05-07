@@ -5,6 +5,7 @@ import (
 
 	"github.com/ifuryst/lol"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
@@ -18,12 +19,15 @@ type (
 	}
 
 	MCPConfig struct {
-		Name      string         `yaml:"name" gorm:"primaryKey"`
-		CreatedAt time.Time      `yaml:"created_at"`
-		UpdatedAt time.Time      `yaml:"updated_at"`
-		Routers   []RouterConfig `yaml:"routers" gorm:"type:json"`
-		Servers   []ServerConfig `yaml:"servers" gorm:"type:json"`
-		Tools     []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		Name         string         `yaml:"name" gorm:"primaryKey"`
+		CreatedAt    time.Time      `yaml:"created_at"`
+		UpdatedAt    time.Time      `yaml:"updated_at"`
+		ProtoType    cnst.ProtoType `yaml:"proto_type" gorm:"type:varchar(64)"`
+		Routers      []RouterConfig `yaml:"routers" gorm:"type:json"`
+		Servers      []ServerConfig `yaml:"servers" gorm:"type:json"`
+		Tools        []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		StdioConfigs []StdioConfig  `yaml:"stdio_configs" gorm:"type:json"`
+		SSEConfigs   []SSEConfig    `yaml:"sse_configs" gorm:"type:json"`
 	}
 
 	RouterConfig struct {
@@ -58,6 +62,18 @@ type (
 		RequestBody  string            `yaml:"requestBody"`
 		ResponseBody string            `yaml:"responseBody"`
 		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
+	}
+
+	StdioConfig struct {
+		Name    string            `yaml:"name"`
+		Command string            `yaml:"command"`
+		Args    []string          `yaml:"args"`
+		Env     map[string]string `yaml:"env"`
+	}
+
+	SSEConfig struct {
+		Name string `yaml:"name"`
+		URL  string `yaml:"url"`
 	}
 
 	ArgConfig struct {
