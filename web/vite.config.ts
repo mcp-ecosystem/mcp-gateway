@@ -28,11 +28,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_DEV_API_BASE_URL || '/api',
           changeOrigin: true,
-        },
-        '/ws': {
-          target: env.VITE_DEV_WS_BASE_URL || '/ws',
-          ws: true,
-        },
+        }
       },
     },
   };

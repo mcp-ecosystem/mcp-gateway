@@ -127,7 +127,6 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 	{
 		chatHandler := apiserverHandler.NewChat(db)
 		mcpHandler := apiserverHandler.NewMCP(db, store, ntf)
-		wsHandler := apiserverHandler.NewWebSocket(db, openaiClient)
 		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf)
 
 		// Configure routes
@@ -140,11 +139,12 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		// OpenAPI routes
 		protected.POST("/openapi/import", openapiHandler.HandleImport)
 
-		protected.GET("/ws/chat", wsHandler.HandleWebSocket)
-
 		protected.GET("/chat/sessions", chatHandler.HandleGetChatSessions)
 		protected.GET("/chat/sessions/:sessionId/messages", chatHandler.HandleGetChatMessages)
 	}
+
+	wsHandler := apiserverHandler.NewWebSocket(db, openaiClient, jwtService)
+	r.GET("/api/ws/chat", wsHandler.HandleWebSocket)
 
 	r.Static("/web", "./web")
 	return r

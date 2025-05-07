@@ -2,7 +2,7 @@ import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
-import { Navigation } from './components/Navigation';
+import { Layout } from './components/Layout';
 import { LoginPage } from './pages/auth/login';
 import { ChatInterface } from './pages/chat/chat-interface';
 import { GatewayManager } from './pages/gateway/gateway-manager';
@@ -22,16 +22,13 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 // Main layout component
 function MainLayout() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="h-[calc(100vh-4rem)]">
-        <Routes>
-          <Route path="/" element={<GatewayManager />} />
-          <Route path="/chat" element={<ChatInterface />} />
-          <Route path="/chat/:sessionId" element={<ChatInterface />} />
-        </Routes>
-      </main>
-    </div>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<GatewayManager />} />
+        <Route path="/chat" element={<ChatInterface />} />
+        <Route path="/chat/:sessionId" element={<ChatInterface />} />
+      </Routes>
+    </Layout>
   );
 }
 

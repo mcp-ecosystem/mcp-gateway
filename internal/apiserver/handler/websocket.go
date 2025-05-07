@@ -2,28 +2,32 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
-	"github.com/mcp-ecosystem/mcp-gateway/pkg/openai"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/openai"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	openaiGo "github.com/openai/openai-go"
 )
 
 type WebSocket struct {
-	db        database.Database
-	openaiCli *openai.Client
+	db         database.Database
+	openaiCli  *openai.Client
+	jwtService *jwt.Service
 }
 
-func NewWebSocket(db database.Database, openaiCli *openai.Client) *WebSocket {
+func NewWebSocket(db database.Database, openaiCli *openai.Client, jwtService *jwt.Service) *WebSocket {
 	return &WebSocket{
-		db:        db,
-		openaiCli: openaiCli,
+		db:         db,
+		openaiCli:  openaiCli,
+		jwtService: jwtService,
 	}
 }
 
@@ -34,6 +38,18 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *WebSocket) HandleWebSocket(c *gin.Context) {
+	// Token auth from query
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token is required"})
+		return
+	}
+	_, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
 	// Get sessionId from query parameter
 	sessionId := c.Query("sessionId")
 	if sessionId == "" {

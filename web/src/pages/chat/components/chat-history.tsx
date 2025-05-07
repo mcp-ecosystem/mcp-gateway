@@ -10,6 +10,7 @@ import { wsService } from '../../../services/websocket';
 interface ChatHistoryProps {
   selectedChat: string | null;
   onSelectChat: (id: string) => void;
+  isCollapsed: boolean;
 }
 
 interface Session {
@@ -18,7 +19,7 @@ interface Session {
   title: string;
 }
 
-export function ChatHistory({ selectedChat, onSelectChat }: ChatHistoryProps) {
+export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHistoryProps) {
   const navigate = useNavigate();
   const [sessions, setSessions] = React.useState<Session[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -78,8 +79,10 @@ export function ChatHistory({ selectedChat, onSelectChat }: ChatHistoryProps) {
     navigate(`/chat/${sessionId}`);
   };
 
+  if (isCollapsed) return null;
   return (
-    <Card className="w-64 relative group">
+    <Card className="w-64 relative group bg-card transition-all duration-200">
+      {/* Resize bar 仅在展开时显示 */}
       <button
         type="button"
         aria-label="Resize chat history"
@@ -87,7 +90,6 @@ export function ChatHistory({ selectedChat, onSelectChat }: ChatHistoryProps) {
         onMouseDown={(e: React.MouseEvent) => {
           const startX = e.pageX;
           const startWidth = e.currentTarget.parentElement?.offsetWidth || 0;
-
           const handleMouseMove = (e: MouseEvent) => {
             const delta = e.pageX - startX;
             const newWidth = Math.max(200, Math.min(400, startWidth + delta));
@@ -96,12 +98,10 @@ export function ChatHistory({ selectedChat, onSelectChat }: ChatHistoryProps) {
               parent.style.width = `${newWidth}px`;
             }
           };
-
           const handleMouseUp = () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
           };
-
           document.addEventListener('mousemove', handleMouseMove);
           document.addEventListener('mouseup', handleMouseUp);
         }}

@@ -66,7 +66,8 @@ export class WebSocketService {
     }
 
     return new Promise<void>((resolve) => {
-      this.ws = new WebSocket(`${import.meta.env.VITE_WS_BASE_URL}/chat?sessionId=${this.sessionId}`);
+      const token = window.localStorage.getItem('token');
+      this.ws = new WebSocket(`${import.meta.env.VITE_WS_BASE_URL}/chat?sessionId=${this.sessionId}&token=${token}`);
 
       this.ws.onopen = () => {
         resolve();

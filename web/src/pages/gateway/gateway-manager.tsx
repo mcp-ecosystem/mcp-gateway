@@ -74,6 +74,27 @@ export function GatewayManager() {
   const [newConfig, setNewConfig] = React.useState('');
   const [parsedMCPServers, setParsedMCPServers] = React.useState<Gateway[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isDark, setIsDark] = React.useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  // Listen for theme changes
+  React.useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          setIsDark(document.documentElement.classList.contains('dark'));
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Configure Monaco YAML
   React.useEffect(() => {
@@ -259,6 +280,35 @@ export function GatewayManager() {
     parseConfigs();
   }, [mcpservers]);
 
+  const editorOptions = {
+    minimap: { enabled: false },
+    fontSize: 14,
+    lineNumbers: 'on',
+    roundedSelection: false,
+    scrollBeyondLastLine: false,
+    readOnly: false,
+    automaticLayout: true,
+    ...(isDark ? {
+      'editor.background': '#1E2228',
+      'editor.foreground': '#E5E7EB',
+      'editor.lineHighlightBackground': '#23272E',
+      'editor.selectionBackground': '#4C6BCF40',
+      'editor.inactiveSelectionBackground': '#4C6BCF20',
+      'editor.lineHighlightBorder': '#2D3238',
+      'editorCursor.foreground': '#4C6BCF',
+      'editorWhitespace.foreground': '#4B5563',
+    } : {
+      'editor.background': '#F8F9FA',
+      'editor.foreground': '#0B0F1A',
+      'editor.lineHighlightBackground': '#F1F3F5',
+      'editor.selectionBackground': '#4C6BCF40',
+      'editor.inactiveSelectionBackground': '#4C6BCF20',
+      'editor.lineHighlightBorder': '#E5E7EB',
+      'editorCursor.foreground': '#4C6BCF',
+      'editorWhitespace.foreground': '#A6B6E8',
+    })
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
@@ -273,8 +323,10 @@ export function GatewayManager() {
           </Button>
           <Button
             color="secondary"
+            variant="flat"
             onPress={onImportOpen}
             startContent={<Icon icon="material-symbols:upload" />}
+            className="bg-purple-500 hover:bg-purple-600 text-white"
           >
             Import OpenAPI
           </Button>
@@ -296,7 +348,7 @@ export function GatewayManager() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {(parsedMCPServers || []).map((server) => (
-            <Card key={server.name} className="w-full hover:shadow-lg transition-shadow">
+            <Card key={server.name} className="w-full hover:shadow-lg transition-shadow bg-card">
               <CardBody className="flex flex-col gap-3 p-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold truncate">{server.name}</h3>
@@ -438,24 +490,8 @@ export function GatewayManager() {
                   defaultLanguage="yaml"
                   value={editConfig}
                   onChange={(value) => setEditConfig(value || '')}
-                  theme="vs"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    roundedSelection: false,
-                    scrollBeyondLastLine: false,
-                    readOnly: false,
-                    automaticLayout: true,
-                    'editor.background': '#F8F9FA',
-                    'editor.foreground': '#0B0F1A',
-                    'editor.lineHighlightBackground': '#F1F3F5',
-                    'editor.selectionBackground': '#4C6BCF40',
-                    'editor.inactiveSelectionBackground': '#4C6BCF20',
-                    'editor.lineHighlightBorder': '#E5E7EB',
-                    'editorCursor.foreground': '#4C6BCF',
-                    'editorWhitespace.foreground': '#A6B6E8',
-                  }}
+                  theme={isDark ? "vs-dark" : "vs"}
+                  options={editorOptions}
                 />
               </ModalBody>
               <ModalFooter>
@@ -487,24 +523,8 @@ export function GatewayManager() {
                   defaultLanguage="yaml"
                   value={newConfig}
                   onChange={(value) => setNewConfig(value || '')}
-                  theme="vs"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    roundedSelection: false,
-                    scrollBeyondLastLine: false,
-                    readOnly: false,
-                    automaticLayout: true,
-                    'editor.background': '#F8F9FA',
-                    'editor.foreground': '#0B0F1A',
-                    'editor.lineHighlightBackground': '#F1F3F5',
-                    'editor.selectionBackground': '#4C6BCF40',
-                    'editor.inactiveSelectionBackground': '#4C6BCF20',
-                    'editor.lineHighlightBorder': '#E5E7EB',
-                    'editorCursor.foreground': '#4C6BCF',
-                    'editorWhitespace.foreground': '#A6B6E8',
-                  }}
+                  theme={isDark ? "vs-dark" : "vs"}
+                  options={editorOptions}
                 />
               </ModalBody>
               <ModalFooter>

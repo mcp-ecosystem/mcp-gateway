@@ -63,6 +63,8 @@ export function ChatInterface() {
   const [hasMore, setHasMore] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
   const [lastScrollTop, setLastScrollTop] = React.useState(0);
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = React.useState(false);
+  const [isToolsCollapsed, setIsToolsCollapsed] = React.useState(false);
 
   // 解析配置
   const parseConfig = (config: string) => {
@@ -357,10 +359,10 @@ export function ChatInterface() {
           setSelectedChat(id);
           navigate(`/chat/${id}`);
         }}
+        isCollapsed={isHistoryCollapsed}
       />
-
-      <div className="flex-1 ml-4">
-        <Card className="h-full">
+      <div className={isHistoryCollapsed ? "flex-1 ml-2" : "flex-1 ml-4"}>
+        <Card className="h-full bg-card">
           <CardBody className="p-0 h-full flex flex-col">
             <div
               ref={messagesContainerRef}
@@ -382,58 +384,81 @@ export function ChatInterface() {
             </div>
             <Divider />
             <div className="p-4 flex flex-col gap-4">
-              <Select
-                label="MCP Servers"
-                selectionMode="multiple"
-                selectedKeys={activeServices}
-                onSelectionChange={(keys) => setActiveServices(Array.from(keys) as string[])}
-              >
-                {mcpServers.map((server) => (
-                  <SelectItem key={server.name}>
-                    {server.name}
-                  </SelectItem>
-                ))}
-              </Select>
-
-              {activeServices.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-lg font-semibold">Available Tools</h3>
-                  <Tabs aria-label="Server tools">
-                    {activeServices.map(serverName => {
-                      const serverTools = tools[serverName] || [];
-                      return (
-                        <Tab key={serverName} title={serverName}>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {serverTools.map(tool => (
-                              <div key={tool.name} className="p-2 border rounded min-w-[200px] flex-1">
-                                <div className="font-medium">{tool.name}</div>
-                                <div className="text-sm text-default-500">{tool.description}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </Tab>
-                      );
-                    })}
-                  </Tabs>
-                </div>
-              )}
-
-              <Input
-                value={input}
-                onValueChange={setInput}
-                placeholder="Type your message..."
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                endContent={
-                  <Button
-                    isIconOnly
-                    color="primary"
-                    variant="light"
-                    onPress={handleSend}
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  isIconOnly
+                  variant="light"
+                  aria-label={isHistoryCollapsed ? "Expand chat history" : "Collapse chat history"}
+                  onPress={() => setIsHistoryCollapsed(v => !v)}
+                  className="mr-1"
+                >
+                  <Icon icon={isHistoryCollapsed ? "ri:menu-unfold-line" : "ri:menu-unfold-2-line"} className="text-lg" />
+                </Button>
+                <Button
+                  isIconOnly
+                  variant="light"
+                  aria-label={isToolsCollapsed ? "Expand tools area" : "Collapse tools area"}
+                  onPress={() => setIsToolsCollapsed(v => !v)}
+                  className="mr-2"
+                >
+                  <Icon icon={isToolsCollapsed ? "ic:round-unfold-more" : "ic:round-unfold-less"} className="text-lg" />
+                </Button>
+                <Input
+                  value={input}
+                  onValueChange={setInput}
+                  placeholder="Type your message..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  endContent={
+                    <Button
+                      isIconOnly
+                      color="primary"
+                      variant="light"
+                      onPress={handleSend}
+                    >
+                      <Icon icon="lucide:send" className="text-lg" />
+                    </Button>
+                  }
+                />
+              </div>
+              {!isToolsCollapsed && (
+                <>
+                  <Select
+                    label="MCP Servers"
+                    selectionMode="multiple"
+                    selectedKeys={activeServices}
+                    onSelectionChange={(keys) => setActiveServices(Array.from(keys) as string[])}
                   >
-                    <Icon icon="lucide:send" className="text-lg" />
-                  </Button>
-                }
-              />
+                    {mcpServers.map((server) => (
+                      <SelectItem key={server.name}>
+                        {server.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+
+                  {activeServices.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <h3 className="text-lg font-semibold">Available Tools</h3>
+                      <Tabs aria-label="Server tools">
+                        {activeServices.map(serverName => {
+                          const serverTools = tools[serverName] || [];
+                          return (
+                            <Tab key={serverName} title={serverName}>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {serverTools.map(tool => (
+                                  <div key={tool.name} className="p-2 border rounded min-w-[200px] flex-1">
+                                    <div className="font-medium">{tool.name}</div>
+                                    <div className="text-sm text-default-500">{tool.description}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </Tab>
+                          );
+                        })}
+                      </Tabs>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </CardBody>
         </Card>
