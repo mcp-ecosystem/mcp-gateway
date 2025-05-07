@@ -31,7 +31,7 @@ stdio_configs:
       - "@amap/amap-maps-mcp-server"
     env:
       - name: "AMAP_MAPS_API_KEY"
-        value: ""
+        value: "{{.Args.AMAP_MAPS_API_KEY}}"
   - name: "github"
     command: "npx"
     args:
@@ -39,7 +39,7 @@ stdio_configs:
       - "@github/github-mcp-server"
     env:
       - name: "GITHUB_PERSONAL_ACCESS_TOKEN"
-        value: ""
+        value: "{{.Args.GITHUB_PERSONAL_ACCESS_TOKEN}}"
 
 sse_configs:
   - name: "web-search"
