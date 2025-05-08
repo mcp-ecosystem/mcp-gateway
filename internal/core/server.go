@@ -29,11 +29,11 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
-		tools                []mcp.ToolSchema
+		tools                []mcp.Tool
 		toolMap              map[string]*config.ToolConfig
 		stdioMap             map[string]*config.StdioConfig
 		sseMap               map[string]*config.SSEConfig
-		prefixToTools        map[string][]mcp.ToolSchema
+		prefixToTools        map[string][]mcp.Tool
 		prefixToServerConfig map[string]*config.ServerConfig
 		prefixToRouterConfig map[string]*config.RouterConfig
 		prefixToProtoType    map[string]cnst.ProtoType
@@ -51,9 +51,9 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	return &Server{
 		logger: logger,
 		state: &serverState{
-			tools:                make([]mcp.ToolSchema, 0),
+			tools:                make([]mcp.Tool, 0),
 			toolMap:              make(map[string]*config.ToolConfig),
-			prefixToTools:        make(map[string][]mcp.ToolSchema),
+			prefixToTools:        make(map[string][]mcp.Tool),
 			prefixToServerConfig: make(map[string]*config.ServerConfig),
 			prefixToRouterConfig: make(map[string]*config.RouterConfig),
 		},
@@ -107,7 +107,7 @@ func (s *Server) handleRoot(c *gin.Context) {
 	}
 
 	state := s.state
-	if _, ok := state.prefixToTools[prefix]; !ok {
+	if _, ok := state.prefixToProtoType[prefix]; !ok {
 		s.sendProtocolError(c, nil, "Invalid prefix", http.StatusNotFound, mcp.ErrorCodeInvalidRequest)
 		return
 	}
@@ -134,11 +134,11 @@ func (s *Server) Shutdown(_ context.Context) error {
 func loadConfig(cfgs []*config.MCPConfig) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
-		tools:                make([]mcp.ToolSchema, 0),
+		tools:                make([]mcp.Tool, 0),
 		toolMap:              make(map[string]*config.ToolConfig),
 		stdioMap:             make(map[string]*config.StdioConfig),
 		sseMap:               make(map[string]*config.SSEConfig),
-		prefixToTools:        make(map[string][]mcp.ToolSchema),
+		prefixToTools:        make(map[string][]mcp.Tool),
 		prefixToServerConfig: make(map[string]*config.ServerConfig),
 		prefixToRouterConfig: make(map[string]*config.RouterConfig),
 		prefixToProtoType:    make(map[string]cnst.ProtoType),
@@ -161,7 +161,7 @@ func loadConfig(cfgs []*config.MCPConfig) (*serverState, error) {
 			}
 
 			// Filter tools based on MCP server's allowed tools
-			var allowedTools []mcp.ToolSchema
+			var allowedTools []mcp.Tool
 			for _, toolName := range serverCfg.AllowedTools {
 				if tool, ok := newState.toolMap[toolName]; ok {
 					allowedTools = append(allowedTools, tool.ToToolSchema())

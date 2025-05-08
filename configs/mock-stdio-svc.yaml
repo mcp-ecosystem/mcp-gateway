@@ -30,16 +30,14 @@ stdio_configs:
       - "-y"
       - "@amap/amap-maps-mcp-server"
     env:
-      - name: "AMAP_MAPS_API_KEY"
-        value: "{{.Args.AMAP_MAPS_API_KEY}}"
+      AMAP_MAPS_API_KEY: "{{.Args.AMAP_MAPS_API_KEY}}"
   - name: "github"
     command: "npx"
     args:
       - "-y"
       - "@github/github-mcp-server"
     env:
-      - name: "GITHUB_PERSONAL_ACCESS_TOKEN"
-        value: "{{.Args.GITHUB_PERSONAL_ACCESS_TOKEN}}"
+      GITHUB_PERSONAL_ACCESS_TOKEN: "{{.Args.GITHUB_PERSONAL_ACCESS_TOKEN}}"
 
 sse_configs:
   - name: "web-search"

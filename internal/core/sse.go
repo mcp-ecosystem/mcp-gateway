@@ -9,8 +9,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
-
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +37,7 @@ func (s *Server) handleSSE(c *gin.Context) {
 		Type:      "sse",
 		Extra:     nil,
 	}
+
 	conn, err := s.sessions.Register(c.Request.Context(), meta)
 	if err != nil {
 		s.sendProtocolError(c, sessionID, "Failed to create SSE connection", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
@@ -79,7 +80,7 @@ func (s *Server) sendErrorResponse(c *gin.Context, conn session.Connection, req 
 	response := mcp.JSONRPCErrorSchema{
 		JSONRPCBaseResult: mcp.JSONRPCBaseResult{
 			JSONRPC: mcp.JSPNRPCVersion,
-			ID:      req.Id,
+			ID:      &req.ID,
 		},
 		Error: mcp.JSONRPCError{
 			Code:    mcp.ErrorCodeInternalError,
@@ -150,8 +151,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		s.sendAcceptedResponse(c)
 	case mcp.Initialize:
 		var params mcp.InitializeRequestParams
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, "Invalid initialize parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
+			s.sendProtocolError(c, req.ID, "Invalid initialize parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
@@ -164,10 +165,31 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsList:
-		// Get tools for this prefix
-		tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
+		// Get the proto type for this prefix
+		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
-			tools = []mcp.ToolSchema{} // Return empty list if prefix not found
+			s.sendProtocolError(c, req.ID, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var tools []mcp.Tool
+		var err error
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			tools, err = s.fetchHTTPToolList(conn)
+			if err != nil {
+				s.sendProtocolError(c, req.ID, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		case cnst.BackendProtoStdio:
+			tools, err = s.fetchStdioToolList(conn)
+			if err != nil {
+				s.sendProtocolError(c, req.ID, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.ID, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
 		}
 
 		result := mcp.ListToolsResult{
@@ -177,29 +199,29 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 	case mcp.ToolsCall:
 		// Execute the tool and return the result
 		var params mcp.CallToolParams
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
+			s.sendProtocolError(c, req.ID, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Find the tool in the precomputed map
 		tool, exists := s.state.toolMap[params.Name]
 		if !exists {
-			s.sendProtocolError(c, req.Id, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			s.sendProtocolError(c, req.ID, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 			return
 		}
 
 		// Convert arguments to map[string]any
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendProtocolError(c, req.Id, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.ID, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Get server configuration
 		serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			s.sendProtocolError(c, req.ID, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
@@ -213,15 +235,28 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		// Send the result
 		toolResult := mcp.CallToolResult{
 			Content: []mcp.Content{
-				{
-					Type: "text",
-					Text: result,
-				},
+				mcp.NewTextContent(result),
 			},
 			IsError: false,
 		}
 		s.sendSuccessResponse(c, conn, req, toolResult, true)
 	default:
-		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.ID, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
+}
+
+func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.Tool, error) {
+	// Get http tools for this prefix
+	tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
+	if !ok {
+		tools = []mcp.Tool{} // Return empty list if prefix not found
+	}
+
+	return tools, nil
+}
+
+func (s *Server) fetchStdioToolList(conn session.Connection) ([]mcp.Tool, error) {
+	// Get stdio tools for this prefix
+
+	return []mcp.Tool{}, nil
 }

@@ -93,7 +93,7 @@ type (
 )
 
 // ToToolSchema converts a ToolConfig to a ToolSchema
-func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
+func (t *ToolConfig) ToToolSchema() mcp.Tool {
 	// Create properties map for input schema
 	properties := make(map[string]any)
 	required := make([]string, 0)
@@ -130,7 +130,7 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 		}
 	}
 
-	return mcp.ToolSchema{
+	return mcp.Tool{
 		Name:        t.Name,
 		Description: t.Description,
 		InputSchema: mcp.ToolInputSchema{
