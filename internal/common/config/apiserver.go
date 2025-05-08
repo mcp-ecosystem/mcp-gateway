@@ -7,12 +7,13 @@ import (
 
 type (
 	APIServerConfig struct {
-		Database DatabaseConfig `yaml:"database"`
-		OpenAI   OpenAIConfig   `yaml:"openai"`
-		Storage  StorageConfig  `yaml:"storage"`
-		Notifier NotifierConfig `yaml:"notifier"`
-		Logger   LoggerConfig   `yaml:"logger"`
-		JWT      JWTConfig      `yaml:"jwt"`
+		Database   DatabaseConfig   `yaml:"database"`
+		OpenAI     OpenAIConfig     `yaml:"openai"`
+		Storage    StorageConfig    `yaml:"storage"`
+		Notifier   NotifierConfig   `yaml:"notifier"`
+		Logger     LoggerConfig     `yaml:"logger"`
+		JWT        JWTConfig        `yaml:"jwt"`
+		SuperAdmin SuperAdminConfig `yaml:"super_admin"`
 	}
 
 	DatabaseConfig struct {

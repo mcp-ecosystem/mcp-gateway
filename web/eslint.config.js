@@ -40,7 +40,9 @@ export default [
         MouseEvent: 'readonly',
         navigator: 'readonly',
         __dirname: 'readonly',
-        URL: 'readonly'
+        URL: 'readonly',
+        File: 'readonly',
+        FileReader: 'readonly'
       }
     },
     plugins: {
@@ -59,7 +61,7 @@ export default [
       'react/prop-types': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { 
+      '@typescript-eslint/no-unused-vars': ['error', {
         'argsIgnorePattern': '^_',
         'varsIgnorePattern': '^_'
       }],
@@ -81,4 +83,4 @@ export default [
       }
     }
   }
-]; 
+];

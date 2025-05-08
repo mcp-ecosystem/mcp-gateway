@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,15 +23,12 @@ func NewMySQL(cfg *config.DatabaseConfig) (Database, error) {
 		cfg: cfg,
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		db.cfg.User, db.cfg.Password, db.cfg.Host, db.cfg.Port, db.cfg.DBName)
-
-	gormDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(mysql.Open(db.cfg.GetDSN()), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &InitState{}); err != nil {
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -129,34 +125,15 @@ func (db *MySQL) UpdateUser(ctx context.Context, user *User) error {
 }
 
 // DeleteUser deletes a user by ID
-func (db *MySQL) DeleteUser(ctx context.Context, id string) error {
+func (db *MySQL) DeleteUser(ctx context.Context, id uint) error {
 	return db.db.WithContext(ctx).Delete(&User{}, "id = ?", id).Error
 }
 
-// GetInitState retrieves the initialization state
-func (db *MySQL) GetInitState(ctx context.Context) (*InitState, error) {
-	var state InitState
-	err := db.db.WithContext(ctx).First(&state).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// If no record exists, create one with default values
-			state = InitState{
-				ID:            "system",
-				IsInitialized: false,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			}
-			if err := db.db.WithContext(ctx).Create(&state).Error; err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return &state, nil
-}
-
-// SetInitState updates the initialization state
-func (db *MySQL) SetInitState(ctx context.Context, state *InitState) error {
-	return db.db.WithContext(ctx).Save(state).Error
+// ListUsers retrieves all users
+func (db *MySQL) ListUsers(ctx context.Context) ([]*User, error) {
+	var users []*User
+	err := db.db.WithContext(ctx).
+		Order("created_at desc").
+		Find(&users).Error
+	return users, err
 }

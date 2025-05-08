@@ -1,11 +1,12 @@
 import { Card, CardBody, Button } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import React from 'react';
-import {toast} from "react-hot-toast";
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { getChatSessions } from '../../../services/api';
 import { wsService } from '../../../services/websocket';
+import { toast } from '../../../utils/toast';
 
 interface ChatHistoryProps {
   selectedChat: string | null;
@@ -20,22 +21,13 @@ interface Session {
 }
 
 export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHistoryProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [sessions, setSessions] = React.useState<Session[]>([]);
   const [loading, setLoading] = React.useState(true);
   const loadedRef = React.useRef(false);
 
-  React.useEffect(() => {
-    // Skip if we've already loaded sessions
-    if (loadedRef.current) {
-      return;
-    }
-
-    fetchSessions();
-    loadedRef.current = true;
-  }, []);
-
-  const fetchSessions = async () => {
+  const fetchSessions = React.useCallback(async () => {
     try {
       const data = await getChatSessions();
       // Ensure data is an array and each session has required properties
@@ -49,15 +41,24 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
         : [];
       setSessions(validSessions);
     } catch (error) {
-      toast.error(`Failed to fetch chat history: ${error}`, {
+      toast.error(t('errors.fetch_chat_history', { error }), {
         duration: 3000,
-        position: 'bottom-right',
       });
       setSessions([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  React.useEffect(() => {
+    // Skip if we've already loaded sessions
+    if (loadedRef.current) {
+      return;
+    }
+
+    fetchSessions();
+    loadedRef.current = true;
+  }, [fetchSessions]);
 
   const handleNewChat = () => {
     wsService.cleanup();
@@ -85,7 +86,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
       {/* Resize bar 仅在展开时显示 */}
       <button
         type="button"
-        aria-label="Resize chat history"
+        aria-label={t('chat.resize_history')}
         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors"
         onMouseDown={(e: React.MouseEvent) => {
           const startX = e.pageX;
@@ -126,14 +127,14 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
             startContent={<Icon icon="lucide:plus" />}
             onPress={handleNewChat}
           >
-            New Chat
+            {t('chat.new_chat')}
           </Button>
         </div>
         <div className="space-y-1 px-4">
           {loading ? (
-            <div className="p-4 text-center text-default-500">Loading...</div>
+            <div className="p-4 text-center text-default-500">{t('common.loading')}</div>
           ) : !sessions || sessions.length === 0 ? (
-            <div className="p-4 text-center text-default-500">No chat history</div>
+            <div className="p-4 text-center text-default-500">{t('chat.no_history')}</div>
           ) : (
             sessions.map((session) => (
               <Button
@@ -146,7 +147,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
               >
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium truncate max-w-full">
-                    {session.title || 'Untitled Chat'}
+                    {session.title || t('chat.untitled')}
                   </span>
                   <span className="text-xs text-default-400">
                     {formatDate(session.createdAt)}

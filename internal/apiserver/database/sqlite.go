@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ func NewSQLite(cfg *config.DatabaseConfig) (Database, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &InitState{}); err != nil {
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -133,34 +132,15 @@ func (db *SQLite) UpdateUser(ctx context.Context, user *User) error {
 }
 
 // DeleteUser deletes a user by ID
-func (db *SQLite) DeleteUser(ctx context.Context, id string) error {
+func (db *SQLite) DeleteUser(ctx context.Context, id uint) error {
 	return db.db.WithContext(ctx).Delete(&User{}, "id = ?", id).Error
 }
 
-// GetInitState retrieves the initialization state
-func (db *SQLite) GetInitState(ctx context.Context) (*InitState, error) {
-	var state InitState
-	err := db.db.WithContext(ctx).First(&state).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// If no record exists, create one with default values
-			state = InitState{
-				ID:            "system",
-				IsInitialized: false,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			}
-			if err := db.db.WithContext(ctx).Create(&state).Error; err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return &state, nil
-}
-
-// SetInitState updates the initialization state
-func (db *SQLite) SetInitState(ctx context.Context, state *InitState) error {
-	return db.db.WithContext(ctx).Save(state).Error
+// ListUsers retrieves all users
+func (db *SQLite) ListUsers(ctx context.Context) ([]*User, error) {
+	var users []*User
+	err := db.db.WithContext(ctx).
+		Order("created_at desc").
+		Find(&users).Error
+	return users, err
 }

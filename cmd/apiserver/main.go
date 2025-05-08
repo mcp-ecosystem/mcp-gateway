@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/logger"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -105,20 +107,57 @@ func initStore(logger *zap.Logger, cfg *config.StorageConfig) storage.Store {
 	return store
 }
 
+// initSuperAdmin initializes the super admin user if it doesn't exist
+func initSuperAdmin(ctx context.Context, db database.Database, cfg *config.APIServerConfig) error {
+	// Check if super admin user exists
+	user, err := db.GetUserByUsername(ctx, cfg.SuperAdmin.Username)
+	if err == nil && user != nil {
+		return nil // Super admin already exists
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.SuperAdmin.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create the super admin user
+	superAdmin := &database.User{
+		Username:  cfg.SuperAdmin.Username,
+		Password:  string(hashedPassword),
+		Role:      database.RoleAdmin,
+		IsActive:  true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.CreateUser(ctx, superAdmin); err != nil {
+		return fmt.Errorf("failed to create super admin: %w", err)
+	}
+
+	return nil
+}
+
 // initRouter initializes the HTTP router and handlers
 func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier, openaiClient *openai.Client, cfg *config.APIServerConfig) *gin.Engine {
 	r := gin.Default()
+
+	// Convert APIServerConfig to MCPGatewayConfig
+	mcpCfg := &config.MCPGatewayConfig{
+		SuperAdmin: cfg.SuperAdmin,
+		Logger:     cfg.Logger,
+		Storage:    cfg.Storage,
+		Notifier:   cfg.Notifier,
+	}
 
 	// Initialize auth services
 	jwtService := jwt.NewService(jwt.Config{
 		SecretKey: cfg.JWT.SecretKey,
 		Duration:  cfg.JWT.Duration,
 	})
-	authH := apiserverHandler.NewHandler(db, jwtService)
+	authH := apiserverHandler.NewHandler(db, jwtService, mcpCfg)
 
 	authG := r.Group("/api/auth")
-	authG.POST("/init", authH.Initialize)
-	authG.GET("/init/status", authH.IsInitialized)
 	authG.POST("/login", authH.Login)
 
 	// Protected routes
@@ -128,6 +167,20 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		chatHandler := apiserverHandler.NewChat(db)
 		mcpHandler := apiserverHandler.NewMCP(db, store, ntf)
 		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf)
+
+		// Auth routes
+		protected.POST("/auth/change-password", authH.ChangePassword)
+		protected.GET("/auth/user/info", authH.GetUserInfo)
+
+		// User management routes (admin only)
+		userMgmt := protected.Group("/auth/users")
+		userMgmt.Use(apiserverHandler.AdminAuthMiddleware())
+		{
+			userMgmt.GET("", authH.ListUsers)
+			userMgmt.POST("", authH.CreateUser)
+			userMgmt.PUT("", authH.UpdateUser)
+			userMgmt.DELETE("/:username", authH.DeleteUser)
+		}
 
 		// Configure routes
 		protected.POST("/mcp-servers", mcpHandler.HandleMCPServerCreate)
@@ -181,6 +234,12 @@ func run() {
 	openaiClient := initOpenAI(&cfg.OpenAI)
 	db := initDatabase(logger, &cfg.Database)
 	defer db.Close()
+
+	// Initialize super admin
+	if err := initSuperAdmin(ctx, db, cfg); err != nil {
+		logger.Fatal("Failed to initialize super admin", zap.Error(err))
+	}
+
 	store := initStore(logger, &cfg.Storage)
 
 	// Initialize router and start server

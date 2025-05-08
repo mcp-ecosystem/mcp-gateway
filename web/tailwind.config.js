@@ -1,7 +1,8 @@
-const { heroui } = require("@heroui/react");
+/* eslint-env node */
+import { heroui } from "@heroui/react";
 
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,15 +23,12 @@ func NewPostgres(cfg *config.DatabaseConfig) (Database, error) {
 		cfg: cfg,
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
-		db.cfg.Host, db.cfg.User, db.cfg.Password, db.cfg.DBName, db.cfg.Port, db.cfg.SSLMode)
-
-	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(postgres.Open(db.cfg.GetDSN()), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &InitState{}); err != nil {
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -136,34 +132,15 @@ func (db *Postgres) UpdateUser(ctx context.Context, user *User) error {
 }
 
 // DeleteUser deletes a user by ID
-func (db *Postgres) DeleteUser(ctx context.Context, id string) error {
+func (db *Postgres) DeleteUser(ctx context.Context, id uint) error {
 	return db.db.WithContext(ctx).Delete(&User{}, "id = ?", id).Error
 }
 
-// GetInitState retrieves the initialization state
-func (db *Postgres) GetInitState(ctx context.Context) (*InitState, error) {
-	var state InitState
-	err := db.db.WithContext(ctx).First(&state).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// If no record exists, create one with default values
-			state = InitState{
-				ID:            "system",
-				IsInitialized: false,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			}
-			if err := db.db.WithContext(ctx).Create(&state).Error; err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return &state, nil
-}
-
-// SetInitState updates the initialization state
-func (db *Postgres) SetInitState(ctx context.Context, state *InitState) error {
-	return db.db.WithContext(ctx).Save(state).Error
+// ListUsers retrieves all users
+func (db *Postgres) ListUsers(ctx context.Context) ([]*User, error) {
+	var users []*User
+	err := db.db.WithContext(ctx).
+		Order("created_at desc").
+		Find(&users).Error
+	return users, err
 }

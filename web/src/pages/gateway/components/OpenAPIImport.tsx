@@ -1,7 +1,7 @@
-import React from 'react';
-import { useDropzone } from 'react-dropzone';
 import { Card, CardBody, Button } from "@heroui/react";
 import { Icon } from '@iconify/react';
+import React from 'react';
+import { useDropzone } from 'react-dropzone';
 
 interface OpenAPIImportProps {
   onSuccess: (content: string) => void;

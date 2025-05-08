@@ -15,14 +15,22 @@ import (
 )
 
 type (
+	// SuperAdminConfig represents the super admin configuration
+	SuperAdminConfig struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	}
+
+	// MCPGatewayConfig represents the MCP gateway configuration
 	MCPGatewayConfig struct {
-		Port       int            `yaml:"port"`
-		ReloadPort int            `yaml:"reload_port"`
-		PID        string         `yaml:"pid"`
-		Storage    StorageConfig  `yaml:"storage"`
-		Notifier   NotifierConfig `yaml:"notifier"`
-		Session    SessionConfig  `yaml:"session"`
-		Logger     LoggerConfig   `yaml:"logger"`
+		Port       int              `yaml:"port"`
+		ReloadPort int              `yaml:"reload_port"`
+		PID        string           `yaml:"pid"`
+		SuperAdmin SuperAdminConfig `yaml:"super_admin"`
+		Logger     LoggerConfig     `yaml:"logger"`
+		Storage    StorageConfig    `yaml:"storage"`
+		Notifier   NotifierConfig   `yaml:"notifier"`
+		Session    SessionConfig    `yaml:"session"`
 	}
 
 	// SessionConfig represents the session storage configuration

@@ -1,7 +1,7 @@
-import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ToolCall } from '../types/message';
+import { toast } from '../utils/toast';
 
 export interface WebSocketMessage {
   type: 'system' | 'message' | 'stream' | 'tool_call' | 'tool_result';
@@ -85,7 +85,6 @@ export class WebSocketService {
       this.ws.onclose = () => {
         toast.error('WebSocket 连接已断开', {
           duration: 3000,
-          position: 'bottom-right',
         });
         this.ws = null;
       };
@@ -93,7 +92,6 @@ export class WebSocketService {
       this.ws.onerror = (error) => {
         toast.error('WebSocket 发生错误' + error, {
           duration: 3000,
-          position: 'bottom-right',
         });
       };
     });

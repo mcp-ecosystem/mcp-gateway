@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Navbar,
   NavbarContent,
@@ -13,7 +12,17 @@ import {
   DropdownItem
 } from "@heroui/react";
 import { Icon } from '@iconify/react';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+
+import { getCurrentUser } from '../api/auth';
+import { toast } from '../utils/toast';
+
+
+import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { WechatQRCode } from './WechatQRCode';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,11 +31,15 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDark, setIsDark] = React.useState(() => {
-    const savedTheme = localStorage.getItem('theme');
+    const savedTheme = window.localStorage.getItem('theme');
     return savedTheme === 'dark';
   });
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false);
+  const [isWechatQRCodeOpen, setIsWechatQRCodeOpen] = React.useState(false);
+  const [userInfo, setUserInfo] = useState<{ username: string; role: string } | null>(null);
 
   // Initialize theme on mount
   React.useEffect(() => {
@@ -35,11 +48,42 @@ export function Layout({ children }: LayoutProps) {
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, []);
+  }, [isDark]);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await getCurrentUser();
+        setUserInfo(response.data);
+      } catch (error) {
+        toast.error(t('errors.fetch_user_info', { error: (error as Error).message }), {
+          duration: 3000,
+        });
+      }
+    };
+
+    fetchUserInfo();
+  }, [t]);
 
   const menuItems = [
-    { to: "/", icon: "lucide:server", label: "Gateway Manager" },
-    { to: "/chat", icon: "lucide:message-square", label: "MCP Chat" }
+    {
+      key: 'chat',
+      label: t('nav.chat'),
+      icon: 'lucide:message-square',
+      path: '/chat',
+    },
+    {
+      key: 'gateway',
+      label: t('nav.gateway'),
+      icon: 'lucide:server',
+      path: '/gateway',
+    },
+    ...(userInfo?.role === 'admin' ? [{
+      key: 'users',
+      label: t('nav.users'),
+      icon: 'lucide:users',
+      path: '/users',
+    }] : []),
   ];
 
   const handleLogout = () => {
@@ -50,7 +94,7 @@ export function Layout({ children }: LayoutProps) {
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', !isDark ? 'dark' : 'light');
+    window.localStorage.setItem('theme', !isDark ? 'dark' : 'light');
   };
 
   return (
@@ -61,9 +105,35 @@ export function Layout({ children }: LayoutProps) {
         maxWidth="full"
         height="4rem"
       >
+        <NavbarContent className={`transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
+          <NavbarItem>
+            <Button
+              isIconOnly
+              variant="light"
+              onPress={() => setIsCollapsed(!isCollapsed)}
+              aria-label={t('common.toggle_sidebar')}
+            >
+              <Icon icon={isCollapsed ? "lucide:chevron-right" : "lucide:chevron-left"} />
+            </Button>
+          </NavbarItem>
+        </NavbarContent>
         <NavbarContent justify="end" className="gap-4">
           <NavbarItem>
-            <Tooltip content="Join Discord">
+            <LanguageSwitcher />
+          </NavbarItem>
+          <NavbarItem>
+            <Tooltip content={t('common.join_wechat')}>
+              <Button
+                variant="light"
+                isIconOnly
+                onPress={() => setIsWechatQRCodeOpen(true)}
+              >
+                <Icon icon="mdi:wechat" className="text-2xl" />
+              </Button>
+            </Tooltip>
+          </NavbarItem>
+          <NavbarItem>
+            <Tooltip content={t('common.join_discord')}>
               <Button
                 as={HeroLink}
                 href="https://discord.gg/udf69cT9TY"
@@ -76,7 +146,7 @@ export function Layout({ children }: LayoutProps) {
             </Tooltip>
           </NavbarItem>
           <NavbarItem>
-            <Tooltip content="View on GitHub">
+            <Tooltip content={t('common.view_github')}>
               <Button
                 as={HeroLink}
                 href="https://github.com/mcp-ecosystem/mcp-gateway"
@@ -89,7 +159,7 @@ export function Layout({ children }: LayoutProps) {
             </Tooltip>
           </NavbarItem>
           <NavbarItem>
-            <Tooltip content={`Switch to ${isDark ? "light" : "dark"} mode`}>
+            <Tooltip content={t('common.switch_theme', { theme: isDark ? t('common.light') : t('common.dark') })}>
               <Button
                 variant="light"
                 isIconOnly
@@ -112,32 +182,31 @@ export function Layout({ children }: LayoutProps) {
             isCollapsed ? "w-20" : "w-64"
           }`}
         >
-          <div className="flex items-center justify-between p-4 border-b border-border h-16">
-            {!isCollapsed && <span className="text-xl font-bold">MCP Admin</span>}
-            <Button
-              isIconOnly
-              variant="light"
-              onPress={() => setIsCollapsed(!isCollapsed)}
-              aria-label="Toggle sidebar"
-            >
-              <Icon icon={isCollapsed ? "lucide:chevron-right" : "lucide:chevron-left"} />
-            </Button>
+          <div className="flex items-center justify-center p-4 border-b border-border h-16">
+            {isCollapsed ? (
+              <img src="/logo.png" alt="MCP Logo" className="w-8 h-8" />
+            ) : (
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="MCP Logo" className="w-6 h-6" />
+                <span className="text-xl font-bold">MCP Admin</span>
+              </div>
+            )}
           </div>
 
           <nav className="flex-1 overflow-y-auto p-2">
             {menuItems.map((item) => (
               isCollapsed ? (
                 <Tooltip
-                  key={item.to}
+                  key={item.path}
                   content={item.label}
                   placement="right"
                 >
                   <Link
-                    to={item.to}
+                    to={item.path}
                     className={`flex items-center w-full px-4 py-2 rounded-lg mb-1 ${
-                      (item.to === "/"
+                      (item.path === "/"
                         ? location.pathname === "/"
-                        : location.pathname.startsWith(item.to))
+                        : location.pathname.startsWith(item.path))
                         ? 'bg-primary/10 text-primary'
                         : 'hover:bg-accent text-foreground'
                     }`}
@@ -147,62 +216,71 @@ export function Layout({ children }: LayoutProps) {
                 </Tooltip>
               ) : (
                 <Link
-                  key={item.to}
-                  to={item.to}
+                  key={item.path}
+                  to={item.path}
                   className={`flex items-center w-full px-4 py-2 rounded-lg mb-1 ${
-                    (item.to === "/"
+                    (item.path === "/"
                       ? location.pathname === "/"
-                      : location.pathname.startsWith(item.to))
+                      : location.pathname.startsWith(item.path))
                       ? 'bg-primary/10 text-primary'
                       : 'hover:bg-accent text-foreground'
                   }`}
                 >
-                  <Icon icon={item.icon} className="text-xl" />
-                  <span className="ml-2">{item.label}</span>
+                  <Icon icon={item.icon} className="text-xl mr-3" />
+                  <span>{item.label}</span>
                 </Link>
               )
             ))}
           </nav>
 
-          <div className="border-t border-border p-4">
+          {/* User Profile Section */}
+          <div className="p-4 border-t border-border">
             <Dropdown placement="top-end">
               <DropdownTrigger>
-                <div className="flex items-center gap-3 cursor-pointer hover:bg-accent p-2 rounded-lg transition-colors">
-                  <Avatar
-                    icon={<Icon icon="lucide:user" className="text-xl" />}
-                    name="Admin"
-                    size="sm"
-                    color="primary"
-                  />
-                  {!isCollapsed && (
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">Admin</p>
-                      <p className="text-xs text-muted-foreground">Administrator</p>
+                {isCollapsed ? (
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    className="w-full"
+                  >
+                    <Avatar
+                      size="sm"
+                      name={userInfo?.username || 'User'}
+                      className="bg-primary/10"
+                    />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="light"
+                    className="w-full flex items-center justify-start gap-2"
+                  >
+                    <Avatar
+                      size="sm"
+                      name={userInfo?.username || 'User'}
+                      className="bg-primary/10"
+                    />
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-medium">{userInfo?.username || 'User'}</span>
+                      <span className="text-xs text-muted-foreground">{userInfo?.role || 'User'}</span>
                     </div>
-                  )}
-                </div>
+                  </Button>
+                )}
               </DropdownTrigger>
-              <DropdownMenu aria-label="User Actions">
+              <DropdownMenu aria-label="User menu">
                 <DropdownItem
-                  key="profile"
-                  startContent={<Icon icon="lucide:user" className="text-xl" />}
+                  key="change-password"
+                  startContent={<Icon icon="lucide:key" />}
+                  onPress={() => setIsChangePasswordOpen(true)}
                 >
-                  个人信息
-                </DropdownItem>
-                <DropdownItem
-                  key="settings"
-                  startContent={<Icon icon="lucide:settings" className="text-xl" />}
-                >
-                  系统设置
+                  {t('auth.change_password')}
                 </DropdownItem>
                 <DropdownItem
                   key="logout"
-                  className="text-destructive"
-                  color="danger"
-                  startContent={<Icon icon="lucide:log-out" className="text-xl" />}
+                  startContent={<Icon icon="lucide:log-out" />}
                   onPress={handleLogout}
+                  className="text-danger"
                 >
-                  退出登录
+                  {t('auth.logout')}
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
@@ -210,10 +288,22 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-auto transition-all duration-300 ${isCollapsed ? "ml-20" : "ml-64"} bg-background text-foreground p-6`}>
-          {children}
-        </main>
+        <div className={`flex-1 transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
+          <div className="p-6">
+            {children}
+          </div>
+        </div>
       </div>
+
+      <ChangePasswordDialog
+        isOpen={isChangePasswordOpen}
+        onOpenChange={() => setIsChangePasswordOpen(false)}
+      />
+
+      <WechatQRCode
+        isOpen={isWechatQRCodeOpen}
+        onOpenChange={() => setIsWechatQRCodeOpen(false)}
+      />
     </div>
   );
-} 
+}

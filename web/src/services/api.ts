@@ -1,5 +1,6 @@
 import axios from 'axios';
-import toast from 'react-hot-toast';
+
+import { toast } from '../utils/toast';
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -17,8 +18,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear any existing token
       window.localStorage.removeItem('token');
-      // Redirect to login page
-      window.location.href = '/login';
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      // If already on login page, do not redirect, just clear token
     }
     return Promise.reject(error);
   }
@@ -47,12 +51,10 @@ export const getMCPServers = async () => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('获取 MCP 服务器列表失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -67,12 +69,10 @@ export const getMCPServer = async (name: string) => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('获取 MCP 服务器失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -91,12 +91,10 @@ export const createMCPServer = async (config: string) => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('创建 MCP 服务器失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -115,12 +113,10 @@ export const updateMCPServer = async (name: string, config: string) => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('更新 MCP 服务器配置失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -135,12 +131,10 @@ export const deleteMCPServer = async (name: string) => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('删除 MCP 服务器失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -155,12 +149,10 @@ export const syncMCPServers = async () => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('同步 MCP 服务器失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -180,12 +172,10 @@ export const getChatMessages = async (sessionId: string, page: number = 1, pageS
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('获取聊天消息失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
@@ -200,12 +190,10 @@ export const getChatSessions = async () => {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
       toast.error(error.response.data.error, {
         duration: 3000,
-        position: 'bottom-right',
       });
     } else {
       toast.error('获取聊天会话列表失败', {
         duration: 3000,
-        position: 'bottom-right',
       });
     }
     throw error;
