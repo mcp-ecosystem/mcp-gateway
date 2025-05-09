@@ -29,6 +29,10 @@ storage:
   # Disk configuration (only used when type is disk)
   disk:
     path: "${GATEWAY_STORAGE_DISK_PATH:}"
+  api:
+    url: "${GATEWAY_STORAGE_API_URL:}"
+    configJSONPath: "${GATEWAY_STORAGE_API_CONFIG_JSON_PATH:}"
+    timeout: "${GATEWAY_STORAGE_API_TIMEOUT:}"
 
 # Notifier configuration
 notifier:
