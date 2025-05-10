@@ -123,11 +123,11 @@ func (s *Server) handlePost(c *gin.Context) {
 			// confirm if it's registered
 			conn, err = s.sessions.Get(c.Request.Context(), sessionID)
 			if err != nil {
-				s.sendProtocolError(c, req.Id, "Failed to get session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				s.sendProtocolError(c, req.ID, "Failed to get session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
 			if conn != nil {
-				s.sendProtocolError(c, req.Id, "Invalid Request: Server already initialized", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
+				s.sendProtocolError(c, req.ID, "Invalid Request: Server already initialized", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
 				return
 			}
 		} else {
@@ -145,7 +145,7 @@ func (s *Server) handlePost(c *gin.Context) {
 			}
 			conn, err = s.sessions.Register(c.Request.Context(), meta)
 			if err != nil {
-				s.sendProtocolError(c, req.Id, "Failed to create session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				s.sendProtocolError(c, req.ID, "Failed to create session", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
 		}
@@ -153,7 +153,7 @@ func (s *Server) handlePost(c *gin.Context) {
 	} else {
 		conn, err = s.sessions.Get(c.Request.Context(), sessionID)
 		if err != nil {
-			s.sendProtocolError(c, req.Id, "Invalid Request: Session not found", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
+			s.sendProtocolError(c, req.ID, "Invalid Request: Session not found", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
 			return
 		}
 	}
@@ -182,8 +182,8 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 	case mcp.Initialize:
 		// Handle initialization request
 		var params mcp.InitializeRequestParams
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, fmt.Sprintf("invalid initialize parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
+			s.sendProtocolError(c, req.ID, fmt.Sprintf("invalid initialize parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
@@ -210,7 +210,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		// Get tools for this prefix
 		tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
 		if !ok {
-			tools = []mcp.ToolSchema{}
+			tools = []mcp.Tool{}
 		}
 
 		s.sendSuccessResponse(c, conn, req, mcp.ListToolsResult{
@@ -221,29 +221,29 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 	case mcp.ToolsCall:
 		// Handle tool call request
 		var params mcp.CallToolParams
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			s.sendProtocolError(c, req.Id, fmt.Sprintf("invalid tool call parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
+			s.sendProtocolError(c, req.ID, fmt.Sprintf("invalid tool call parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Find the tool in the precomputed map
 		tool, exists := s.state.toolMap[params.Name]
 		if !exists {
-			s.sendProtocolError(c, req.Id, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			s.sendProtocolError(c, req.ID, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 			return
 		}
 
 		// Convert arguments to map[string]any
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendProtocolError(c, req.Id, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.ID, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Get server configuration
 		serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.Id, "Server config not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			s.sendProtocolError(c, req.ID, "Server config not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
@@ -258,17 +258,14 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 		s.sendSuccessResponse(c, conn, req, mcp.CallToolResult{
 			Content: []mcp.Content{
-				{
-					Type: "text",
-					Text: result,
-				},
+				mcp.NewTextContent(result),
 			},
 			IsError: false,
 		}, false)
 		return
 
 	default:
-		s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.ID, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 		return
 	}
 }

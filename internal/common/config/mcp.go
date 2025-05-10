@@ -5,6 +5,7 @@ import (
 
 	"github.com/ifuryst/lol"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
@@ -18,12 +19,15 @@ type (
 	}
 
 	MCPConfig struct {
-		Name      string         `yaml:"name" gorm:"primaryKey"`
-		CreatedAt time.Time      `yaml:"created_at"`
-		UpdatedAt time.Time      `yaml:"updated_at"`
-		Routers   []RouterConfig `yaml:"routers" gorm:"type:json"`
-		Servers   []ServerConfig `yaml:"servers" gorm:"type:json"`
-		Tools     []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		Name         string         `yaml:"name" gorm:"primaryKey"`
+		CreatedAt    time.Time      `yaml:"created_at"`
+		UpdatedAt    time.Time      `yaml:"updated_at"`
+		ProtoType    cnst.ProtoType `yaml:"proto_type" gorm:"type:varchar(64)"`
+		Routers      []RouterConfig `yaml:"routers" gorm:"type:json"`
+		Servers      []ServerConfig `yaml:"servers" gorm:"type:json"`
+		Tools        []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		StdioConfigs []StdioConfig  `yaml:"stdio_configs" gorm:"type:json"`
+		SSEConfigs   []SSEConfig    `yaml:"sse_configs" gorm:"type:json"`
 	}
 
 	RouterConfig struct {
@@ -60,6 +64,18 @@ type (
 		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
 	}
 
+	StdioConfig struct {
+		Name    string            `yaml:"name"`
+		Command string            `yaml:"command"`
+		Args    []string          `yaml:"args"`
+		Env     map[string]string `yaml:"env"`
+	}
+
+	SSEConfig struct {
+		Name string `yaml:"name"`
+		URL  string `yaml:"url"`
+	}
+
 	ArgConfig struct {
 		Name        string      `yaml:"name" json:"name"`
 		Position    string      `yaml:"position" json:"position"` // header, query, path, body
@@ -77,7 +93,7 @@ type (
 )
 
 // ToToolSchema converts a ToolConfig to a ToolSchema
-func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
+func (t *ToolConfig) ToToolSchema() mcp.Tool {
 	// Create properties map for input schema
 	properties := make(map[string]any)
 	required := make([]string, 0)
@@ -110,7 +126,7 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 		}
 	}
 
-	return mcp.ToolSchema{
+	return mcp.Tool{
 		Name:        t.Name,
 		Description: t.Description,
 		InputSchema: mcp.ToolInputSchema{
