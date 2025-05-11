@@ -34,7 +34,7 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 		},
 		Result: mcp.CallToolResult{
 			Content: []mcp.Content{
-				{
+				&mcp.TextContent{
 					Type: "text",
 					Text: fmt.Sprintf("Error: %s", err.Error()),
 				},

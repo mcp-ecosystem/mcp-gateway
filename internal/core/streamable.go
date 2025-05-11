@@ -258,7 +258,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 		s.sendSuccessResponse(c, conn, req, mcp.CallToolResult{
 			Content: []mcp.Content{
-				{
+				&mcp.TextContent{
 					Type: "text",
 					Text: result,
 				},

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -117,13 +118,36 @@ func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *temp
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// 检查Content-Type是否为图片类型
+	contentType := resp.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "image/") {
+		// 将图片内容进行base64编码
+		encodedImage := base64.StdEncoding.EncodeToString(respBody)
+		// 根据是否需要模板处理决定返回格式
+		if tool.ResponseBody == "" {
+			return encodedImage, nil
+		}
+		// 设置编码后的图片数据到模板上下文
+		tmplCtx.Response.Body = encodedImage
+		tmplCtx.Response.Data = map[string]any{
+			"base64Image": encodedImage,
+			"contentType": contentType,
+		}
+
+		rendered, err := renderTemplate(tool.ResponseBody, tmplCtx)
+		if err != nil {
+			return "", fmt.Errorf("failed to render response body template: %w", err)
+		}
+		return rendered, nil
+	}
+
 	if tool.ResponseBody == "" {
 		return string(respBody), nil
 	}
 
 	var respData map[string]any
 	if err := json.Unmarshal(respBody, &respData); err != nil {
-		// TODO: ignore the error for now, in case the response is not JSON
+		// 非JSON格式的响应，忽略解析错误
 	}
 
 	// Preprocess response data to handle []any type

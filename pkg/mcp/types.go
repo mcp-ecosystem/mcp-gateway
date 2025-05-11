@@ -79,15 +79,35 @@ type (
 	}
 
 	// Content represents a content item in a tool call result
-	Content struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
+	Content interface {
+		// GetType returns the type of the content
+		GetType() string
 	}
 
 	// TextContent represents a text content item
 	TextContent struct {
+		// Must be "text"
 		Type string `json:"type"`
+		// The text content
 		Text string `json:"text"`
+	}
+
+	ImageContent struct {
+		// Must be "image"
+		Type string `json:"type"`
+		// The image data in base64 format
+		Data []byte `json:"data"`
+		// The MIME type of the image. e.g., "image/png", "image/jpeg"
+		MimeType string `json:"mimeType"`
+	}
+
+	AudioContent struct {
+		// Must be "audio"
+		Type string `json:"type"`
+		// The audio data in base64 format
+		Data []byte `json:"data"`
+		// The MIME type of the audio. e.g., "audio/wav", "audio/mpeg"
+		MimeType string `json:"mimeType"`
 	}
 
 	// CallToolResult represents the result of a tools/call request
@@ -236,4 +256,16 @@ func NewJSONRPCBaseResult() JSONRPCBaseResult {
 func (j JSONRPCBaseResult) WithID(id int) JSONRPCBaseResult {
 	j.ID = id
 	return j
+}
+
+func (t *TextContent) GetType() string {
+	return TextContentType
+}
+
+func (i *ImageContent) GetType() string {
+	return ImageContentType
+}
+
+func (i *AudioContent) GetType() string {
+	return AudioContentType
 }

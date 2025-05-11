@@ -213,8 +213,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		// Send the result
 		toolResult := mcp.CallToolResult{
 			Content: []mcp.Content{
-				{
-					Type: "text",
+				&mcp.TextContent{
+					Type: mcp.TextContentType,
 					Text: result,
 				},
 			},
