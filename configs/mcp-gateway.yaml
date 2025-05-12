@@ -32,7 +32,7 @@ storage:
   api:
     url: "${GATEWAY_STORAGE_API_URL:}"
     configJSONPath: "${GATEWAY_STORAGE_API_CONFIG_JSON_PATH:}"
-    timeout: "${GATEWAY_STORAGE_API_TIMEOUT:}"
+    timeout: "${GATEWAY_STORAGE_API_TIMEOUT:30s}"
 
 # Notifier configuration
 notifier:

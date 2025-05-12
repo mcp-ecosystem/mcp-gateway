@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type (
 	StorageConfig struct {
 		Type     string            `yaml:"type"`     // disk or db
@@ -13,8 +15,8 @@ type (
 	}
 
 	APIStorageConfig struct {
-		Url            string `yaml:"url"`            // http url for api
-		ConfigJSONPath string `yaml:"configJSONPath"` // configJSONPath for config in http response
-		Timeout        int    `yaml:"timeout"`        // timeout(seconds) for http request
+		Url            string        `yaml:"url"`            // http url for api
+		ConfigJSONPath string        `yaml:"configJSONPath"` // configJSONPath for config in http response
+		Timeout        time.Duration `yaml:"timeout"`        // timeout for http request
 	}
 )

@@ -21,13 +21,13 @@ type APIStore struct {
 	url    string
 	// read config from response(json body) using gjson
 	configJSONPath string
-	timeout        int
+	timeout        time.Duration
 }
 
 var _ Store = (*APIStore)(nil)
 
 // NewAPIStore creates a new api-based store
-func NewAPIStore(logger *zap.Logger, url string, configJSONPath string, timeout int) (*APIStore, error) {
+func NewAPIStore(logger *zap.Logger, url string, configJSONPath string, timeout time.Duration) (*APIStore, error) {
 	logger = logger.Named("mcp.store")
 
 	logger.Info("Using configuration url", zap.String("path", url))
@@ -88,7 +88,7 @@ func (s *APIStore) Delete(_ context.Context, name string) error {
 
 func (s *APIStore) request() (string, error) {
 	client := &http.Client{
-		Timeout: time.Duration(s.timeout) * time.Second,
+		Timeout: s.timeout,
 	}
 	resp, err := client.Get(s.url)
 	if err != nil {
