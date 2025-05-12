@@ -78,7 +78,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine, cfg *config.MCPConfig) error
 	s.state = newState
 
 	// Register all routes under root path
-	router.Any("/*path", s.handleRoot)
+	router.NoRoute(s.handleRoot)
 
 	return nil
 }

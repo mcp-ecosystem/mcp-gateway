@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -241,6 +242,13 @@ func run() {
 	}
 
 	router := gin.Default()
+	// add health_check url for k8s readiness probe
+	router.GET("/health_check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"message": "Health check passed.",
+		})
+	})
 	if err := srv.RegisterRoutes(router, mcpCfg); err != nil {
 		logger.Fatal("failed to register routes",
 			zap.Error(err))
