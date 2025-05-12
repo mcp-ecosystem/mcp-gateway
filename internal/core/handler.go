@@ -22,8 +22,11 @@ var ResponseHandlerChain = CreateResponseHandlerChain()
 // If the response is neither, it will return an error.
 func CreateResponseHandlerChain() ResponseHandler {
 	imageHandler := &ImageHandler{}
+	audioHandler := &AudioHandler{}
 	textHandler := &TextHandler{}
-	imageHandler.SetNext(textHandler)
+
+	imageHandler.SetNext(audioHandler)
+	audioHandler.SetNext(textHandler)
 	return imageHandler
 }
 
@@ -53,42 +56,6 @@ func (h *BaseHandler) HandleNext(resp *http.Response, tool *config.ToolConfig, t
 	// default handler
 	handler := &TextHandler{}
 	return handler.Handle(resp, tool, tmplCtx)
-}
-
-// ImageHandler is a handler for image responses
-type ImageHandler struct {
-	BaseHandler
-}
-
-func (h *ImageHandler) CanHandle(resp *http.Response) bool {
-	contentType := resp.Header.Get("Content-Type")
-	return strings.HasPrefix(contentType, "image/")
-}
-
-func (h *ImageHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (*mcp.CallToolResult, error) {
-	if !h.CanHandle(resp) {
-		return h.HandleNext(resp, tool, tmplCtx)
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("image handler failed to read response body: %w", err)
-	}
-	var base64Image string
-	if respBody == nil {
-		base64Image = ""
-	} else {
-		base64Image = base64.StdEncoding.EncodeToString(respBody)
-	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.ImageContent{
-				Type:     mcp.ImageContentType,
-				Data:     base64Image,
-				MimeType: resp.Header.Get("Content-Type"),
-			},
-		},
-		IsError: false,
-	}, nil
 }
 
 // TextHandler is a handler for text responses
@@ -131,6 +98,78 @@ func (h *TextHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplC
 			&mcp.TextContent{
 				Type: mcp.TextContentType,
 				Text: rendered,
+			},
+		},
+		IsError: false,
+	}, nil
+}
+
+// ImageHandler is a handler for image responses
+type ImageHandler struct {
+	BaseHandler
+}
+
+func (h *ImageHandler) CanHandle(resp *http.Response) bool {
+	contentType := resp.Header.Get("Content-Type")
+	return strings.HasPrefix(contentType, "image/")
+}
+
+func (h *ImageHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (*mcp.CallToolResult, error) {
+	if !h.CanHandle(resp) {
+		return h.HandleNext(resp, tool, tmplCtx)
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("image handler failed to read response body: %w", err)
+	}
+	var base64Image string
+	if respBody == nil {
+		base64Image = ""
+	} else {
+		base64Image = base64.StdEncoding.EncodeToString(respBody)
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.ImageContent{
+				Type:     mcp.ImageContentType,
+				Data:     base64Image,
+				MimeType: resp.Header.Get("Content-Type"),
+			},
+		},
+		IsError: false,
+	}, nil
+}
+
+// AudioHandler is a handler for audio responses
+type AudioHandler struct {
+	BaseHandler
+}
+
+func (h *AudioHandler) CanHandle(resp *http.Response) bool {
+	contentType := resp.Header.Get("Content-Type")
+	return strings.HasPrefix(contentType, "audio/")
+}
+
+func (h *AudioHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (*mcp.CallToolResult, error) {
+	if !h.CanHandle(resp) {
+		return h.HandleNext(resp, tool, tmplCtx)
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("audio handler failed to read response body: %w", err)
+	}
+	var base64Audio string
+	if respBody == nil {
+		base64Audio = ""
+	} else {
+		base64Audio = base64.StdEncoding.EncodeToString(respBody)
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.AudioContent{
+				Type:     mcp.AudioContentType,
+				Data:     base64Audio,
+				MimeType: resp.Header.Get("Content-Type"),
 			},
 		},
 		IsError: false,
