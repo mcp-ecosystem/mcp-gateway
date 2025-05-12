@@ -82,8 +82,9 @@ func (h *ImageHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmpl
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.ImageContent{
-				Type: mcp.ImageContentType,
-				Data: base64Image,
+				Type:     mcp.ImageContentType,
+				Data:     base64Image,
+				MimeType: resp.Header.Get("Content-Type"),
 			},
 		},
 		IsError: false,
