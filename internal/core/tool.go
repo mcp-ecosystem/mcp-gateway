@@ -1,9 +1,9 @@
 package core
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"io"
 	"net/http"
 	"strings"
@@ -117,30 +117,6 @@ func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *temp
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
-
-	// 检查Content-Type是否为图片类型
-	contentType := resp.Header.Get("Content-Type")
-	if strings.HasPrefix(contentType, "image/") {
-		// 将图片内容进行base64编码
-		encodedImage := base64.StdEncoding.EncodeToString(respBody)
-		// 根据是否需要模板处理决定返回格式
-		if tool.ResponseBody == "" {
-			return encodedImage, nil
-		}
-		// 设置编码后的图片数据到模板上下文
-		tmplCtx.Response.Body = encodedImage
-		tmplCtx.Response.Data = map[string]any{
-			"base64Image": encodedImage,
-			"contentType": contentType,
-		}
-
-		rendered, err := renderTemplate(tool.ResponseBody, tmplCtx)
-		if err != nil {
-			return "", fmt.Errorf("failed to render response body template: %w", err)
-		}
-		return rendered, nil
-	}
-
 	if tool.ResponseBody == "" {
 		return string(respBody), nil
 	}
@@ -163,17 +139,17 @@ func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *temp
 }
 
 // executeTool executes a tool with the given arguments
-func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (string, error) {
+func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
 	// Prepare template context
 	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Prepare HTTP request
 	req, err := prepareRequest(tool, tmplCtx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Process arguments
@@ -183,12 +159,15 @@ func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, reque
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
-
 	// Process response
-	return processResponse(resp, tool, tmplCtx)
+	callToolResult, err := ResponseHandlerChain.Handle(resp, tool, tmplCtx)
+	if err != nil {
+		return nil, err
+	}
+	return callToolResult, nil
 }
 
 func preprocessArgs(args map[string]any) map[string]any {

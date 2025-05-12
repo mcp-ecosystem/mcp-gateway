@@ -96,7 +96,7 @@ type (
 		// Must be "image"
 		Type string `json:"type"`
 		// The image data in base64 format
-		Data []byte `json:"data"`
+		Data string `json:"data"`
 		// The MIME type of the image. e.g., "image/png", "image/jpeg"
 		MimeType string `json:"mimeType"`
 	}
@@ -105,7 +105,7 @@ type (
 		// Must be "audio"
 		Type string `json:"type"`
 		// The audio data in base64 format
-		Data []byte `json:"data"`
+		Data string `json:"data"`
 		// The MIME type of the audio. e.g., "audio/wav", "audio/mpeg"
 		MimeType string `json:"mimeType"`
 	}

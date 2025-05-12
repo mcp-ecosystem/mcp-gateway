@@ -209,18 +209,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			s.sendToolExecutionError(c, conn, req, err, true)
 			return
 		}
-
-		// Send the result
-		toolResult := mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Type: mcp.TextContentType,
-					Text: result,
-				},
-			},
-			IsError: false,
-		}
-		s.sendSuccessResponse(c, conn, req, toolResult, true)
+		s.sendSuccessResponse(c, conn, req, result, true)
 	default:
 		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
