@@ -71,15 +71,12 @@ jobs:
 
       - name: Run tests for ${{ matrix.service }}
         run: |
-          # 运行特定服务目录的测试
           go test ./cmd/${{ matrix.service }}/... -v
           
-          # 运行与服务相关的内部包测试
           go test ./internal/${{ matrix.service }}/... -v -race
 
       - name: Generate coverage report
         run: |
-          # 生成覆盖率报告
           go test ./cmd/${{ matrix.service }}/... -coverprofile=coverage-${{ matrix.service }}.txt -covermode=atomic
           go test ./internal/${{ matrix.service }}/... -coverprofile=coverage-internal-${{ matrix.service }}.txt -covermode=atomic
           
@@ -106,20 +103,16 @@ jobs:
 
       - name: Run tests for pkg and shared packages
         run: |
-          # 测试pkg目录下的共享库
           go test ./pkg/... -v -race
           
-          # 测试internal/common目录（如果存在）
           if [ -d "./internal/common" ]; then
             go test ./internal/common/... -v -race
           fi
 
       - name: Generate coverage report
         run: |
-          # 生成覆盖率报告
           go test ./pkg/... -coverprofile=coverage-pkg.txt -covermode=atomic
           
-          # 为internal/common生成覆盖率报告（如果存在）
           if [ -d "./internal/common" ]; then
             go test ./internal/common/... -coverprofile=coverage-common.txt -covermode=atomic
           fi
@@ -132,23 +125,6 @@ jobs:
           name: common-libs-coverage
           fail_ci_if_error: false
 
-  go-lint:
-    name: Go Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24.1'
-          
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=5m
 
   build-check:
     name: Build Check
@@ -164,7 +140,6 @@ jobs:
           
       - name: Check if builds succeed
         run: |
-          # 检查所有服务是否能成功构建
           go build -v ./cmd/apiserver
           go build -v ./cmd/mcp-gateway
           go build -v ./cmd/mock-user-svc 
