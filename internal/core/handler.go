@@ -12,9 +12,6 @@ import (
 	"strings"
 )
 
-// ResponseHandlerChain is a chain of response handlers
-var ResponseHandlerChain = CreateResponseHandlerChain()
-
 // CreateResponseHandlerChain create a chain of response handlers
 // The first handler is ImageHandler, which handles image responses.
 // The second handler is TextHandler, which handles text responses.
@@ -69,7 +66,8 @@ func (h *TextHandler) CanHandle(resp *http.Response) bool {
 
 func (h *TextHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (*mcp.CallToolResult, error) {
 	if !h.CanHandle(resp) {
-		return h.HandleNext(resp, tool, tmplCtx)
+		// the text handler is the last handler in the chain
+		return nil, fmt.Errorf("response type cannot be handled")
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
