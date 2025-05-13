@@ -1,8 +1,8 @@
-import { t } from 'i18next';
-import { v4 as uuidv4 } from 'uuid';
+import {t} from 'i18next';
+import {v4 as uuidv4} from 'uuid';
 
-import { ToolCall } from '../types/message';
-import { toast } from '../utils/toast';
+import {ToolCall} from '../types/message';
+import {toast} from '../utils/toast';
 
 export interface WebSocketMessage {
   type: 'system' | 'message' | 'stream' | 'tool_call' | 'tool_result';
@@ -68,7 +68,9 @@ export class WebSocketService {
 
     return new Promise<void>((resolve) => {
       const token = window.localStorage.getItem('token');
-      this.ws = new WebSocket(`${import.meta.env.VITE_WS_BASE_URL}/chat?sessionId=${this.sessionId}&token=${token}`);
+      // Include language parameter in WebSocket URL
+      const lang = localStorage.getItem('i18nextLng') || 'zh';
+      this.ws = new WebSocket(`${import.meta.env.VITE_WS_BASE_URL}/chat?sessionId=${this.sessionId}&token=${token}&lang=${lang}`);
 
       this.ws.onopen = () => {
         resolve();

@@ -14,6 +14,12 @@ type (
 		Logger     LoggerConfig     `yaml:"logger"`
 		JWT        JWTConfig        `yaml:"jwt"`
 		SuperAdmin SuperAdminConfig `yaml:"super_admin"`
+		I18n       I18nConfig       `yaml:"i18n"`
+	}
+
+	// I18nConfig represents the internationalization configuration
+	I18nConfig struct {
+		Path string `yaml:"path"` // Path to i18n translation files
 	}
 
 	DatabaseConfig struct {

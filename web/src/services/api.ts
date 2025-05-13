@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { t } from 'i18next';
+import i18n from '../i18n';
 
 import { toast } from '../utils/toast';
+import { handleApiError } from '../utils/error-handler';
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -11,6 +13,24 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor: add language and auth headers
+api.interceptors.request.use(
+  (config) => {
+    // Add current language from i18n to X-Lang header
+    config.headers['X-Lang'] = i18n.language || 'zh';
+    
+    // Add authorization token if available
+    const token = window.localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Add response interceptor
 api.interceptors.response.use(
@@ -29,36 +49,15 @@ api.interceptors.response.use(
   }
 );
 
-// Add request interceptor to add token to headers
-api.interceptors.request.use(
-  (config) => {
-    const token = window.localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
 // API endpoints
 export const getMCPServers = async (tenantId?: number) => {
   try {
     const params = tenantId ? { tenantId } : {};
     const response = await api.get('/mcp-servers', { params });
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_mcp_servers'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_mcp_servers'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_mcp_servers');
     throw error;
   }
 };
@@ -66,48 +65,12 @@ export const getMCPServers = async (tenantId?: number) => {
 export const getMCPServer = async (name: string) => {
   try {
     const response = await api.get(`/mcp-servers/${name}`);
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_mcp_server'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_mcp_server'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_mcp_server');
     throw error;
   }
-};
-
-// Helper function to map backend error messages to i18n keys
-const mapErrorToI18nKey = (errorMessage: string): string => {
-  // Direct error codes returned from backend
-  if (errorMessage.startsWith('errors.')) {
-    return errorMessage;
-  }
-
-  // Legacy error message mapping
-  if (errorMessage.includes('Tenant field is required')) {
-    return 'errors.tenant_required';
-  }
-  if (errorMessage.includes('Tenant with prefix') && errorMessage.includes('does not exist')) {
-    return 'errors.tenant_not_found';
-  }
-  if (errorMessage.includes('User does not have permission to configure')) {
-    return 'errors.tenant_permission_error';
-  }
-  if (errorMessage.includes('router prefix') && errorMessage.includes('must start with tenant prefix')) {
-    return 'errors.router_prefix_error';
-  }
-  if (errorMessage === 'errors.namespace_permission_error') {
-    return 'errors.namespace_permission_error';
-  }
-  if (errorMessage === 'errors.tenant_permission_error') {
-    return 'errors.tenant_permission_error';
-  }
-  return '';
 };
 
 export const createMCPServer = async (config: string) => {
@@ -119,18 +82,7 @@ export const createMCPServer = async (config: string) => {
     });
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      const errorMessage = error.response.data.error;
-      const i18nKey = mapErrorToI18nKey(errorMessage);
-      
-      if (i18nKey) {
-        toast.error(t(i18nKey), { duration: 3000 });
-      } else {
-        toast.error(t('errors.create_mcp_server'), { duration: 3000 });
-      }
-    } else {
-      toast.error(t('errors.create_mcp_server'), { duration: 3000 });
-    }
+    handleApiError(error, 'errors.create_mcp_server');
     throw error;
   }
 };
@@ -144,18 +96,7 @@ export const updateMCPServer = async (name: string, config: string) => {
     });
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      const errorMessage = error.response.data.error;
-      const i18nKey = mapErrorToI18nKey(errorMessage);
-      
-      if (i18nKey) {
-        toast.error(t(i18nKey), { duration: 3000 });
-      } else {
-        toast.error(t('errors.update_mcp_server'), { duration: 3000 });
-      }
-    } else {
-      toast.error(t('errors.update_mcp_server'), { duration: 3000 });
-    }
+    handleApiError(error, 'errors.update_mcp_server');
     throw error;
   }
 };
@@ -165,15 +106,7 @@ export const deleteMCPServer = async (name: string) => {
     const response = await api.delete(`/mcp-servers/${name}`);
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.delete_mcp_server'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.delete_mcp_server'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.delete_mcp_server');
     throw error;
   }
 };
@@ -183,15 +116,7 @@ export const syncMCPServers = async () => {
     const response = await api.post('/mcp-servers/sync');
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.sync_mcp_server'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.sync_mcp_server'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.sync_mcp_server');
     throw error;
   }
 };
@@ -204,17 +129,10 @@ export const getChatMessages = async (sessionId: string, page: number = 1, pageS
         pageSize,
       },
     });
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_chat_messages'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_chat_messages'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_chat_messages');
     throw error;
   }
 };
@@ -222,17 +140,10 @@ export const getChatMessages = async (sessionId: string, page: number = 1, pageS
 export const getChatSessions = async () => {
   try {
     const response = await api.get('/chat/sessions');
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_chat_sessions'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_chat_sessions'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_chat_sessions');
     throw error;
   }
 };
@@ -249,15 +160,7 @@ export const importOpenAPI = async (file: File) => {
     });
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.import_openapi'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.import_openapi'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.import_openapi');
     throw error;
   }
 };
@@ -266,17 +169,10 @@ export const importOpenAPI = async (file: File) => {
 export const getTenants = async () => {
   try {
     const response = await api.get('/auth/tenants');
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_tenants'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_tenants'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_tenants');
     throw error;
   }
 };
@@ -284,17 +180,10 @@ export const getTenants = async () => {
 export const getTenant = async (name: string) => {
   try {
     const response = await api.get(`/auth/tenants/${name}`);
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.fetch_tenant'), {
-        duration: 3000,
-      });
-    } else {
-      toast.error(t('errors.fetch_tenant'), {
-        duration: 3000,
-      });
-    }
+    handleApiError(error, 'errors.fetch_tenant');
     throw error;
   }
 };
@@ -460,7 +349,8 @@ export const deleteTenant = async (name: string) => {
 export const getUsers = async () => {
   try {
     const response = await api.get('/auth/users');
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
     toast.error(t('errors.fetch_users'), {
       duration: 3000,
@@ -472,7 +362,8 @@ export const getUsers = async () => {
 export const getUser = async (username: string) => {
   try {
     const response = await api.get(`/auth/users/${username}`);
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
     toast.error(t('errors.fetch_user'), {
       duration: 3000,
@@ -559,7 +450,8 @@ export const toggleUserStatus = async (username: string, isActive: boolean) => {
 export const getUserWithTenants = async (username: string) => {
   try {
     const response = await api.get(`/auth/users/${username}`);
-    return response.data;
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    return response.data.data || response.data;
   } catch (error) {
     toast.error(t('errors.fetch_user'), {
       duration: 3000,
@@ -572,7 +464,9 @@ export const getUserWithTenants = async (username: string) => {
 export const getUserAuthorizedTenants = async () => {
   try {
     const response = await api.get('/auth/user');
-    return response.data.tenants || [];
+    // 处理数据，兼容直接返回和嵌套在 data 中的情况
+    const data = response.data.data || response.data;
+    return data.tenants || [];
   } catch (error) {
     toast.error(t('errors.fetch_authorized_tenants'), {
       duration: 3000,

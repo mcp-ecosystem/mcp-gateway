@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
+
 	"github.com/google/uuid"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
@@ -41,32 +44,38 @@ func (h *WebSocket) HandleWebSocket(c *gin.Context) {
 	// Token auth from query
 	token := c.Query("token")
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "token is required"})
+		i18n.RespondWithError(c, i18n.ErrUnauthorized.WithParam("Reason", "Token is required"))
 		return
 	}
 	_, err := h.jwtService.ValidateToken(token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		i18n.RespondWithError(c, i18n.ErrUnauthorized.WithParam("Reason", "Invalid token"))
 		return
 	}
 
 	// Get sessionId from query parameter
 	sessionId := c.Query("sessionId")
 	if sessionId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "sessionId is required"})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "SessionId is required"))
 		return
 	}
+
+	lang := c.Query("lang")
+	if lang == "" {
+		lang = cnst.LangDefault
+	}
+	c.Set(cnst.XLang, lang)
 
 	// Check if session exists, if not create it
 	exists, err := h.db.SessionExists(c.Request.Context(), sessionId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check session"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to check session"))
 		return
 	}
 	if !exists {
 		// Create new session with the provided sessionId
 		if err := h.db.CreateSession(c.Request.Context(), sessionId); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
+			i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to create session"))
 			return
 		}
 	}

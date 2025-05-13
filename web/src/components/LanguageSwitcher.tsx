@@ -7,9 +7,19 @@ const languages = [
   { code: 'zh', name: '中文' }
 ];
 
+/**
+ * Language switching component that allows users to change the application language.
+ * When language is changed, it automatically updates i18n context and all
+ * subsequent API requests will include the selected language in X-Lang header.
+ */
 export function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
 
+  /**
+   * Change the application language
+   * This automatically affects API requests through the axios interceptor
+   * which adds the X-Lang header to all requests
+   */
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode);
   };
