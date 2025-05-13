@@ -42,7 +42,7 @@ jobs:
       - name: Type check
         run: |
           cd web
-          npm run build -- --noEmit
+          npm run build
           
       - name: Build web (dry run)
         run: |
