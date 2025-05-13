@@ -14,9 +14,15 @@ import (
 )
 
 var (
+	// the time zone sync.Once
 	timezoneSyncOnce sync.Once
 	//timezone time zone location
 	timezone *time.Location
+	// defaultZapOpts default zap options
+	defaultZapOpts = []zap.Option{
+		zap.AddCaller(),
+		zap.AddCallerSkip(1),
+	}
 )
 
 // NewLogger creates a new logger based on configuration
@@ -25,38 +31,30 @@ func NewLogger(cfg *config.LoggerConfig) (*zap.Logger, error) {
 	setLoggerDefaults(cfg)
 	// Create encoder config
 	encoder := getEncoder(cfg)
-	// Create core
-	var core zapcore.Core
+	var syncer zapcore.WriteSyncer
 	if cfg.Output == "file" {
 		// Ensure log directory exists
 		if err := os.MkdirAll(filepath.Dir(cfg.FilePath), 0755); err != nil {
 			return nil, err
 		}
-
-		// Create lumberjack logger for file rotation
-		writer := &lumberjack.Logger{
-			Filename:   cfg.FilePath,
-			MaxSize:    cfg.MaxSize,
-			MaxBackups: cfg.MaxBackups,
-			MaxAge:     cfg.MaxAge,
-			Compress:   cfg.Compress,
-		}
-
-		core = zapcore.NewCore(
-			encoder,
-			zapcore.AddSync(writer),
-			getLogLevel(cfg.Level),
-		)
+		syncer = getLogWriter(cfg)
 	} else {
-		core = zapcore.NewCore(
-			encoder,
-			zapcore.AddSync(os.Stdout),
-			getLogLevel(cfg.Level),
-		)
+		syncer = zap.CombineWriteSyncers(syncer, os.Stdout)
 	}
 
-	// Create logger
-	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	level := getLogLevel(cfg.Level)
+	if level < zapcore.DebugLevel || level > zapcore.FatalLevel {
+		level = zapcore.InfoLevel
+	}
+
+	logger := zap.New(
+		zapcore.NewCore(
+			encoder,
+			syncer,
+			level,
+		),
+		defaultZapOpts...,
+	)
 
 	// Add stacktrace if enabled
 	if cfg.Stacktrace {
@@ -117,6 +115,7 @@ func getEncoder(cfg *config.LoggerConfig) zapcore.Encoder {
 	return zapcore.NewConsoleEncoder(encoderConfig)
 }
 
+// resolveTimeZone resolves the timezone based on the configuration
 func resolveTimeZone(cfg *config.LoggerConfig) *time.Location {
 	timezoneSyncOnce.Do(func() {
 		if len(cfg.TimeZone) <= 0 {
@@ -131,6 +130,19 @@ func resolveTimeZone(cfg *config.LoggerConfig) *time.Location {
 		}
 	})
 	return timezone
+}
+
+// getLogWriter creates a lumberjack logger for file output
+func getLogWriter(cfg *config.LoggerConfig) zapcore.WriteSyncer {
+	hook := &lumberjack.Logger{
+		Filename:   cfg.FilePath,
+		MaxSize:    cfg.MaxSize,
+		MaxBackups: cfg.MaxBackups,
+		MaxAge:     cfg.MaxAge,
+		LocalTime:  true,
+		Compress:   cfg.Compress,
+	}
+	return zapcore.AddSync(hook)
 }
 
 // getLogLevel converts string level to zapcore.Level
