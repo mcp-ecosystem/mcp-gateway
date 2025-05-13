@@ -25,6 +25,8 @@ type (
 		sessions session.Store
 		// shutdownCh is used to signal shutdown to all SSE connections
 		shutdownCh chan struct{}
+		// toolRespHandler is a chain of response handlers
+		toolRespHandler ResponseHandler
 	}
 
 	// serverState contains all the read-only shared state
@@ -57,8 +59,9 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 			prefixToServerConfig: make(map[string]*config.ServerConfig),
 			prefixToRouterConfig: make(map[string]*config.RouterConfig),
 		},
-		sessions:   sessionStore,
-		shutdownCh: make(chan struct{}),
+		sessions:        sessionStore,
+		shutdownCh:      make(chan struct{}),
+		toolRespHandler: CreateResponseHandlerChain(),
 	}, nil
 }
 

@@ -222,7 +222,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			return
 		}
 
-		var result []mcp.Content
+		var result *mcp.CallToolResult
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			result, err = s.invokeHTTPTool(c, req, conn, params)
@@ -239,13 +239,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			s.sendProtocolError(c, req.ID, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
-
-		// Send the result
-		toolResult := mcp.CallToolResult{
-			Content: result,
-			IsError: false,
-		}
-		s.sendSuccessResponse(c, conn, req, toolResult, true)
+		s.sendSuccessResponse(c, conn, req, result, true)
 	default:
 		s.sendProtocolError(c, req.ID, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
@@ -296,7 +290,7 @@ func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection
 	return listToolsResult.Tools, nil
 }
 
-func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) ([]mcp.Content, error) {
+func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Find the tool in the precomputed map
 	tool, exists := s.state.toolMap[params.Name]
 	if !exists {
@@ -328,10 +322,10 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 		return nil, err
 	}
 
-	return []mcp.Content{mcp.NewTextContent(result)}, nil
+	return result, nil
 }
 
-func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) ([]mcp.Content, error) {
+func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Get stdio tools for this prefix
 	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
 	if !ok {
@@ -372,7 +366,7 @@ func (s *Server) executeStdioTool(
 	request *http.Request,
 	serverCfg map[string]string,
 	params mcp.CallToolParams,
-) ([]mcp.Content, error) {
+) (*mcp.CallToolResult, error) {
 	// Prepare template context
 	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
 	if err != nil {
@@ -392,9 +386,6 @@ func (s *Server) executeStdioTool(
 	if err := json.Unmarshal(params.Arguments, &toolCallRequestParams); err != nil {
 		return nil, err
 	}
-
-	fmt.Println("111111111")
-	fmt.Printf("%+v\n", renderedClientEnv)
 
 	stdioClientEnv := mcp.CoverToStdioClientEnv(renderedClientEnv)
 	stdioClient, err := mcpclient.NewStdioMCPClient(tool.Command, stdioClientEnv, tool.Args...)
@@ -428,9 +419,6 @@ func (s *Server) executeStdioTool(
 	if err != nil {
 		return nil, err
 	}
-	if len(result.Content) == 0 {
-		return nil, nil
-	}
 
-	return result.Content, nil
+	return result, nil
 }

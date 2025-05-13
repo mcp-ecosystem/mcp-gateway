@@ -256,12 +256,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			return
 		}
 
-		s.sendSuccessResponse(c, conn, req, mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.NewTextContent(result),
-			},
-			IsError: false,
-		}, false)
+		s.sendSuccessResponse(c, conn, req, result, false)
 		return
 
 	default:

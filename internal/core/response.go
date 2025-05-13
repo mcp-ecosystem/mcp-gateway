@@ -27,18 +27,15 @@ func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statu
 
 // sendToolExecutionError sends a tool execution error response
 func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, err error, isSSE bool) {
-	toolResult := mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.NewTextContent(fmt.Sprintf("Error: %s", err.Error())),
-		},
-		IsError: true,
-	}
-	resultBytes, _ := json.Marshal(toolResult)
 	response := mcp.JSONRPCResponse{
 		JSONRPC: mcp.JSPNRPCVersion,
 		ID:      &req.ID,
-		Result:  resultBytes,
+		Error: &mcp.JSONRPCError{
+			Code:    mcp.ErrorCodeInternalError,
+			Message: err.Error(),
+		},
 	}
+
 	s.sendResponse(c, req.ID, conn, response, isSSE)
 }
 

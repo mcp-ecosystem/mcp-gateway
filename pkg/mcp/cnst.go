@@ -59,3 +59,9 @@ const (
 const (
 	HeaderMcpSessionID = "Mcp-Session-Id"
 )
+
+const (
+	TextContentType  = "text"
+	ImageContentType = "image"
+	AudioContentType = "audio"
+)

@@ -19,9 +19,5 @@ type JSONRPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      *int64          `json:"id"`
 	Result  json.RawMessage `json:"result"`
-	Error   *struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
-	} `json:"error"`
+	Error   *JSONRPCError   `json:"error"`
 }
