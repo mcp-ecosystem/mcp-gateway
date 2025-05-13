@@ -182,12 +182,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 	case mcp.Initialize:
 		// Handle initialization request
 		var params mcp.InitializeRequestParams
-		paramsBytes, err := json.Marshal(req.Params)
-		if err != nil {
-			s.sendProtocolError(c, req.Id, fmt.Sprintf("failed to marshal initialize parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
-			return
-		}
-		if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		if err := json.Unmarshal(req.Params, &params); err != nil {
 			s.sendProtocolError(c, req.Id, fmt.Sprintf("invalid initialize parameters: %v", err), http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
@@ -213,13 +208,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 
 	case mcp.ToolsList:
 		// Get tools for this prefix
-		toolSchemas, ok := s.state.prefixToTools[conn.Meta().Prefix]
+		tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
 		if !ok {
-			toolSchemas = []mcp.ToolSchema{}
+			tools = []mcp.ToolSchema{}
 		}
 
 		s.sendSuccessResponse(c, conn, req, mcp.ListToolsResult{
-			Tools: toolSchemas,
+			Tools: tools,
 		}, false)
 		return
 

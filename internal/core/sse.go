@@ -26,7 +26,6 @@ func (s *Server) handleSSE(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Status(http.StatusOK)
 
 	// Get the prefix from the request path
 	prefix := strings.TrimSuffix(c.Request.URL.Path, "/sse")
@@ -212,13 +211,6 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
-		// Marshal the request params
-		paramsBytes, err := json.Marshal(req.Params)
-		if err != nil {
-			s.sendProtocolError(c, req.Id, "Failed to marshal tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
-			return
-		}
-
 		// Get the proto type for this prefix
 		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
@@ -228,12 +220,13 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 
 		// Execute the tool and return the result
 		var params mcp.CallToolParams
-		if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		if err := json.Unmarshal(req.Params, &params); err != nil {
 			s.sendProtocolError(c, req.Id, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		var result *mcp.CallToolResult
+		var err error
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			result, err = s.invokeHTTPTool(c, req, conn, params)

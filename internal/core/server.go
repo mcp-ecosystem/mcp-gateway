@@ -115,6 +115,7 @@ func (s *Server) handleRoot(c *gin.Context) {
 		return
 	}
 
+	c.Status(http.StatusOK)
 	switch endpoint {
 	case "sse":
 		s.handleSSE(c)
