@@ -163,7 +163,7 @@ func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, reque
 	}
 	defer resp.Body.Close()
 	// Process response
-	callToolResult, err := ResponseHandlerChain.Handle(resp, tool, tmplCtx)
+	callToolResult, err := s.toolRespHandler.Handle(resp, tool, tmplCtx)
 	if err != nil {
 		return nil, err
 	}
