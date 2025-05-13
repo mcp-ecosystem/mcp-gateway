@@ -45,8 +45,8 @@ type BaseHandler struct {
 	next ResponseHandler
 }
 
-func (b *BaseHandler) SetNext(handler ResponseHandler) {
-	b.next = handler
+func (h *BaseHandler) SetNext(handler ResponseHandler) {
+	h.next = handler
 }
 
 func (h *BaseHandler) HandleNext(resp *http.Response, tool *config.ToolConfig, tmplCtx *template.Context) (*mcp.CallToolResult, error) {
