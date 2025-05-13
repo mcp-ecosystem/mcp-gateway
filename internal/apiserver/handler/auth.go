@@ -397,7 +397,7 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 
 // GetUserWithTenants gets a user with their associated tenants
 func (h *Handler) GetUserWithTenants(c *gin.Context) {
-	// 先获取当前登录用户信息用于权限判断
+	// Get current logged-in user information for permission checking
 	claims, exists := c.Get("claims")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -405,22 +405,22 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	}
 	currentUserClaims := claims.(*jwt.Claims)
 
-	// 检查路径参数是否存在，不存在则使用当前登录用户
+	// Check if path parameter exists, if not use the current logged-in user
 	username := c.Param("username")
 	useCurrentUser := username == ""
 
-	// 如果没有提供用户名参数，则使用当前登录用户
+	// If no username parameter is provided, use the current logged-in user
 	if useCurrentUser {
 		username = currentUserClaims.Username
 	} else {
-		// 只有管理员能够查看其他用户的信息
+		// Only administrators can view information of other users
 		if currentUserClaims.Role != "admin" && username != currentUserClaims.Username {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Only administrators can access other users' information"})
 			return
 		}
 	}
 
-	// 从数据库获取用户
+	// Get user from database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), username)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})

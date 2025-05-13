@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"go.uber.org/zap"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 )
 
 // RedisNotifier implements Notifier using Redis pub/sub
@@ -20,9 +22,10 @@ type RedisNotifier struct {
 }
 
 // NewRedisNotifier creates a new Redis-based notifier
-func NewRedisNotifier(logger *zap.Logger, addr, password string, db int, topic string, role config.NotifierRole) (*RedisNotifier, error) {
+func NewRedisNotifier(logger *zap.Logger, addr, username, password string, db int, topic string, role config.NotifierRole) (*RedisNotifier, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
+		Username: username,
 		Password: password,
 		DB:       db,
 	})

@@ -5,8 +5,8 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './pages/auth/login';
 import { ChatInterface } from './pages/chat/chat-interface';
 import { GatewayManager } from './pages/gateway/gateway-manager';
-import { UserManagement } from './pages/users/user-management';
 import { TenantManagement } from './pages/users/tenant-management';
+import { UserManagement } from './pages/users/user-management';
 
 // Route guard component
 function PrivateRoute({ children }: { children: React.ReactNode }) {

@@ -16,18 +16,15 @@ import {
   Select,
   SelectItem,
   Switch,
-  Checkbox,
   Chip,
-  Selection,
   Autocomplete,
   AutocompleteItem,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
-import { toast } from '../../utils/toast';
 
 interface User {
   id: number;
@@ -248,28 +245,6 @@ export function UserManagement() {
     return tenant ? `${tenant.name}(${tenant.prefix})` : '';
   };
 
-  // Define custom filter function
-  const customFilter = (inputValue: string, items: Tenant[]) => {
-    const lowerCaseInput = inputValue.toLowerCase();
-    return items.filter(item => 
-      item.name.toLowerCase().includes(lowerCaseInput) || 
-      item.prefix.toLowerCase().includes(lowerCaseInput)
-    );
-  };
-
-  // Filter out unselected tenants for Autocomplete
-  const createAvailableTenants = useMemo(() => {
-    return tenants.filter(tenant => 
-      !createForm.tenantIds?.includes(tenant.id)
-    );
-  }, [tenants, createForm.tenantIds]);
-  
-  const updateAvailableTenants = useMemo(() => {
-    return tenants.filter(tenant => 
-      !updateForm.tenantIds?.includes(tenant.id)
-    );
-  }, [tenants, updateForm.tenantIds]);
-
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -389,45 +364,37 @@ export function UserManagement() {
                 <div className="mt-2">
                   <label className="block text-sm font-medium mb-1">{t('users.select_tenants')}</label>
                   
+                  <Autocomplete
+                    selectedKey={null}
+                    placeholder={t('users.select_tenant')}
+                    variant="bordered"
+                    onSelectionChange={handleCreateTenantSelect}
+                    onInputChange={setCreateTenantInputValue}
+                    value={createTenantInputValue}
+                    className="mb-4"
+                  >
+                    {tenants
+                      .filter(tenant => tenant.isActive) // Only show active tenants
+                      .map(tenant => (
+                        <AutocompleteItem key={tenant.id}>
+                          {tenant.name}({tenant.prefix})
+                        </AutocompleteItem>
+                      ))}
+                  </Autocomplete>
+                  
                   {/* Display selected tenants */}
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {createForm.tenantIds?.map(tenantId => (
-                      <Chip 
-                        key={tenantId} 
+                      <Chip
+                        key={tenantId}
                         onClose={() => handleRemoveCreateTenant(tenantId)}
-                        variant="flat"
+                        variant="bordered"
+                        className="mb-1"
                       >
                         {getTenantDisplayText(tenantId)}
                       </Chip>
                     ))}
                   </div>
-                  
-                  <Autocomplete
-                    placeholder={t('users.search_tenants')}
-                    defaultItems={createAvailableTenants}
-                    inputValue={createTenantInputValue}
-                    onInputChange={setCreateTenantInputValue}
-                    onSelectionChange={handleCreateTenantSelect}
-                    menuTrigger="focus"
-                    isClearable
-                    startContent={<Icon icon="lucide:search" className="text-gray-400" />}
-                    listboxProps={{
-                      emptyContent: t('common.no_results')
-                    }}
-                    items={customFilter(createTenantInputValue, createAvailableTenants)}
-                  >
-                    {(tenant) => (
-                      <AutocompleteItem 
-                        key={tenant.id.toString()} 
-                        textValue={`${tenant.name}(${tenant.prefix})`}
-                      >
-                        <div className="flex flex-col">
-                          <span>{tenant.name}</span>
-                          <span className="text-xs text-gray-500">{tenant.prefix}</span>
-                        </div>
-                      </AutocompleteItem>
-                    )}
-                  </Autocomplete>
                 </div>
               )}
             </div>
@@ -498,45 +465,37 @@ export function UserManagement() {
                 <div className="mt-2">
                   <label className="block text-sm font-medium mb-1">{t('users.select_tenants')}</label>
                   
+                  <Autocomplete
+                    selectedKey={null}
+                    placeholder={t('users.select_tenant')}
+                    variant="bordered"
+                    onSelectionChange={handleUpdateTenantSelect}
+                    onInputChange={setUpdateTenantInputValue}
+                    value={updateTenantInputValue}
+                    className="mb-4"
+                  >
+                    {tenants
+                      .filter(tenant => tenant.isActive) // Only show active tenants
+                      .map(tenant => (
+                        <AutocompleteItem key={tenant.id}>
+                          {tenant.name}({tenant.prefix})
+                        </AutocompleteItem>
+                      ))}
+                  </Autocomplete>
+                  
                   {/* Display selected tenants */}
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {updateForm.tenantIds?.map(tenantId => (
-                      <Chip 
-                        key={tenantId} 
+                      <Chip
+                        key={tenantId}
                         onClose={() => handleRemoveUpdateTenant(tenantId)}
-                        variant="flat"
+                        variant="bordered"
+                        className="mb-1"
                       >
                         {getTenantDisplayText(tenantId)}
                       </Chip>
                     ))}
                   </div>
-                  
-                  <Autocomplete
-                    placeholder={t('users.search_tenants')}
-                    defaultItems={updateAvailableTenants}
-                    inputValue={updateTenantInputValue}
-                    onInputChange={setUpdateTenantInputValue}
-                    onSelectionChange={handleUpdateTenantSelect}
-                    menuTrigger="focus"
-                    isClearable
-                    startContent={<Icon icon="lucide:search" className="text-gray-400" />}
-                    listboxProps={{
-                      emptyContent: t('common.no_results')
-                    }}
-                    items={customFilter(updateTenantInputValue, updateAvailableTenants)}
-                  >
-                    {(tenant) => (
-                      <AutocompleteItem 
-                        key={tenant.id.toString()} 
-                        textValue={`${tenant.name}(${tenant.prefix})`}
-                      >
-                        <div className="flex flex-col">
-                          <span>{tenant.name}</span>
-                          <span className="text-xs text-gray-500">{tenant.prefix}</span>
-                        </div>
-                      </AutocompleteItem>
-                    )}
-                  </Autocomplete>
                 </div>
               )}
             </div>

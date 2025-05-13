@@ -298,6 +298,21 @@
     "create_tenant": "创建租户失败",
     "update_tenant": "更新租户失败",
     "delete_tenant": "删除租户失败",
-    "fetch_authorized_tenants": "获取有权限的租户失败"
+    "fetch_authorized_tenants": "获取有权限的租户失败",
+    "generic": "发生错误，请重试。",
+    "not_found": "未找到请求的资源。",
+    "unauthorized": "您无权执行此操作。",
+    "forbidden": "您没有权限访问此资源。",
+    "internal_server": "服务器内部错误，请稍后重试。",
+    "bad_request": "请求错误，请检查您的输入。",
+    "conflict": "与现有资源冲突。",
+    "validation": "验证错误，请检查您的输入。",
+    "parse_config": "解析 {{name}} 的配置失败。",
+    "namespace_permission_error": "用户没有权限配置此命名空间",
+    "tenant_permission_error": "用户没有权限配置此租户",
+    "router_prefix_error": "路由前缀必须以租户前缀开头",
+    "tenant_required": "租户字段不能为空",
+    "tenant_not_found": "指定前缀的租户不存在",
+    "validate_router_prefix_failed": "验证路由前缀失败"
   }
 } 

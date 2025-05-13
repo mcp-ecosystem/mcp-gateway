@@ -25,6 +25,7 @@ type (
 	// RedisConfig represents the configuration for Redis-based notifier
 	RedisConfig struct {
 		Addr     string `yaml:"addr"`
+		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 		DB       int    `yaml:"db"`
 		Topic    string `yaml:"topic"`

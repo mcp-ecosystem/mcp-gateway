@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { t } from 'i18next';
 
 import { toast } from '../utils/toast';
-import { t } from 'i18next';
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -81,6 +81,35 @@ export const getMCPServer = async (name: string) => {
   }
 };
 
+// Helper function to map backend error messages to i18n keys
+const mapErrorToI18nKey = (errorMessage: string): string => {
+  // Direct error codes returned from backend
+  if (errorMessage.startsWith('errors.')) {
+    return errorMessage;
+  }
+
+  // Legacy error message mapping
+  if (errorMessage.includes('Tenant field is required')) {
+    return 'errors.tenant_required';
+  }
+  if (errorMessage.includes('Tenant with prefix') && errorMessage.includes('does not exist')) {
+    return 'errors.tenant_not_found';
+  }
+  if (errorMessage.includes('User does not have permission to configure')) {
+    return 'errors.tenant_permission_error';
+  }
+  if (errorMessage.includes('router prefix') && errorMessage.includes('must start with tenant prefix')) {
+    return 'errors.router_prefix_error';
+  }
+  if (errorMessage === 'errors.namespace_permission_error') {
+    return 'errors.namespace_permission_error';
+  }
+  if (errorMessage === 'errors.tenant_permission_error') {
+    return 'errors.tenant_permission_error';
+  }
+  return '';
+};
+
 export const createMCPServer = async (config: string) => {
   try {
     const response = await api.post('/mcp-servers', config, {
@@ -91,13 +120,16 @@ export const createMCPServer = async (config: string) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.create_mcp_server'), {
-        duration: 3000,
-      });
+      const errorMessage = error.response.data.error;
+      const i18nKey = mapErrorToI18nKey(errorMessage);
+      
+      if (i18nKey) {
+        toast.error(t(i18nKey), { duration: 3000 });
+      } else {
+        toast.error(t('errors.create_mcp_server'), { duration: 3000 });
+      }
     } else {
-      toast.error(t('errors.create_mcp_server'), {
-        duration: 3000,
-      });
+      toast.error(t('errors.create_mcp_server'), { duration: 3000 });
     }
     throw error;
   }
@@ -113,13 +145,16 @@ export const updateMCPServer = async (name: string, config: string) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.update_mcp_server'), {
-        duration: 3000,
-      });
+      const errorMessage = error.response.data.error;
+      const i18nKey = mapErrorToI18nKey(errorMessage);
+      
+      if (i18nKey) {
+        toast.error(t(i18nKey), { duration: 3000 });
+      } else {
+        toast.error(t('errors.update_mcp_server'), { duration: 3000 });
+      }
     } else {
-      toast.error(t('errors.update_mcp_server'), {
-        duration: 3000,
-      });
+      toast.error(t('errors.update_mcp_server'), { duration: 3000 });
     }
     throw error;
   }
@@ -204,7 +239,7 @@ export const getChatSessions = async () => {
 
 export const importOpenAPI = async (file: File) => {
   try {
-    const formData = new FormData();
+    const formData = new globalThis.FormData();
     formData.append('file', file);
 
     const response = await api.post('/openapi/import', formData, {
@@ -215,11 +250,11 @@ export const importOpenAPI = async (file: File) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data?.error) {
-      toast.error(t('errors.import_openapi_failed'), {
+      toast.error(t('errors.import_openapi'), {
         duration: 3000,
       });
     } else {
-      toast.error(t('errors.import_openapi_failed'), {
+      toast.error(t('errors.import_openapi'), {
         duration: 3000,
       });
     }
@@ -264,16 +299,35 @@ export const getTenant = async (name: string) => {
   }
 };
 
+interface Tenant {
+  id: number;
+  name: string;
+  prefix: string;
+  description: string;
+  isActive: boolean;
+}
+
 export const createTenant = async (data: { name: string; prefix: string; description: string }) => {
   try {
+    const { name, prefix, description } = data;
+    
+    // Check if prefix conflicts with existing ones
+    const tenants = await getTenants();
+    if (checkPrefixConflict(prefix, tenants.map((t: Tenant) => t.prefix))) {
+      toast.error(t('errors.prefix_conflict'), {
+        duration: 3000,
+      });
+      throw new Error('Prefix conflict');
+    }
+    
     // Ensure prefix starts with /
-    let prefix = data.prefix;
-    if (prefix && !prefix.startsWith('/')) {
-      prefix = `/${prefix}`;
+    let prefixed = prefix;
+    if (prefixed && !prefixed.startsWith('/')) {
+      prefixed = `/${prefixed}`;
     }
 
     // Check if it's a root level directory
-    if (prefix === '/') {
+    if (prefixed === '/') {
       toast.error(t('tenants.root_prefix_not_allowed'), {
         duration: 3000,
       });
@@ -281,8 +335,7 @@ export const createTenant = async (data: { name: string; prefix: string; descrip
     }
 
     // First get all tenants, check for prefix conflicts
-    const tenants = await getTenants();
-    if (checkPrefixConflict(prefix, tenants.map((t: any) => t.prefix))) {
+    if (checkPrefixConflict(prefixed, tenants.map((t: Tenant) => t.prefix))) {
       toast.error(t('tenants.prefix_path_conflict'), {
         duration: 3000,
       });
@@ -290,30 +343,21 @@ export const createTenant = async (data: { name: string; prefix: string; descrip
     }
 
     const response = await api.post('/auth/tenants', {
-      ...data,
-      prefix,
+      name,
+      prefix: prefixed,
+      description,
     });
     toast.success(t('tenants.add_success'), {
       duration: 3000,
     });
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 409) {
-      // Check specific error message to distinguish between name conflict and prefix conflict
-      const errorMessage = error.response.data?.error;
-      if (errorMessage === "Tenant name already exists") {
-        toast.error(t('tenants.name_conflict'), {
-          duration: 3000,
-        });
-      } else {
-        toast.error(t('tenants.prefix_conflict'), {
-          duration: 3000,
-        });
-      }
-    } else if (!(error instanceof Error && 
-               (error.message === 'Root prefix not allowed' || 
-                error.message === 'Prefix path conflict'))) {
-      toast.error(t('errors.create_tenant'), {
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.data?.error &&
+      !error.message.includes('Prefix')
+    ) {
+      toast.error(t('tenants.add_failed'), {
         duration: 3000,
       });
     }
@@ -344,34 +388,22 @@ const checkPrefixConflict = (prefix: string, existingPrefixes: string[], exclude
 
 export const updateTenant = async (data: { name: string; prefix?: string; description?: string; isActive?: boolean }) => {
   try {
-    // If prefix is provided, ensure it starts with /
-    if (data.prefix) {
-      let prefix = data.prefix;
-      if (!prefix.startsWith('/')) {
-        prefix = `/${prefix}`;
-      }
-
-      // Check if it's a root level directory
-      if (prefix === '/') {
-        toast.error(t('tenants.root_prefix_not_allowed'), {
-          duration: 3000,
-        });
-        throw new Error('Root prefix not allowed');
-      }
-
+    const { name, prefix } = data;
+    
+    if (prefix) {
       // Get current tenant information
-      const currentTenant = await getTenant(data.name);
+      const currentTenant = await getTenant(name);
       
-      // First get all tenants, check for prefix conflicts
-      const tenants = await getTenants();
-      if (checkPrefixConflict(prefix, tenants.map((t: any) => t.prefix), currentTenant.prefix)) {
-        toast.error(t('tenants.prefix_path_conflict'), {
-          duration: 3000,
-        });
-        throw new Error('Prefix path conflict');
+      // Check for conflicts if prefix has changed
+      if (currentTenant.prefix !== prefix) {
+        const tenants = await getTenants();
+        if (checkPrefixConflict(prefix, tenants.map((t: Tenant) => t.prefix), currentTenant.prefix)) {
+          toast.error(t('errors.prefix_conflict'), {
+            duration: 3000,
+          });
+          throw new Error('Prefix conflict');
+        }
       }
-
-      data.prefix = prefix;
     }
 
     const response = await api.put('/auth/tenants', data);

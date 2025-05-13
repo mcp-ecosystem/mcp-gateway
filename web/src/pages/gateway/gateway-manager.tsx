@@ -6,7 +6,7 @@ import { configureMonacoYaml } from 'monaco-yaml';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers, getUserAuthorizedTenants } from '../../services/api';
+import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers, getUserAuthorizedTenants, getTenant } from '../../services/api';
 import { toast } from '../../utils/toast';
 
 import OpenAPIImport from './components/OpenAPIImport';
@@ -130,7 +130,7 @@ export function GatewayManager() {
     const fetchMCPServers = async () => {
       try {
         setIsLoading(true);
-        // 如果有选择租户，则使用第一个选中的租户ID过滤
+        // Use the first selected tenant ID for filtering if available
         const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
@@ -164,10 +164,70 @@ export function GatewayManager() {
     onOpen();
   };
 
+  // Validate if router prefixes start with tenant prefix
+  const validateRouterPrefixes = async (config: string): Promise<boolean> => {
+    try {
+      const parsedConfig = yaml.load(config) as { tenant: string, routers: Array<{ prefix: string }> };
+      
+      if (!parsedConfig.tenant || !parsedConfig.routers) {
+        return true; // Skip validation if tenant or routers are missing
+      }
+      
+      // Get tenant information
+      const tenant = await getTenant(parsedConfig.tenant);
+      if (!tenant) {
+        return true; // Skip validation if tenant not found
+      }
+      
+      // Normalize tenant prefix
+      let tenantPrefix = tenant.prefix;
+      if (!tenantPrefix.startsWith('/')) {
+        tenantPrefix = '/' + tenantPrefix;
+      }
+      tenantPrefix = tenantPrefix.endsWith('/') ? tenantPrefix.slice(0, -1) : tenantPrefix;
+      
+      // Check if all router prefixes start with the tenant prefix
+      for (const router of parsedConfig.routers) {
+        // Normalize router prefix
+        let routerPrefix = router.prefix;
+        if (!routerPrefix.startsWith('/')) {
+          routerPrefix = '/' + routerPrefix;
+        }
+        routerPrefix = routerPrefix.endsWith('/') ? routerPrefix.slice(0, -1) : routerPrefix;
+        
+        // Allow exact match
+        if (routerPrefix === tenantPrefix) {
+          continue;
+        }
+        
+        // Router prefix must start with tenant prefix followed by a slash
+        if (!routerPrefix.startsWith(tenantPrefix + '/')) {
+          toast.error(t('errors.router_prefix_error'), {
+            duration: 3000,
+          });
+          return false;
+        }
+      }
+      
+      return true;
+    } catch {
+      toast.error(t('errors.validate_router_prefix_failed'), {
+        duration: 3000,
+      });
+      return false;
+    }
+  };
+
   const handleSave = async () => {
     try {
       // Validate YAML
       yaml.load(editConfig);
+      
+      // Validate router prefix
+      const isValidPrefix = await validateRouterPrefixes(editConfig);
+      if (!isValidPrefix) {
+        return;
+      }
 
       if (currentMCPServer) {
         await updateMCPServer(currentMCPServer.name, editConfig);
@@ -225,6 +285,12 @@ export function GatewayManager() {
         yaml.load(newConfig);
       } catch {
         toast.error(t('errors.invalid_yaml'));
+        return;
+      }
+      
+      // Validate router prefix
+      const isValidPrefix = await validateRouterPrefixes(newConfig);
+      if (!isValidPrefix) {
         return;
       }
 
@@ -321,7 +387,7 @@ export function GatewayManager() {
     setSelectedTenants(prev => prev.filter(t => t.id !== tenantId));
   };
   
-  // 过滤出未选择的租户供选择
+  // Filter out already selected tenants for selection
   const availableTenants = React.useMemo(() => {
     return tenants.filter(tenant => 
       !selectedTenants.some(selected => selected.id === tenant.id)
@@ -363,7 +429,7 @@ export function GatewayManager() {
       <div className="mb-4 max-w-md">
         <label className="block text-sm font-medium mb-1">{t('gateway.select_tenant')}</label>
         
-        {/* 显示已选择的租户 */}
+        {/* Display selected tenants */}
         <div className="flex flex-wrap gap-1 mb-2">
           {selectedTenants.map(tenant => (
             <Chip 

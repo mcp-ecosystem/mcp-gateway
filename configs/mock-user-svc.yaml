@@ -1,4 +1,5 @@
 name: "mock-user-svc"
+tenant: "default"
 
 routers:
   - server: "mock-user-svc"

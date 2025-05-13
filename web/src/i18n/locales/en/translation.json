@@ -298,6 +298,21 @@
     "create_tenant": "Failed to create tenant",
     "update_tenant": "Failed to update tenant",
     "delete_tenant": "Failed to delete tenant",
-    "fetch_authorized_tenants": "Failed to fetch authorized tenants"
+    "fetch_authorized_tenants": "Failed to fetch authorized tenants",
+    "generic": "An error occurred. Please try again.",
+    "not_found": "The requested resource was not found.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "forbidden": "You do not have permission to access this resource.",
+    "internal_server": "Internal server error. Please try again later.",
+    "bad_request": "Bad request. Please check your input.",
+    "conflict": "Conflict with existing resource.",
+    "validation": "Validation error. Please check your input.",
+    "parse_config": "Failed to parse configuration for {{name}}.",
+    "namespace_permission_error": "User does not have permission to configure namespace",
+    "tenant_permission_error": "User does not have permission to configure this tenant",
+    "router_prefix_error": "Router prefix must start with tenant prefix",
+    "tenant_required": "Tenant field is required",
+    "tenant_not_found": "Tenant with the specified prefix does not exist",
+    "validate_router_prefix_failed": "Failed to validate router prefix"
   }
 } 

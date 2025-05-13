@@ -1,11 +1,11 @@
 import { Card, CardBody, Button } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { t } from 'i18next';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { importOpenAPI } from '../../../services/api';
 import { toast } from "../../../utils/toast.ts";
-import { t } from 'i18next';
 
 interface OpenAPIImportProps {
   onSuccess?: () => void;
