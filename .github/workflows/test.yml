@@ -38,11 +38,6 @@ jobs:
         run: |
           cd web
           npm run lint
-
-      - name: Type check
-        run: |
-          cd web
-          npm run build
           
       - name: Build web (dry run)
         run: |
@@ -56,9 +51,6 @@ jobs:
   go-tests:
     name: Go Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [apiserver, mcp-gateway, mock-user-svc]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -69,62 +61,27 @@ jobs:
           go-version: '1.24.1'
           cache: true
 
-      - name: Run tests for ${{ matrix.service }}
+      - name: Run tests for cmd
+        run: go test ./cmd/... -v
+
+      - name: Run tests for internal
+        run: go test ./internal/... -v -race
+
+      - name: Run tests for pkg
+        run: go test ./pkg/... -v -race
+
+      - name: Generate coverage
         run: |
-          go test ./cmd/${{ matrix.service }}/... -v
-          
-          go test ./internal/${{ matrix.service }}/... -v -race
-
-      - name: Generate coverage report
-        run: |
-          go test ./cmd/${{ matrix.service }}/... -coverprofile=coverage-${{ matrix.service }}.txt -covermode=atomic
-          go test ./internal/${{ matrix.service }}/... -coverprofile=coverage-internal-${{ matrix.service }}.txt -covermode=atomic
-          
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage-${{ matrix.service }}.txt,./coverage-internal-${{ matrix.service }}.txt
-          flags: ${{ matrix.service }}
-          name: ${{ matrix.service }}-coverage
-          fail_ci_if_error: false
-
-  common-lib-tests:
-    name: Common Libraries Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24.1'
-          cache: true
-
-      - name: Run tests for pkg and shared packages
-        run: |
-          go test ./pkg/... -v -race
-          
-          if [ -d "./internal/common" ]; then
-            go test ./internal/common/... -v -race
-          fi
-
-      - name: Generate coverage report
-        run: |
+          go test ./cmd/... -coverprofile=coverage-cmd.txt -covermode=atomic
+          go test ./internal/... -coverprofile=coverage-internal.txt -covermode=atomic
           go test ./pkg/... -coverprofile=coverage-pkg.txt -covermode=atomic
           
-          if [ -d "./internal/common" ]; then
-            go test ./internal/common/... -coverprofile=coverage-common.txt -covermode=atomic
-          fi
-          
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage-pkg.txt,./coverage-common.txt
-          flags: common-libs
-          name: common-libs-coverage
+          files: ./coverage-cmd.txt,./coverage-internal.txt,./coverage-pkg.txt
+          name: go-coverage
           fail_ci_if_error: false
-
 
   build-check:
     name: Build Check
@@ -142,4 +99,4 @@ jobs:
         run: |
           go build -v ./cmd/apiserver
           go build -v ./cmd/mcp-gateway
-          go build -v ./cmd/mock-user-svc 
+          go build -v ./cmd/mock-user-svc
