@@ -23,12 +23,12 @@ type (
 		Tenant      string            `yaml:"tenant" gorm:"index"`
 		CreatedAt   time.Time         `yaml:"created_at"`
 		UpdatedAt   time.Time         `yaml:"updated_at"`
-		ProtoType   cnst.ProtoType    `yaml:"proto_type" gorm:"type:varchar(64)"`
+		ProtoType   cnst.ProtoType    `yaml:"protoType" gorm:"type:varchar(64)"`
 		Routers     []RouterConfig    `yaml:"routers" gorm:"type:json"`
 		Servers     []ServerConfig    `yaml:"servers" gorm:"type:json"`
 		Tools       []ToolConfig      `yaml:"tools" gorm:"type:json"`
-		StdioServer StdioServerConfig `yaml:"stdio_server" gorm:"type:json"`
-		SSEServer   SSEServerConfig   `yaml:"sse_server" gorm:"type:json"`
+		StdioServer StdioServerConfig `yaml:"stdioServer" gorm:"type:json"`
+		SSEServer   SSEServerConfig   `yaml:"sseServer" gorm:"type:json"`
 	}
 
 	RouterConfig struct {

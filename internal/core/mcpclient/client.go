@@ -113,10 +113,6 @@ func (c *Client) sendRequest(
 		return nil, fmt.Errorf("transport error: %w", err)
 	}
 
-	// 检查错误（这里不需要检查 Error 字段，因为 JSONRPCResponse 没有这个字段）
-	// 如果需要检查错误，应该在 transport.Interface 中处理
-
-	// 将response.Result转换为json.RawMessage
 	resultBytes, err := json.Marshal(response.Result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal response result: %w", err)

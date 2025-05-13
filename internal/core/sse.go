@@ -196,7 +196,6 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 			return
 		}
 
-		// 将 []mcp.Tool 转换为 []mcp.ToolSchema
 		toolSchemas := make([]mcp.ToolSchema, len(tools))
 		for i, tool := range tools {
 			toolSchemas[i] = mcp.ToolSchema{
@@ -286,7 +285,6 @@ func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection
 	initRequest.Method = mcp.Initialize
 	initRequest.JSONRPC = mcp.JSPNRPCVersion
 
-	// 使用 Initialize 代替 InitializeRequest
 	_, err = stdioClient.Initialize(ctx, initRequest)
 	if err != nil {
 		return []mcp.ToolSchema{}, err
@@ -298,7 +296,6 @@ func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection
 		return []mcp.ToolSchema{}, err
 	}
 
-	// 将 []mcp.ToolSchema 转换为 []mcp.Tool
 	tools := make([]mcp.ToolSchema, len(listToolsResult.Tools))
 	for i, schema := range listToolsResult.Tools {
 		tools[i] = mcp.ToolSchema{
@@ -428,7 +425,6 @@ func (s *Server) executeStdioTool(
 	initRequest.Method = mcp.Initialize
 	initRequest.JSONRPC = mcp.JSPNRPCVersion
 
-	// 使用 Initialize 代替 InitializeRequest
 	_, err = stdioClient.Initialize(c.Request.Context(), initRequest)
 	if err != nil {
 		return nil, err

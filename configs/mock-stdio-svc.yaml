@@ -1,6 +1,8 @@
 name: "mock-stdio-svc"
 tenant: "default"
 
+protoType: "stdio"
+
 routers:
   - server: "mock-stdio-svc"
     prefix: "/mcp/stdio-service/amap-maps"
@@ -24,7 +26,7 @@ servers:
     namespace: "stdio-service"
     description: "Mock Stdio Service"
 
-stdio_server:
+stdioServer:
   name: "amap-maps"
   command: "npx"
   args:
@@ -33,6 +35,6 @@ stdio_server:
   env:
     AMAP_MAPS_API_KEY: "{{.Request.Headers.Apikey}}"
 
-sse_server:
+sseServer:
   name: "web-search"
   url: "http://localhost:5236/web-search"
