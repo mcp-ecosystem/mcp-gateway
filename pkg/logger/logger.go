@@ -64,7 +64,7 @@ func NewLogger(cfg *config.LoggerConfig) (*zap.Logger, error) {
 	return logger, nil
 }
 
-// setLoggerDefaults 设置日志配置的默认值
+// setLoggerDefaults sets default values for the logger configuration
 func setLoggerDefaults(cfg *config.LoggerConfig) {
 	if cfg.Level == "" {
 		cfg.Level = "info"
