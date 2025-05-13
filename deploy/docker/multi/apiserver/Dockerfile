@@ -17,14 +17,24 @@ RUN GOOS=linux go build -o apiserver ./cmd/apiserver
 FROM ubuntu:22.04
 WORKDIR /app
 
+# Set default timezone
+ENV TZ=UTC
+
 # Install basic tools
-RUN apt-get update && apt-get install -y curl iputils-ping && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    curl \
+    iputils-ping \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata
 
 # Copy the binary
 COPY --from=builder /app/apiserver .
+COPY --from=builder /app/configs/apiserver.yaml /etc/mcp-gateway/
 
-# Copy configs
-COPY --from=builder /app/configs /app/configs
+# Create data directory
 RUN mkdir -p /app/data
 
 # Expose port

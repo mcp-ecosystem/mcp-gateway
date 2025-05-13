@@ -2,15 +2,13 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage"
@@ -30,6 +28,83 @@ func NewMCP(db database.Database, store storage.Store, ntf notifier.Notifier) *M
 		store:    store,
 		notifier: ntf,
 	}
+}
+
+// checkTenantPermission checks if the user has permission to access the specified tenant and
+// verifies that all router prefixes start with the tenant prefix as a complete path segment
+func (h *MCP) checkTenantPermission(c *gin.Context, tenantName string, cfg *config.MCPConfig) (*database.Tenant, error) {
+	// Check if tenant name is empty
+	if tenantName == "" {
+		return nil, errors.New("errors.tenant_required")
+	}
+
+	// Get user authentication information
+	claims, exists := c.Get("claims")
+	if !exists {
+		return nil, errors.New("unauthorized")
+	}
+	jwtClaims := claims.(*jwt.Claims)
+
+	// Get user information
+	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
+	if err != nil {
+		return nil, errors.New("Failed to get user info: " + err.Error())
+	}
+
+	// Get tenant information
+	tenant, err := h.db.GetTenantByName(c.Request.Context(), tenantName)
+	if err != nil {
+		return nil, errors.New("errors.tenant_not_found")
+	}
+
+	// Normalize tenant prefix
+	tenantPrefix := tenant.Prefix
+	if !strings.HasPrefix(tenantPrefix, "/") {
+		tenantPrefix = "/" + tenantPrefix
+	}
+	tenantPrefix = strings.TrimSuffix(tenantPrefix, "/")
+
+	// Check if all router prefixes start with tenant prefix
+	for _, router := range cfg.Routers {
+		// Normalize router prefix
+		routerPrefix := router.Prefix
+		if !strings.HasPrefix(routerPrefix, "/") {
+			routerPrefix = "/" + routerPrefix
+		}
+		routerPrefix = strings.TrimSuffix(routerPrefix, "/")
+
+		// Allow exact match
+		if routerPrefix == tenantPrefix {
+			continue
+		}
+
+		// Must start with tenant prefix followed by a path separator
+		if !strings.HasPrefix(routerPrefix, tenantPrefix+"/") {
+			return nil, errors.New("errors.router_prefix_error")
+		}
+	}
+
+	// Check user permission if not admin
+	if user.Role != database.RoleAdmin {
+		userTenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
+		if err != nil {
+			return nil, errors.New("Failed to get user tenants: " + err.Error())
+		}
+
+		allowed := false
+		for _, userTenant := range userTenants {
+			if userTenant.ID == tenant.ID {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			return nil, errors.New("errors.tenant_permission_error")
+		}
+	}
+
+	return tenant, nil
 }
 
 func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
@@ -69,6 +144,18 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 
 	if oldCfg.Name != cfg.Name {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "server name in configuration must match name parameter"})
+		return
+	}
+
+	_, err = h.checkTenantPermission(c, cfg.Tenant, &cfg)
+	if err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "unauthorized" {
+			status = http.StatusUnauthorized
+		} else if err.Error() == "errors.tenant_permission_error" {
+			status = http.StatusForbidden
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -125,6 +212,34 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 }
 
 func (h *MCP) HandleListMCPServers(c *gin.Context) {
+	tenantIDStr := c.Query("tenantId")
+	var tenantID uint
+	if tenantIDStr != "" {
+		tid, err := strconv.ParseUint(tenantIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid tenantId parameter",
+			})
+			return
+		}
+		tenantID = uint(tid)
+	}
+
+	claims, exists := c.Get("claims")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	jwtClaims := claims.(*jwt.Claims)
+
+	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get user info: " + err.Error(),
+		})
+		return
+	}
+
 	servers, err := h.store.List(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -133,9 +248,76 @@ func (h *MCP) HandleListMCPServers(c *gin.Context) {
 		return
 	}
 
+	if user.Role != database.RoleAdmin && tenantID > 0 {
+		userTenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to get user tenants: " + err.Error(),
+			})
+			return
+		}
+
+		hasPermission := false
+		for _, tenant := range userTenants {
+			if tenant.ID == tenantID {
+				hasPermission = true
+				break
+			}
+		}
+
+		if !hasPermission {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "User does not have permission to access this tenant",
+			})
+			return
+		}
+	}
+
+	var filteredServers []*config.MCPConfig
+	if tenantID > 0 {
+		tenant, err := h.db.GetTenantByID(c.Request.Context(), tenantID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Tenant not found",
+			})
+			return
+		}
+
+		name := tenant.Name
+		for _, server := range servers {
+			if server.Tenant == name {
+				filteredServers = append(filteredServers, server)
+			}
+		}
+	} else if user.Role != database.RoleAdmin {
+		userTenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to get user tenants: " + err.Error(),
+			})
+			return
+		}
+
+		tenantNames := make([]string, len(userTenants))
+		for i, tenant := range userTenants {
+			tenantNames[i] = tenant.Name
+		}
+
+		for _, server := range servers {
+			for _, name := range tenantNames {
+				if server.Tenant == name {
+					filteredServers = append(filteredServers, server)
+					break
+				}
+			}
+		}
+	} else {
+		filteredServers = servers
+	}
+
 	// TODO: temporary
-	results := make([]*dto.MCPServer, len(servers))
-	for i, server := range servers {
+	results := make([]*dto.MCPServer, len(filteredServers))
+	for i, server := range filteredServers {
 		s, _ := yaml.Marshal(server)
 		results[i] = &dto.MCPServer{
 			Name:   server.Name,
@@ -169,6 +351,18 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 
 	if cfg.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "server name is required in configuration"})
+		return
+	}
+
+	_, err = h.checkTenantPermission(c, cfg.Tenant, &cfg)
+	if err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "unauthorized" {
+			status = http.StatusUnauthorized
+		} else if err.Error() == "errors.tenant_permission_error" {
+			status = http.StatusForbidden
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -266,28 +460,4 @@ func (h *MCP) HandleMCPServerSync(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 	})
-}
-
-func sendReloadSignal(gatewayPID string) error {
-	// Read gateway PID file
-	pidBytes, err := os.ReadFile(gatewayPID)
-	if err != nil {
-		return fmt.Errorf("failed to read PID file: %w", err)
-	}
-
-	pid, err := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	if err != nil {
-		return fmt.Errorf("invalid PID in file: %w", err)
-	}
-
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return fmt.Errorf("failed to find process: %w", err)
-	}
-
-	if err := process.Signal(syscall.SIGHUP); err != nil {
-		return fmt.Errorf("failed to send reload signal: %w", err)
-	}
-
-	return nil
 }

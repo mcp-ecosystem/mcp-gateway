@@ -20,6 +20,7 @@ type (
 
 	MCPConfig struct {
 		Name         string         `yaml:"name" gorm:"primaryKey"`
+		Tenant       string         `yaml:"tenant" gorm:"index"`
 		CreatedAt    time.Time      `yaml:"created_at"`
 		UpdatedAt    time.Time      `yaml:"updated_at"`
 		ProtoType    cnst.ProtoType `yaml:"proto_type" gorm:"type:varchar(64)"`
@@ -101,10 +102,6 @@ func (t *ToolConfig) ToToolSchema() mcp.Tool {
 		property := map[string]any{
 			"type":        arg.Type,
 			"description": arg.Description,
-			"required":    arg.Required,
-		}
-		if arg.Description != "" {
-			property["title"] = arg.Description
 		}
 
 		if arg.Type == "array" {

@@ -78,12 +78,20 @@ export function Layout({ children }: LayoutProps) {
       icon: 'lucide:server',
       path: '/gateway',
     },
-    ...(userInfo?.role === 'admin' ? [{
-      key: 'users',
-      label: t('nav.users'),
-      icon: 'lucide:users',
-      path: '/users',
-    }] : []),
+    ...(userInfo?.role === 'admin' ? [
+      {
+        key: 'users',
+        label: t('nav.users'),
+        icon: 'lucide:users',
+        path: '/users',
+      },
+      {
+        key: 'tenants',
+        label: t('nav.tenants'),
+        icon: 'lucide:building',
+        path: '/tenants',
+      }
+    ] : []),
   ];
 
   const handleLogout = () => {
@@ -155,6 +163,19 @@ export function Layout({ children }: LayoutProps) {
                 isIconOnly
               >
                 <Icon icon="mdi:github" className="text-2xl" />
+              </Button>
+            </Tooltip>
+          </NavbarItem>
+          <NavbarItem>
+            <Tooltip content={t('common.view_docs')}>
+              <Button
+                as={HeroLink}
+                href="https://mcp.ifuryst.com/"
+                target="_blank"
+                variant="light"
+                isIconOnly
+              >
+                <Icon icon="mdi:book-open-page-variant" className="text-2xl" />
               </Button>
             </Tooltip>
           </NavbarItem>

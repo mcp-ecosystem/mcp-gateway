@@ -118,7 +118,7 @@ class MCPService {
       const result = await client.listTools();
       return result.tools;
     } catch (error) {
-      toast.error(`获取工具列表失败: ${(error as Error).message}`, {
+      toast.error(t('errors.get_tools_failed', { error: (error as Error).message }), {
         duration: 3000,
       });
       throw error;
@@ -163,7 +163,7 @@ class MCPService {
 
       return result.content[0].text;
     } catch (error) {
-      toast.error(`调用工具 ${toolName} 失败: ${(error as Error).message}`, {
+      toast.error(t('errors.call_tool_failed', { toolName, error: (error as Error).message }), {
         duration: 3000,
       });
       throw error;

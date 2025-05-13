@@ -5,6 +5,7 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-mcp_gateway}
+      TZ: ${TZ:-UTC}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -13,6 +14,8 @@ services:
     image: ${WEB_IMAGE:-ghcr.io/mcp-ecosystem/mcp-gateway/web:latest}
     ports:
       - "80:80"
+    environment:
+      - TZ=${TZ:-UTC}
     depends_on:
       - apiserver
       - mcp-gateway
@@ -25,6 +28,7 @@ services:
       - "5234:5234"
     environment:
       - ENV=production
+      - TZ=${TZ:-UTC}
     volumes:
       - ./configs:/app/configs
       - ./data:/app/data
@@ -39,6 +43,7 @@ services:
       - "5235:5235"
     environment:
       - ENV=production
+      - TZ=${TZ:-UTC}
     volumes:
       - ./configs:/app/configs
       - ./data:/app/data
@@ -53,6 +58,7 @@ services:
       - "5236:5236"
     environment:
       - ENV=production
+      - TZ=${TZ:-UTC}
     volumes:
       - ./configs:/app/configs
       - ./data:/app/data

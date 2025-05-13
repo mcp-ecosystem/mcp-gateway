@@ -43,37 +43,97 @@ https://github.com/user-attachments/assets/2a812a14-85cf-45d6-9f37-cc08d8579b33
 
 MCP Gateway 提供开箱即用的 Docker 启动方式。完整部署与配置说明请参考 [文档](https://mcp.ifuryst.com/getting-started/quick-start)。
 
-### Docker 方式运行
+### 一键启动 MCP Gateway
+
+配置环境变量：
 
 ```bash
-mkdir -p mcp-gateway/{configs,data}
-cd mcp-gateway/
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/configs/apiserver.yaml -o configs/apiserver.yaml
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/configs/mcp-gateway.yaml -o configs/mcp-gateway.yaml
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/.env.example -o .env.allinone
-
-docker run -d \
-           --name mcp-gateway \
-           -p 8080:80 \
-           -p 5234:5234 \
-           -p 5235:5235 \
-           -p 5335:5335 \
-           -p 5236:5236 \
-           -e ENV=production \
-           -v $(pwd)/configs:/app/configs \
-           -v $(pwd)/data:/app/data \
-           -v $(pwd)/.env.allinone:/app/.env \
-           --restart unless-stopped \
-           ghcr.io/mcp-ecosystem/mcp-gateway/allinone:latest
+export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
+export OPENAI_MODEL="gpt-4o-mini"
+export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+export SUPER_ADMIN_USERNAME="admin"
+export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
 ```
 
-> 在中国境内的设备可以拉阿里云仓库的镜像
+一键拉起：
+
+```bash
+docker run -d \
+  --name mcp-gateway \
+  -p 8080:80 \
+  -p 5234:5234 \
+  -p 5235:5235 \
+  -p 5335:5335 \
+  -p 5236:5236 \
+  -e ENV=production \
+  -e TZ=Asia/Shanghai \
+  -e OPENAI_API_KEY=${OPENAI_API_KEY} \
+  -e OPENAI_MODEL=${OPENAI_MODEL} \
+  -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
+  -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
+  -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
+  --restart unless-stopped \
+  ghcr.io/mcp-ecosystem/mcp-gateway/allinone:latest
+```
+
+> 在中国境内的设备可以使用阿里云仓库的镜像并自定义模型（这边示例是千问）：
 >
 > ```bash
-> registry.ap-southeast-1.aliyuncs.com/mcp-ecosystem/mcp-gateway-allinone:latest
+> export OPENAI_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1/"
+> export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
+> export OPENAI_MODEL="qwen-turbo"
+> export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+> export SUPER_ADMIN_USERNAME="admin"
+> export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
+> ```
+>
+> ```bash
+> docker run -d \
+>   --name mcp-gateway \
+>   -p 8080:80 \
+>   -p 5234:5234 \
+>   -p 5235:5235 \
+>   -p 5335:5335 \
+>   -p 5236:5236 \
+>   -e ENV=production \
+>   -e TZ=Asia/Shanghai \
+>   -e OPENAI_BASE_URL=${OPENAI_BASE_URL} \
+>   -e OPENAI_API_KEY=${OPENAI_API_KEY} \
+>   -e OPENAI_MODEL=${OPENAI_MODEL} \
+>   -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
+>   -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
+>   -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
+>   --restart unless-stopped \
+>   registry.ap-southeast-1.aliyuncs.com/mcp-ecosystem/mcp-gateway-allinone:latest
 > ```
 
-访问 http://localhost:8080/ 开始配置使用
+### 访问和配置
+
+1. 访问 Web 界面：
+   - 在浏览器中打开 http://localhost:8080/
+   - 使用配置的管理员账号密码登录
+
+2. 添加 MCP Server：
+   - 复制配置文件：https://github.com/mcp-ecosystem/mcp-gateway/blob/main/configs/mock-user-svc.yaml
+   - 在 Web 界面上点击 "Add MCP Server"
+   - 粘贴配置并保存
+
+### 可用端点
+
+配置完成后，服务将在以下端点可用：
+
+- MCP SSE: http://localhost:5235/mcp/user/sse
+- MCP SSE Message: http://localhost:5235/mcp/user/message
+- MCP Streamable HTTP: http://localhost:5235/mcp/user/mcp
+
+在MCP Client中配置`/sse`或`/mcp`后缀的url即可开始使用
+
+### 测试
+
+您可以通过以下两种方式测试服务：
+
+1. 使用 Web 界面中的 MCP Chat 页面
+2. 使用您自己的 MCP Client（**推荐**）
 
 📖 查看完整指南 → [快速开始文档 »](https://mcp.ifuryst.com/getting-started/quick-start)
 
@@ -110,4 +170,14 @@ docker run -d \
 ## 📄 许可证
 
 本项目采用 [MIT 协议](../LICENSE)。
+
+## 💬 加入社区微信群
+
+扫描下方二维码添加微信，备注：`mcp-gateway`或`mcpgw`
+
+<img src="../web/public/wechat-qrcode.png" alt="微信群二维码" width="350" height="350" />
+
+## 📈 Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=mcp-ecosystem/mcp-gateway&type=Date)](https://star-history.com/#mcp-ecosystem/mcp-gateway&Date)
 

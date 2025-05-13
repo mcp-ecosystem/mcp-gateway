@@ -68,7 +68,7 @@ export function ChatInterface() {
   const [isHistoryCollapsed, setIsHistoryCollapsed] = React.useState(false);
   const [isToolsCollapsed, setIsToolsCollapsed] = React.useState(false);
 
-  // 解析配置
+  // Parse configuration
   const parseConfig = React.useCallback((config: string) => {
     try {
       return yaml.load(config) as Gateway['parsedConfig'];
@@ -78,7 +78,7 @@ export function ChatInterface() {
     }
   }, [t]);
 
-  // 获取 MCP servers 列表并解析配置
+  // Get MCP servers list and parse configuration
   React.useEffect(() => {
     const fetchMCPServers = async () => {
       try {
@@ -98,7 +98,7 @@ export function ChatInterface() {
     void fetchMCPServers();
   }, [t, parseConfig]);
 
-  // 当选中服务器变化时，重新加载工具列表
+  // When selected server changes, reload tool list
   React.useEffect(() => {
     const loadToolsForActiveServers = async () => {
       for (const serverName of activeServices) {
@@ -107,7 +107,7 @@ export function ChatInterface() {
 
         for (const router of server.parsedConfig.routers) {
           try {
-            // 先建立连接
+            // First establish connection
             await mcpService.connect({
               name: serverName,
               prefix: router.prefix,
@@ -123,7 +123,7 @@ export function ChatInterface() {
               }
             });
 
-            // 然后获取工具列表
+            // Then get tool list
             const toolsList = await mcpService.getTools(serverName);
             setTools(prev => ({
               ...prev,

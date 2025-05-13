@@ -28,15 +28,15 @@
   }
 
   .dark {
-    --background: 220 13% 18%; /* 23272E - 主体窗口背景 */
+    --background: 220 13% 18%; /* 23272E - Main window background */
     --foreground: 220 13% 95%;
-    --card: 220 13% 15%; /* 1E2228 - 卡片和侧边栏 */
+    --card: 220 13% 15%; /* 1E2228 - Cards and sidebar */
     --card-foreground: 220 13% 95%;
     --popover: 220 13% 15%; /* 1E2228 */
     --popover-foreground: 220 13% 95%;
     --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 220 13% 13%; /* 1D1F23 - 次要元素 */
+    --secondary: 220 13% 13%; /* 1D1F23 - Secondary elements */
     --secondary-foreground: 220 13% 95%;
     --muted: 220 13% 13%; /* 1D1F23 */
     --muted-foreground: 220 13% 70%;

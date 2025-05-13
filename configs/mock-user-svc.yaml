@@ -1,4 +1,5 @@
 name: "mock-user-svc"
+tenant: "default"
 
 routers:
   - server: "mock-user-svc"
@@ -27,6 +28,7 @@ servers:
       - "register_user"
       - "get_user_by_email"
       - "update_user_preferences"
+      - "update_user_avatar"
     config:
       Cookie: 123
       Authorization: 'Bearer {{ env "AUTH_TOKEN" }}'
@@ -146,4 +148,30 @@ tools:
           "theme": "{{.Response.Data.preferences.theme}}",
           "tags": {{.Response.Data.preferences.tags}}
         }
+      }
+
+  - name: "update_user_avatar"
+    description: "Update user avatar using a URL via multipart form"
+    method: "POST"
+    endpoint: "http://localhost:5236/users/{{.Args.email}}/avatar"
+    headers:
+      Authorization: "{{.Request.Headers.Authorization}}"
+      Cookie: "{{.Config.Cookie}}"
+    args:
+      - name: "email"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Email of the user"
+        default: ""
+      - name: "url"
+        position: "form-data"
+        required: true
+        type: "string"
+        description: "The avatar image URL"
+        default: ""
+    responseBody: |-
+      {
+        "message": "{{.Response.Data.message}}",
+        "avatarUrl": "{{.Response.Data.avatarUrl}}"
       }

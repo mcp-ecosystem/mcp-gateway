@@ -1,3 +1,4 @@
+import { t } from 'i18next';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ToolCall } from '../types/message';
@@ -83,14 +84,14 @@ export class WebSocketService {
       };
 
       this.ws.onclose = () => {
-        toast.error('WebSocket 连接已断开', {
+        toast.error(t('errors.websocket_disconnected'), {
           duration: 3000,
         });
         this.ws = null;
       };
 
       this.ws.onerror = (error) => {
-        toast.error('WebSocket 发生错误' + error, {
+        toast.error(t('errors.websocket_error', { error }), {
           duration: 3000,
         });
       };

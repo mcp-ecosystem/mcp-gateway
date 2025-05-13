@@ -35,11 +35,16 @@ func NewSQLite(cfg *config.DatabaseConfig) (Database, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}); err != nil {
+	if err := gormDB.AutoMigrate(&Message{}, &Session{}, &User{}, &Tenant{}, &UserTenant{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	db.db = gormDB
+
+	if err := InitDefaultTenant(gormDB); err != nil {
+		return nil, fmt.Errorf("failed to initialize default tenant: %w", err)
+	}
+
 	return db, nil
 }
 
@@ -143,4 +148,120 @@ func (db *SQLite) ListUsers(ctx context.Context) ([]*User, error) {
 		Order("created_at desc").
 		Find(&users).Error
 	return users, err
+}
+
+// CreateTenant creates a new tenant
+func (db *SQLite) CreateTenant(ctx context.Context, tenant *Tenant) error {
+	return db.db.WithContext(ctx).Create(tenant).Error
+}
+
+// GetTenantByName retrieves a tenant by name
+func (db *SQLite) GetTenantByName(ctx context.Context, name string) (*Tenant, error) {
+	var tenant Tenant
+	err := db.db.WithContext(ctx).
+		Where("name = ?", name).
+		First(&tenant).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tenant, nil
+}
+
+// GetTenantByID retrieves a tenant by ID
+func (db *SQLite) GetTenantByID(ctx context.Context, id uint) (*Tenant, error) {
+	var tenant Tenant
+	err := db.db.WithContext(ctx).
+		Where("id = ?", id).
+		First(&tenant).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tenant, nil
+}
+
+// UpdateTenant updates an existing tenant
+func (db *SQLite) UpdateTenant(ctx context.Context, tenant *Tenant) error {
+	return db.db.WithContext(ctx).Save(tenant).Error
+}
+
+// DeleteTenant deletes a tenant by ID
+func (db *SQLite) DeleteTenant(ctx context.Context, id uint) error {
+	return db.db.WithContext(ctx).Delete(&Tenant{}, "id = ?", id).Error
+}
+
+// ListTenants retrieves all tenants
+func (db *SQLite) ListTenants(ctx context.Context) ([]*Tenant, error) {
+	var tenants []*Tenant
+	err := db.db.WithContext(ctx).
+		Order("created_at desc").
+		Find(&tenants).Error
+	return tenants, err
+}
+
+// Transaction implements Database.Transaction
+func (db *SQLite) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	if tx := TransactionFromContext(ctx); tx != nil {
+		return fn(ctx)
+	}
+
+	return db.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := ContextWithTransaction(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+// AddUserToTenant adds a user to a tenant
+func (db *SQLite) AddUserToTenant(ctx context.Context, userID, tenantID uint) error {
+	dbSession := getDBFromContext(ctx, db.db)
+
+	userTenant := &UserTenant{
+		UserID:    userID,
+		TenantID:  tenantID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	return dbSession.Create(userTenant).Error
+}
+
+// RemoveUserFromTenant removes a user from a tenant
+func (db *SQLite) RemoveUserFromTenant(ctx context.Context, userID, tenantID uint) error {
+	dbSession := getDBFromContext(ctx, db.db)
+
+	return dbSession.Where("user_id = ? AND tenant_id = ?", userID, tenantID).Delete(&UserTenant{}).Error
+}
+
+// GetUserTenants gets all tenants for a user
+func (db *SQLite) GetUserTenants(ctx context.Context, userID uint) ([]*Tenant, error) {
+	dbSession := getDBFromContext(ctx, db.db)
+
+	var tenants []*Tenant
+	err := dbSession.Model(&UserTenant{}).
+		Select("tenants.*").
+		Joins("JOIN tenants ON user_tenants.tenant_id = tenants.id").
+		Where("user_tenants.user_id = ?", userID).
+		Find(&tenants).Error
+
+	return tenants, err
+}
+
+// GetTenantUsers gets all users for a tenant
+func (db *SQLite) GetTenantUsers(ctx context.Context, tenantID uint) ([]*User, error) {
+	dbSession := getDBFromContext(ctx, db.db)
+
+	var users []*User
+	err := dbSession.Model(&UserTenant{}).
+		Select("users.*").
+		Joins("JOIN users ON user_tenants.user_id = users.id").
+		Where("user_tenants.tenant_id = ?", tenantID).
+		Find(&users).Error
+
+	return users, err
+}
+
+// DeleteUserTenants deletes all tenant associations for a user
+func (db *SQLite) DeleteUserTenants(ctx context.Context, userID uint) error {
+	dbSession := getDBFromContext(ctx, db.db)
+
+	return dbSession.Where("user_id = ?", userID).Delete(&UserTenant{}).Error
 }

@@ -16,13 +16,15 @@ import {
   Select,
   SelectItem,
   Switch,
+  Chip,
+  Autocomplete,
+  AutocompleteItem,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import api from '../../services/api';
-import { toast } from '../../utils/toast';
+import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
 
 interface User {
   id: number;
@@ -31,12 +33,22 @@ interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  tenants?: Tenant[];
+}
+
+interface Tenant {
+  id: number;
+  name: string;
+  prefix: string;
+  description: string;
+  isActive: boolean;
 }
 
 interface CreateUserForm {
   username: string;
   password: string;
   role: 'admin' | 'normal';
+  tenantIds?: number[];
 }
 
 interface UpdateUserForm {
@@ -44,20 +56,27 @@ interface UpdateUserForm {
   password?: string;
   role?: 'admin' | 'normal';
   isActive?: boolean;
+  tenantIds?: number[];
 }
 
 export function UserManagement() {
   const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<string>('');
+  const [createTenantInputValue, setCreateTenantInputValue] = useState('');
+  const [updateTenantInputValue, setUpdateTenantInputValue] = useState('');
   const [createForm, setCreateForm] = useState<CreateUserForm>({
     username: '',
     password: '',
     role: 'normal',
+    tenantIds: [],
   });
   const [updateForm, setUpdateForm] = useState<UpdateUserForm>({
     username: '',
+    tenantIds: [],
   });
 
   const {
@@ -70,80 +89,160 @@ export function UserManagement() {
     onOpen: onUpdateOpen,
     onClose: onUpdateClose,
   } = useDisclosure();
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+
+  const fetchTenants = useCallback(async () => {
+    try {
+      const data = await getTenants();
+      setTenants(data);
+    } catch {
+      // Error already handled in the API function
+    }
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await api.get('/auth/users');
-      setUsers(response.data);
+      const data = await getUsers();
+      setUsers(data);
     } catch {
-      toast.error(t('errors.fetch_users'));
+      // Error already handled in the API function
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchTenants();
+  }, [fetchUsers, fetchTenants]);
 
   const handleCreate = async () => {
     try {
-      await api.post('/auth/users', createForm);
-      toast.success(t('users.add_success'));
+      await createUser(createForm);
       onCreateClose();
       fetchUsers();
-      setCreateForm({ username: '', password: '', role: 'normal' });
+      setCreateForm({ username: '', password: '', role: 'normal', tenantIds: [] });
     } catch {
-      toast.error(t('users.add_failed'));
+      // Error already handled in the API function
     }
   };
 
   const handleUpdate = async () => {
     if (!selectedUser) return;
     try {
-      await api.put('/auth/users', updateForm);
-      toast.success(t('users.edit_success'));
+      await updateUser(updateForm);
       onUpdateClose();
       fetchUsers();
       setSelectedUser(null);
-      setUpdateForm({ username: '' });
+      setUpdateForm({ username: '', tenantIds: [] });
     } catch {
-      toast.error(t('users.edit_failed'));
+      // Error already handled in the API function
     }
   };
 
-  const handleDelete = async (username: string) => {
-    if (!window.confirm(t('users.confirm_delete'))) return;
+  const openDeleteConfirm = (username: string) => {
+    setUserToDelete(username);
+    onDeleteOpen();
+  };
+
+  const handleDelete = async () => {
     try {
-      await api.delete(`/auth/users/${username}`);
-      toast.success(t('users.delete_success'));
+      await deleteUser(userToDelete);
+      onDeleteClose();
       fetchUsers();
     } catch {
-      toast.error(t('users.delete_failed'));
+      // Error already handled in the API function
     }
   };
 
-  const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setUpdateForm({
-      username: user.username,
-      role: user.role,
-      isActive: user.isActive,
-    });
-    onUpdateOpen();
+  const handleEdit = async (user: User) => {
+    try {
+      const userData = await getUserWithTenants(user.username);
+      setSelectedUser(userData);
+      setUpdateForm({
+        username: userData.username,
+        role: userData.role,
+        isActive: userData.isActive,
+        tenantIds: userData.tenants?.map((t: Tenant) => t.id) || [],
+      });
+      onUpdateOpen();
+    } catch {
+      // Error already handled in the API function
+    }
   };
 
   const handleToggleStatus = async (user: User) => {
     try {
-      await api.put('/auth/users', {
-        username: user.username,
-        isActive: !user.isActive,
-      });
-      toast.success(t(user.isActive ? 'users.disable_success' : 'users.enable_success'));
+      await toggleUserStatus(user.username, !user.isActive);
       fetchUsers();
     } catch {
-      toast.error(t(user.isActive ? 'users.disable_failed' : 'users.enable_failed'));
+      // Error already handled in the API function
     }
+  };
+
+  // Create tenant ID to tenant object mapping for easy lookup
+  const tenantsMap = useMemo(() => {
+    const map = new Map<number, Tenant>();
+    tenants.forEach(tenant => {
+      map.set(tenant.id, tenant);
+    });
+    return map;
+  }, [tenants]);
+
+  // Handle tenant selection for Autocomplete component
+  const handleCreateTenantSelect = (key: React.Key | null) => {
+    if (key === null) return;
+    
+    const tenantId = parseInt(key.toString(), 10);
+    // Ensure no duplicate entries
+    if (!createForm.tenantIds?.includes(tenantId)) {
+      setCreateForm({
+        ...createForm,
+        tenantIds: [...(createForm.tenantIds || []), tenantId]
+      });
+      // Clear input after selection
+      setCreateTenantInputValue('');
+    }
+  };
+
+  const handleUpdateTenantSelect = (key: React.Key | null) => {
+    if (key === null) return;
+    
+    const tenantId = parseInt(key.toString(), 10);
+    // Ensure no duplicate entries
+    if (!updateForm.tenantIds?.includes(tenantId)) {
+      setUpdateForm({
+        ...updateForm,
+        tenantIds: [...(updateForm.tenantIds || []), tenantId]
+      });
+      // Clear input after selection
+      setUpdateTenantInputValue('');
+    }
+  };
+
+  // Remove selected tenant
+  const handleRemoveCreateTenant = (tenantId: number) => {
+    setCreateForm({
+      ...createForm,
+      tenantIds: createForm.tenantIds?.filter(id => id !== tenantId) || []
+    });
+  };
+
+  const handleRemoveUpdateTenant = (tenantId: number) => {
+    setUpdateForm({
+      ...updateForm,
+      tenantIds: updateForm.tenantIds?.filter(id => id !== tenantId) || []
+    });
+  };
+
+  // Get tenant display text
+  const getTenantDisplayText = (tenantId: number) => {
+    const tenant = tenantsMap.get(tenantId);
+    return tenant ? `${tenant.name}(${tenant.prefix})` : '';
   };
 
   return (
@@ -213,7 +312,7 @@ export function UserManagement() {
                       size="sm"
                       color="danger"
                       variant="light"
-                      onPress={() => handleDelete(user.username)}
+                      onPress={() => openDeleteConfirm(user.username)}
                     >
                       {t('users.delete')}
                     </Button>
@@ -226,7 +325,7 @@ export function UserManagement() {
       </Table>
 
       {/* Create User Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose}>
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent>
           <ModalHeader>{t('users.add')}</ModalHeader>
           <ModalBody>
@@ -259,21 +358,64 @@ export function UserManagement() {
                 <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
                 <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
               </Select>
+
+              {/* Tenant selection section */}
+              {createForm.role === 'normal' && (
+                <div className="mt-2">
+                  <label className="block text-sm font-medium mb-1">{t('users.select_tenants')}</label>
+                  
+                  <Autocomplete
+                    selectedKey={null}
+                    placeholder={t('users.select_tenant')}
+                    variant="bordered"
+                    onSelectionChange={handleCreateTenantSelect}
+                    onInputChange={setCreateTenantInputValue}
+                    value={createTenantInputValue}
+                    className="mb-4"
+                  >
+                    {tenants
+                      .filter(tenant => tenant.isActive) // Only show active tenants
+                      .map(tenant => (
+                        <AutocompleteItem key={tenant.id}>
+                          {tenant.name}({tenant.prefix})
+                        </AutocompleteItem>
+                      ))}
+                  </Autocomplete>
+                  
+                  {/* Display selected tenants */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {createForm.tenantIds?.map(tenantId => (
+                      <Chip
+                        key={tenantId}
+                        onClose={() => handleRemoveCreateTenant(tenantId)}
+                        variant="bordered"
+                        className="mb-1"
+                      >
+                        {getTenantDisplayText(tenantId)}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={onCreateClose}>
               {t('common.cancel')}
             </Button>
-            <Button color="primary" onPress={handleCreate}>
-              {t('users.add')}
+            <Button
+              color="primary"
+              onPress={handleCreate}
+              isDisabled={!createForm.username || !createForm.password}
+            >
+              {t('common.create')}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Update User Modal */}
-      <Modal isOpen={isUpdateOpen} onClose={onUpdateClose}>
+      <Modal isOpen={isUpdateOpen} onClose={onUpdateClose} size="lg">
         <ModalContent>
           <ModalHeader>{t('users.edit')}</ModalHeader>
           <ModalBody>
@@ -305,6 +447,57 @@ export function UserManagement() {
                 <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
                 <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
               </Select>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  isSelected={updateForm.isActive}
+                  onValueChange={(checked) =>
+                    setUpdateForm({ ...updateForm, isActive: checked })
+                  }
+                />
+                <span>
+                  {updateForm.isActive ? t('users.status_enabled') : t('users.status_disabled')}
+                </span>
+              </div>
+
+              {/* Tenant selection section */}
+              {updateForm.role === 'normal' && (
+                <div className="mt-2">
+                  <label className="block text-sm font-medium mb-1">{t('users.select_tenants')}</label>
+                  
+                  <Autocomplete
+                    selectedKey={null}
+                    placeholder={t('users.select_tenant')}
+                    variant="bordered"
+                    onSelectionChange={handleUpdateTenantSelect}
+                    onInputChange={setUpdateTenantInputValue}
+                    value={updateTenantInputValue}
+                    className="mb-4"
+                  >
+                    {tenants
+                      .filter(tenant => tenant.isActive) // Only show active tenants
+                      .map(tenant => (
+                        <AutocompleteItem key={tenant.id}>
+                          {tenant.name}({tenant.prefix})
+                        </AutocompleteItem>
+                      ))}
+                  </Autocomplete>
+                  
+                  {/* Display selected tenants */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {updateForm.tenantIds?.map(tenantId => (
+                      <Chip
+                        key={tenantId}
+                        onClose={() => handleRemoveUpdateTenant(tenantId)}
+                        variant="bordered"
+                        className="mb-1"
+                      >
+                        {getTenantDisplayText(tenantId)}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ModalBody>
           <ModalFooter>
@@ -313,6 +506,25 @@ export function UserManagement() {
             </Button>
             <Button color="primary" onPress={handleUpdate}>
               {t('common.save')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">{t('users.delete_title')}</ModalHeader>
+          <ModalBody>
+            <p>{t('users.confirm_delete')}</p>
+            <p className="text-danger font-semibold">{userToDelete}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button color="danger" onPress={handleDelete}>
+              {t('users.delete')}
             </Button>
           </ModalFooter>
         </ModalContent>

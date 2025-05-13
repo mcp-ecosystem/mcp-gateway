@@ -38,3 +38,23 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// Tenant represents a tenant in the system
+type Tenant struct {
+	ID          uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	Name        string    `json:"name" gorm:"type:varchar(50);uniqueIndex"`
+	Prefix      string    `json:"prefix" gorm:"type:varchar(50);uniqueIndex"`
+	Description string    `json:"description" gorm:"type:varchar(255)"`
+	IsActive    bool      `json:"isActive" gorm:"not null;default:true"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// UserTenant represents the relationship between a user and a tenant
+type UserTenant struct {
+	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    uint      `json:"userId" gorm:"index:idx_user_tenant,unique;not null"`
+	TenantID  uint      `json:"tenantId" gorm:"index:idx_user_tenant,unique;not null"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}

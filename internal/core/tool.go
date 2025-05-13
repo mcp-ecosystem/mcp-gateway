@@ -1,9 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -88,6 +90,20 @@ func processArguments(req *http.Request, tool *config.ToolConfig, args map[strin
 			q := req.URL.Query()
 			q.Add(arg.Name, value)
 			req.URL.RawQuery = q.Encode()
+		case "form-data":
+			var b bytes.Buffer
+			writer := multipart.NewWriter(&b)
+
+			if err := writer.WriteField(arg.Name, value); err != nil {
+				continue
+			}
+
+			if err := writer.Close(); err != nil {
+				continue
+			}
+
+			req.Body = io.NopCloser(&b)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
 		}
 	}
 }
@@ -117,6 +133,7 @@ func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *temp
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	fmt.Println(string(respBody))
 	if tool.ResponseBody == "" {
 		return string(respBody), nil
 	}
@@ -175,6 +192,13 @@ func preprocessArgs(args map[string]any) map[string]any {
 		case []any:
 			ss, _ := json.Marshal(val)
 			processed[k] = string(ss)
+		case float64:
+			// If the float64 equals its integer conversion, it's an integer
+			if val == float64(int64(val)) {
+				processed[k] = int64(val)
+			} else {
+				processed[k] = val
+			}
 		default:
 			processed[k] = v
 		}

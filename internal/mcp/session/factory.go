@@ -3,8 +3,9 @@ package session
 import (
 	"fmt"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"go.uber.org/zap"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 )
 
 // Type represents the type of session store
@@ -24,7 +25,7 @@ func NewStore(logger *zap.Logger, cfg *config.SessionConfig) (Store, error) {
 	case TypeMemory:
 		return NewMemoryStore(logger), nil
 	case TypeRedis:
-		return NewRedisStore(logger, cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic)
+		return NewRedisStore(logger, cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic)
 	default:
 		return nil, fmt.Errorf("unsupported session store type: %s", cfg.Type)
 	}
