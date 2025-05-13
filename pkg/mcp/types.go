@@ -1,6 +1,8 @@
 package mcp
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type (
 	JSONRPCBaseResult struct {
@@ -268,4 +270,79 @@ func (i *ImageContent) GetType() string {
 
 func (i *AudioContent) GetType() string {
 	return AudioContentType
+}
+
+// NewCallToolResult creates a new CallToolResult
+// @param content the content of the result
+// @param isError indicates if the result is an error
+// @return *CallToolResult the CallToolResult object
+func NewCallToolResult(content []Content, isError bool) *CallToolResult {
+	return &CallToolResult{
+		Content: content,
+		IsError: isError,
+	}
+}
+
+// NewCallToolResultText creates a new CallToolResult with text content
+// @param text the text content
+// @return *CallToolResult the CallToolResult object with the text content
+func NewCallToolResultText(text string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&TextContent{
+				Type: TextContentType,
+				Text: text,
+			},
+		},
+		IsError: false,
+	}
+}
+
+// NewCallToolResultImage  creates a new CallToolResult with an image content
+// @param imageData the image data in base64 format
+// @param mimeType the MIME type of the image (e.g., "image/png", "image/jpeg")
+// @return *CallToolResult the CallToolResult object with the image content
+func NewCallToolResultImage(imageData, mimeType string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&ImageContent{
+				Type:     ImageContentType,
+				Data:     imageData,
+				MimeType: mimeType,
+			},
+		},
+		IsError: false,
+	}
+}
+
+// NewCallToolResultAudio creates a new CallToolResult with an audio content
+// @param audioData the audio data in base64 format
+// @param mimeType the MIME type of the audio (e.g., "audio/wav", "audio/mpeg")
+// @return *CallToolResult the CallToolResult object with the audio content
+func NewCallToolResultAudio(audioData, mimeType string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&ImageContent{
+				Type:     AudioContentType,
+				Data:     audioData,
+				MimeType: mimeType,
+			},
+		},
+		IsError: false,
+	}
+}
+
+// NewCallToolResultError creates a new CallToolResult with an error message
+// @param text the error message
+// @return *CallToolResult the CallToolResult object with the error message
+func NewCallToolResultError(text string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&TextContent{
+				Type: TextContentType,
+				Text: text,
+			},
+		},
+		IsError: true,
+	}
 }

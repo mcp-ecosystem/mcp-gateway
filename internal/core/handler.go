@@ -93,15 +93,7 @@ func (h *TextHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplC
 			return nil, fmt.Errorf("failed to render response body template: %w", err)
 		}
 	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Type: mcp.TextContentType,
-				Text: rendered,
-			},
-		},
-		IsError: false,
-	}, nil
+	return mcp.NewCallToolResultText(rendered), nil
 }
 
 // ImageHandler is a handler for image responses
@@ -128,16 +120,7 @@ func (h *ImageHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmpl
 	} else {
 		base64Image = base64.StdEncoding.EncodeToString(respBody)
 	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.ImageContent{
-				Type:     mcp.ImageContentType,
-				Data:     base64Image,
-				MimeType: resp.Header.Get("Content-Type"),
-			},
-		},
-		IsError: false,
-	}, nil
+	return mcp.NewCallToolResultImage(base64Image, resp.Header.Get("Content-Type")), nil
 }
 
 // AudioHandler is a handler for audio responses
@@ -164,14 +147,5 @@ func (h *AudioHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmpl
 	} else {
 		base64Audio = base64.StdEncoding.EncodeToString(respBody)
 	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.AudioContent{
-				Type:     mcp.AudioContentType,
-				Data:     base64Audio,
-				MimeType: resp.Header.Get("Content-Type"),
-			},
-		},
-		IsError: false,
-	}, nil
+	return mcp.NewCallToolResultAudio(base64Audio, resp.Header.Get("Content-Type")), nil
 }

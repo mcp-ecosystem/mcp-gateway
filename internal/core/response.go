@@ -32,15 +32,7 @@ func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection,
 			JSONRPC: mcp.JSPNRPCVersion,
 			ID:      req.Id,
 		},
-		Result: mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Type: "text",
-					Text: fmt.Sprintf("Error: %s", err.Error()),
-				},
-			},
-			IsError: true,
-		},
+		Result: mcp.NewCallToolResultError(fmt.Sprintf("Error: %s", err.Error())),
 	}
 	s.sendResponse(c, req.Id, conn, response, isSSE)
 }
