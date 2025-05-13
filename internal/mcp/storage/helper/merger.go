@@ -31,6 +31,11 @@ func MergeConfigs(configs []*config.MCPConfig) ([]*config.MCPConfig, error) {
 			if err := mergeSSEConfig(mergedSSEConfig, cfg); err != nil {
 				return nil, err
 			}
+		default:
+			// back compatible
+			if err := mergeHTTPConfig(mergedHTTPConfig, cfg); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -70,6 +75,9 @@ func mergeSSEConfig(base, override *config.MCPConfig) error {
 
 	// Merge servers
 	base.Servers = mergeConfigServers(base.Servers, override.Servers)
+
+	// Merge tools
+	base.Tools = mergeConfigTools(base.Tools, override.Tools)
 
 	// Merge sse configs
 	base.SSEServer = mergeConfigSSE(base.SSEServer, override.SSEServer)

@@ -23,18 +23,39 @@ type (
 		ProgressToken any `json:"progressToken"`
 	}
 
-	Notification struct {
-		Method string             `json:"method"`
-		Params NotificationParams `json:"params,omitempty"`
+	// JSONRPCRequest represents a JSON-RPC request that expects a response
+	JSONRPCRequest struct {
+		// JSONRPC version, must be "2.0"
+		JSONRPC string `json:"jsonrpc"`
+		// A uniquely identifying ID for a request in JSON-RPC
+		Id any `json:"id"`
+		// The method to be invoked
+		Method string `json:"method"`
+		// The parameters to be passed to the method
+		Params json.RawMessage `json:"params"`
 	}
 
-	NotificationParams struct {
-		// This parameter name is reserved by MCP to allow clients and
-		// servers to attach additional metadata to their notifications.
-		Meta map[string]interface{} `json:"_meta,omitempty"`
+	// JSONRPCResponse represents a JSON-RPC response
+	JSONRPCResponse struct {
+		JSONRPCBaseResult
+		Result any `json:"result"`
+	}
 
-		// Additional fields can be added to this map
-		AdditionalFields map[string]interface{} `json:"-"`
+	// JSONRPCNotification represents a JSON-RPC notification
+	JSONRPCNotification struct {
+		JSONRPCBaseResult
+		Method string          `json:"method"`
+		Params json.RawMessage `json:"params"`
+	}
+
+	// ToolSchema represents a tool definition
+	ToolSchema struct {
+		// The name of the tool
+		Name string `json:"name"`
+		// A human-readable description of the tool
+		Description string `json:"description"`
+		// A JSON Schema object defining the expected parameters for the tool
+		InputSchema ToolInputSchema `json:"inputSchema"`
 	}
 
 	ToolInputSchema struct {
@@ -43,6 +64,11 @@ type (
 		Required   []string       `json:"required,omitempty"`
 		Title      string         `json:"title"`
 		Enum       []any          `json:"enum,omitempty"`
+	}
+
+	// ListToolsResult represents the result of a tools/list request
+	ListToolsResult struct {
+		Tools []ToolSchema `json:"tools"`
 	}
 
 	// CallToolParams represents parameters for a tools/call request
@@ -54,6 +80,29 @@ type (
 		Arguments json.RawMessage `json:"arguments"`
 	}
 
+	// Content represents a content item in a tool call result
+	Content interface {
+		// GetType returns the type of the content
+		GetType() string
+	}
+
+	// TextContent represents a text content item
+	TextContent struct {
+		// Must be "text"
+		Type string `json:"type"`
+		// The text content
+		Text string `json:"text"`
+	}
+
+	ImageContent struct {
+		// Must be "image"
+		Type string `json:"type"`
+		// The image data in base64 format
+		Data string `json:"data"`
+		// The MIME type of the image. e.g., "image/png", "image/jpeg"
+		MimeType string `json:"mimeType"`
+	}
+
 	AudioContent struct {
 		// Must be "audio"
 		Type string `json:"type"`
@@ -61,6 +110,12 @@ type (
 		Data string `json:"data"`
 		// The MIME type of the audio. e.g., "audio/wav", "audio/mpeg"
 		MimeType string `json:"mimeType"`
+	}
+
+	// CallToolResult represents the result of a tools/call request
+	CallToolResult struct {
+		Content []Content `json:"content"`
+		IsError bool      `json:"isError"`
 	}
 
 	// ImplementationSchema describes the name and version of an MCP implementation
@@ -128,6 +183,11 @@ type (
 		ListChanged bool `json:"listChanged"`
 	}
 
+	// InitializeResult represents the result of an initialize request
+	InitializeResult struct {
+		JSONRPCBaseResult
+		Result InitializedResult `json:"result"`
+	}
 	InitializedResult struct {
 		// The version of the Model Context Protocol that the server wants to use
 		ProtocolVersion string `json:"protocolVersion"`
@@ -162,49 +222,6 @@ type (
 		// Additional information about the error
 		Data any `json:"data,omitempty"`
 	}
-
-	// ServerCapabilities represents capabilities that a server may support. Known
-	// capabilities are defined here, in this schema, but this is not a closed set: any
-	// server can define its own, additional capabilities.
-	ServerCapabilities struct {
-		// Experimental, non-standard capabilities that the server supports.
-		Experimental map[string]interface{} `json:"experimental,omitempty"`
-		// Present if the server supports sending log messages to the client.
-		Logging *struct{} `json:"logging,omitempty"`
-		// Present if the server offers any prompt templates.
-		Prompts *struct {
-			// Whether this server supports notifications for changes to the prompt list.
-			ListChanged bool `json:"listChanged,omitempty"`
-		} `json:"prompts,omitempty"`
-		// Present if the server offers any resources to read.
-		Resources *struct {
-			// Whether this server supports subscribing to resource updates.
-			Subscribe bool `json:"subscribe,omitempty"`
-			// Whether this server supports notifications for changes to the resource
-			// list.
-			ListChanged bool `json:"listChanged,omitempty"`
-		} `json:"resources,omitempty"`
-		// Present if the server offers any tools to call.
-		Tools *struct {
-			// Whether this server supports notifications for changes to the tool list.
-			ListChanged bool `json:"listChanged,omitempty"`
-		} `json:"tools,omitempty"`
-	}
-
-	// ClientCapabilities represents capabilities a client may support. Known
-	// capabilities are defined here, in this schema, but this is not a closed set: any
-	// client can define its own, additional capabilities.
-	ClientCapabilities struct {
-		// Experimental, non-standard capabilities that the client supports.
-		Experimental map[string]interface{} `json:"experimental,omitempty"`
-		// Present if the client supports listing roots.
-		Roots *struct {
-			// Whether the client supports notifications for changes to the roots list.
-			ListChanged bool `json:"listChanged,omitempty"`
-		} `json:"roots,omitempty"`
-		// Present if the client supports sampling from an LLM.
-		Sampling *struct{} `json:"sampling,omitempty"`
-	}
 )
 
 // NewInitializeRequest creates a new initialize request
@@ -213,7 +230,7 @@ func NewInitializeRequest(id int64, params InitializeRequestParams) InitializeRe
 	return InitializeRequestSchema{
 		JSONRPCRequest: JSONRPCRequest{
 			JSONRPC: JSPNRPCVersion,
-			ID:      id,
+			Id:      id,
 			Method:  Initialize,
 			Params:  paramsBytes,
 		},
@@ -225,7 +242,7 @@ func NewPingRequest(id int64) PingRequest {
 	return PingRequest{
 		JSONRPCRequest: JSONRPCRequest{
 			JSONRPC: JSPNRPCVersion,
-			ID:      id,
+			Id:      id,
 			Method:  Ping,
 		},
 	}
@@ -291,7 +308,7 @@ func NewCallToolResultImage(imageData, mimeType string) *CallToolResult {
 			&ImageContent{
 				Type:     ImageContentType,
 				Data:     imageData,
-				MIMEType: mimeType,
+				MimeType: mimeType,
 			},
 		},
 		IsError: false,
@@ -308,7 +325,7 @@ func NewCallToolResultAudio(audioData, mimeType string) *CallToolResult {
 			&ImageContent{
 				Type:     AudioContentType,
 				Data:     audioData,
-				MIMEType: mimeType,
+				MimeType: mimeType,
 			},
 		},
 		IsError: false,

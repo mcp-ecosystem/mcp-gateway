@@ -27,27 +27,37 @@ func (s *Server) sendProtocolError(c *gin.Context, id any, message string, statu
 
 // sendToolExecutionError sends a tool execution error response
 func (s *Server) sendToolExecutionError(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, err error, isSSE bool) {
-	response := mcp.JSONRPCResponse{
+	// 创建自定义的错误响应结构
+	response := struct {
+		JSONRPC string           `json:"jsonrpc"`
+		ID      any              `json:"id"`
+		Error   mcp.JSONRPCError `json:"error"`
+	}{
 		JSONRPC: mcp.JSPNRPCVersion,
-		ID:      &req.ID,
-		Error: &mcp.JSONRPCError{
+		ID:      req.Id,
+		Error: mcp.JSONRPCError{
 			Code:    mcp.ErrorCodeInternalError,
 			Message: err.Error(),
 		},
 	}
 
-	s.sendResponse(c, req.ID, conn, response, isSSE)
+	s.sendResponse(c, req.Id, conn, response, isSSE)
 }
 
 // sendSuccessResponse sends a successful response
 func (s *Server) sendSuccessResponse(c *gin.Context, conn session.Connection, req mcp.JSONRPCRequest, result any, isSSE bool) {
-	resultBytes, _ := json.Marshal(result)
-	response := mcp.JSONRPCResponse{
+	// 创建自定义的成功响应结构
+	response := struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      any    `json:"id"`
+		Result  any    `json:"result"`
+	}{
 		JSONRPC: mcp.JSPNRPCVersion,
-		ID:      &req.ID,
-		Result:  resultBytes,
+		ID:      req.Id,
+		Result:  result,
 	}
-	s.sendResponse(c, req.ID, conn, response, isSSE)
+
+	s.sendResponse(c, req.Id, conn, response, isSSE)
 }
 
 // sendResponse handles sending the response through SSE or direct HTTP

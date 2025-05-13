@@ -8,13 +8,6 @@ type ListToolsRequest struct {
 	PaginatedRequest
 }
 
-// ListToolsResult is the server's response to a tools/list request from the
-// client.
-type ListToolsResult struct {
-	PaginatedResult
-	Tools []Tool `json:"tools"`
-}
-
 type PaginatedRequest struct {
 	Request
 	Params struct {

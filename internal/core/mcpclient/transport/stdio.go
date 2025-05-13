@@ -194,14 +194,28 @@ func (c *Stdio) readResponses() {
 				continue
 			}
 
+			// 修改ID处理，先进行类型断言
+			var idValue int64
+			switch id := baseMessage.ID.(type) {
+			case float64:
+				idValue = int64(id)
+			case int64:
+				idValue = id
+			case int:
+				idValue = int64(id)
+			default:
+				// 无法处理的ID类型
+				continue
+			}
+
 			c.mu.RLock()
-			ch, ok := c.responses[*baseMessage.ID]
+			ch, ok := c.responses[idValue]
 			c.mu.RUnlock()
 
 			if ok {
 				ch <- &baseMessage
 				c.mu.Lock()
-				delete(c.responses, *baseMessage.ID)
+				delete(c.responses, idValue)
 				c.mu.Unlock()
 			}
 		}
@@ -229,12 +243,26 @@ func (c *Stdio) SendRequest(
 
 	// Register response channel
 	responseChan := make(chan *mcp.JSONRPCResponse, 1)
+
+	// 对request.Id进行类型断言
+	var requestIdValue int64
+	switch id := request.Id.(type) {
+	case float64:
+		requestIdValue = int64(id)
+	case int64:
+		requestIdValue = id
+	case int:
+		requestIdValue = int64(id)
+	default:
+		return nil, fmt.Errorf("unsupported ID type: %T", request.Id)
+	}
+
 	c.mu.Lock()
-	c.responses[request.ID] = responseChan
+	c.responses[requestIdValue] = responseChan
 	c.mu.Unlock()
 	deleteResponseChan := func() {
 		c.mu.Lock()
-		delete(c.responses, request.ID)
+		delete(c.responses, requestIdValue)
 		c.mu.Unlock()
 	}
 

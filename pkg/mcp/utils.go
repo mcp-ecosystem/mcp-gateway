@@ -17,13 +17,6 @@ func ParseCallToolResult(rawMessage *json.RawMessage) (*CallToolResult, error) {
 
 	var result CallToolResult
 
-	meta, ok := jsonContent["_meta"]
-	if ok {
-		if metaMap, ok := meta.(map[string]any); ok {
-			result.Meta = metaMap
-		}
-	}
-
 	isError, ok := jsonContent["isError"]
 	if ok {
 		if isErrorBool, ok := isError.(bool); ok {
@@ -66,7 +59,10 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 	switch contentType {
 	case "text":
 		text := ExtractString(contentMap, "text")
-		return NewTextContent(text), nil
+		return &TextContent{
+			Type: "text",
+			Text: text,
+		}, nil
 
 	case "image":
 		data := ExtractString(contentMap, "data")
@@ -74,7 +70,11 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 		if data == "" || mimeType == "" {
 			return nil, fmt.Errorf("image data or mimeType is missing")
 		}
-		return NewImageContent(data, mimeType), nil
+		return &ImageContent{
+			Type:     "image",
+			Data:     data,
+			MimeType: mimeType,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("unsupported content type: %s", contentType)
@@ -99,8 +99,8 @@ func CoverToStdioClientEnv(env map[string]string) []string {
 
 // NewTextContent
 // Helper function to create a new TextContent
-func NewTextContent(text string) TextContent {
-	return TextContent{
+func NewTextContent(text string) *TextContent {
+	return &TextContent{
 		Type: "text",
 		Text: text,
 	}
@@ -108,10 +108,10 @@ func NewTextContent(text string) TextContent {
 
 // NewImageContent
 // Helper function to create a new ImageContent
-func NewImageContent(data, mimeType string) ImageContent {
-	return ImageContent{
+func NewImageContent(data, mimeType string) *ImageContent {
+	return &ImageContent{
 		Type:     "image",
 		Data:     data,
-		MIMEType: mimeType,
+		MimeType: mimeType,
 	}
 }

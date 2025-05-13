@@ -26,6 +26,7 @@ func (s *Server) handleSSE(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
 	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Status(http.StatusOK)
 
 	// Get the prefix from the request path
 	prefix := strings.TrimSuffix(c.Request.URL.Path, "/sse")
@@ -84,7 +85,7 @@ func (s *Server) sendErrorResponse(c *gin.Context, conn session.Connection, req 
 	response := mcp.JSONRPCErrorSchema{
 		JSONRPCBaseResult: mcp.JSONRPCBaseResult{
 			JSONRPC: mcp.JSPNRPCVersion,
-			ID:      &req.ID,
+			ID:      req.Id,
 		},
 		Error: mcp.JSONRPCError{
 			Code:    mcp.ErrorCodeInternalError,
@@ -155,8 +156,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		s.sendAcceptedResponse(c)
 	case mcp.Initialize:
 		var params mcp.InitializeRequestParams
-		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
-			s.sendProtocolError(c, req.ID, "Invalid initialize parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			s.sendProtocolError(c, req.Id, "Invalid initialize parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
@@ -172,53 +173,63 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		// Get the proto type for this prefix
 		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.ID, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
-		var tools []mcp.Tool
+		var tools []mcp.ToolSchema
 		var err error
 		switch protoType {
 		case cnst.BackendProtoHttp:
 			tools, err = s.fetchHTTPToolList(conn)
 			if err != nil {
-				s.sendProtocolError(c, req.ID, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
 		case cnst.BackendProtoStdio:
 			tools, err = s.fetchStdioToolList(c.Request.Context(), conn)
 			if err != nil {
-				s.sendProtocolError(c, req.ID, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
 		default:
-			s.sendProtocolError(c, req.ID, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
+		// 将 []mcp.Tool 转换为 []mcp.ToolSchema
+		toolSchemas := make([]mcp.ToolSchema, len(tools))
+		for i, tool := range tools {
+			toolSchemas[i] = mcp.ToolSchema{
+				Name:        tool.Name,
+				Description: tool.Description,
+				InputSchema: tool.InputSchema,
+			}
+		}
+
 		result := mcp.ListToolsResult{
-			Tools: tools,
+			Tools: toolSchemas,
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
 		// Marshal the request params
 		paramsBytes, err := json.Marshal(req.Params)
 		if err != nil {
-			s.sendProtocolError(c, req.ID, "Failed to marshal tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.Id, "Failed to marshal tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Get the proto type for this prefix
 		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
-			s.sendProtocolError(c, req.ID, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
 		// Execute the tool and return the result
 		var params mcp.CallToolParams
 		if err := json.Unmarshal(paramsBytes, &params); err != nil {
-			s.sendProtocolError(c, req.ID, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.Id, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
@@ -236,58 +247,75 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		default:
-			s.sendProtocolError(c, req.ID, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	default:
-		s.sendProtocolError(c, req.ID, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
 }
 
-func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.Tool, error) {
+func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, error) {
 	// Get http tools for this prefix
 	tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
 	if !ok {
-		tools = []mcp.Tool{} // Return empty list if prefix not found
+		tools = []mcp.ToolSchema{} // Return empty list if prefix not found
 	}
 
 	return tools, nil
 }
 
-func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection) ([]mcp.Tool, error) {
+func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection) ([]mcp.ToolSchema, error) {
 	// Get stdio tools for this prefix
 	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
 	if !ok {
-		return []mcp.Tool{}, nil
+		return []mcp.ToolSchema{}, nil
 	}
 
 	stdioClientEnv := mcp.CoverToStdioClientEnv(stdioCfg.Env)
 	stdioClient, err := mcpclient.NewStdioMCPClient(stdioCfg.Command, stdioClientEnv, stdioCfg.Args...)
 	if err != nil {
-		return []mcp.Tool{}, err
+		return []mcp.ToolSchema{}, err
 	}
 	defer stdioClient.Close()
 
 	// initialize stdio client
-	initRequest := mcp.InitializeRequest{}
-	initRequest.Params.ProtocolVersion = mcp.LatestProtocolVersion
-	initRequest.Params.ClientInfo = mcp.Implementation{
+	initRequest := mcp.InitializeRequestSchema{}
+	var initParams mcp.InitializeRequestParams
+	initParams.ProtocolVersion = mcp.LatestProtocolVersion
+	initParams.ClientInfo = mcp.ImplementationSchema{
 		Name:    "mcp-gateway",
 		Version: "0.1.0",
 	}
+	paramsBytes, _ := json.Marshal(initParams)
+	initRequest.Params = paramsBytes
+	initRequest.Method = mcp.Initialize
+	initRequest.JSONRPC = mcp.JSPNRPCVersion
+
+	// 使用 Initialize 代替 InitializeRequest
 	_, err = stdioClient.Initialize(ctx, initRequest)
 	if err != nil {
-		return []mcp.Tool{}, err
+		return []mcp.ToolSchema{}, err
 	}
 
 	// list tools
 	listToolsResult, err := stdioClient.ListTools(ctx, mcp.ListToolsRequest{})
 	if err != nil {
-		return []mcp.Tool{}, err
+		return []mcp.ToolSchema{}, err
 	}
 
-	return listToolsResult.Tools, nil
+	// 将 []mcp.ToolSchema 转换为 []mcp.Tool
+	tools := make([]mcp.ToolSchema, len(listToolsResult.Tools))
+	for i, schema := range listToolsResult.Tools {
+		tools[i] = mcp.ToolSchema{
+			Name:        schema.Name,
+			Description: schema.Description,
+			InputSchema: schema.InputSchema,
+		}
+	}
+
+	return tools, nil
 }
 
 func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
@@ -295,7 +323,7 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 	tool, exists := s.state.toolMap[params.Name]
 	if !exists {
 		errMsg := "Tool not found"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 		return nil, errors.New(errMsg)
 	}
 
@@ -303,7 +331,7 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
 		errMsg := "Invalid tool arguments"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 		return nil, errors.New(errMsg)
 	}
 
@@ -311,7 +339,7 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
 	if !ok {
 		errMsg := "Server configuration not found"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 		return nil, errors.New(errMsg)
 	}
 
@@ -330,7 +358,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
 	if !ok {
 		errMsg := "Server configuration not found"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 		return nil, errors.New(errMsg)
 	}
 
@@ -338,7 +366,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
 	if !ok {
 		errMsg := "Server configuration not found"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 		return nil, errors.New(errMsg)
 	}
 
@@ -346,7 +374,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
 		errMsg := "Invalid tool arguments"
-		s.sendProtocolError(c, req.ID, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		s.sendProtocolError(c, req.Id, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 		return nil, errors.New(errMsg)
 	}
 
@@ -395,12 +423,19 @@ func (s *Server) executeStdioTool(
 	defer stdioClient.Close()
 
 	// initialize stdio client
-	initRequest := mcp.InitializeRequest{}
-	initRequest.Params.ProtocolVersion = mcp.LatestProtocolVersion
-	initRequest.Params.ClientInfo = mcp.Implementation{
+	initRequest := mcp.InitializeRequestSchema{}
+	var initParams mcp.InitializeRequestParams
+	initParams.ProtocolVersion = mcp.LatestProtocolVersion
+	initParams.ClientInfo = mcp.ImplementationSchema{
 		Name:    "mcp-gateway",
 		Version: "0.1.0",
 	}
+	paramsBytes, _ := json.Marshal(initParams)
+	initRequest.Params = paramsBytes
+	initRequest.Method = mcp.Initialize
+	initRequest.JSONRPC = mcp.JSPNRPCVersion
+
+	// 使用 Initialize 代替 InitializeRequest
 	_, err = stdioClient.Initialize(c.Request.Context(), initRequest)
 	if err != nil {
 		return nil, err

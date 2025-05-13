@@ -31,9 +31,9 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
-		tools                     []mcp.Tool
+		tools                     []mcp.ToolSchema
 		toolMap                   map[string]*config.ToolConfig
-		prefixToTools             map[string][]mcp.Tool
+		prefixToTools             map[string][]mcp.ToolSchema
 		prefixToServerConfig      map[string]*config.ServerConfig
 		prefixToRouterConfig      map[string]*config.RouterConfig
 		prefixToStdioServerConfig map[string]*config.StdioServerConfig
@@ -53,9 +53,9 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	return &Server{
 		logger: logger,
 		state: &serverState{
-			tools:                make([]mcp.Tool, 0),
+			tools:                make([]mcp.ToolSchema, 0),
 			toolMap:              make(map[string]*config.ToolConfig),
-			prefixToTools:        make(map[string][]mcp.Tool),
+			prefixToTools:        make(map[string][]mcp.ToolSchema),
 			prefixToServerConfig: make(map[string]*config.ServerConfig),
 			prefixToRouterConfig: make(map[string]*config.RouterConfig),
 		},
@@ -137,9 +137,9 @@ func (s *Server) Shutdown(_ context.Context) error {
 func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
-		tools:                     make([]mcp.Tool, 0),
+		tools:                     make([]mcp.ToolSchema, 0),
 		toolMap:                   make(map[string]*config.ToolConfig),
-		prefixToTools:             make(map[string][]mcp.Tool),
+		prefixToTools:             make(map[string][]mcp.ToolSchema),
 		prefixToServerConfig:      make(map[string]*config.ServerConfig),
 		prefixToRouterConfig:      make(map[string]*config.RouterConfig),
 		prefixToStdioServerConfig: make(map[string]*config.StdioServerConfig),
@@ -149,6 +149,13 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 
 	for idx := range cfgs {
 		cfg := cfgs[idx]
+
+		// Initialize tool map and list for MCP servers
+		for i := range cfg.Tools {
+			tool := &cfg.Tools[i]
+			newState.toolMap[tool.Name] = tool
+			newState.tools = append(newState.tools, tool.ToToolSchema())
+		}
 
 		// Build prefix to tools mapping for MCP servers
 		prefixMap := make(map[string]string)
@@ -164,7 +171,7 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			}
 
 			// Filter tools based on MCP server's allowed tools
-			var allowedTools []mcp.Tool
+			var allowedTools []mcp.ToolSchema
 			for _, toolName := range serverCfg.AllowedTools {
 				if tool, ok := newState.toolMap[toolName]; ok {
 					allowedTools = append(allowedTools, tool.ToToolSchema())
@@ -178,17 +185,8 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			newState.prefixToStdioServerConfig[prefix] = &cfg.StdioServer
 			newState.prefixToSSEServerConfig[prefix] = &cfg.SSEServer
 		}
-
-		// Initialize tool map and list for MCP servers
-		for i := range cfg.Tools {
-			tool := &cfg.Tools[i]
-			newState.toolMap[tool.Name] = tool
-			newState.tools = append(newState.tools, tool.ToToolSchema())
-		}
 	}
 
-	fmt.Println("aaaa")
-	fmt.Printf("%+v\n", newState)
 	return newState, nil
 }
 
