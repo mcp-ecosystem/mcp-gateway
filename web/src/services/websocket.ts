@@ -1,8 +1,8 @@
+import { t } from 'i18next';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ToolCall } from '../types/message';
 import { toast } from '../utils/toast';
-import { t } from 'i18next';
 
 export interface WebSocketMessage {
   type: 'system' | 'message' | 'stream' | 'tool_call' | 'tool_result';

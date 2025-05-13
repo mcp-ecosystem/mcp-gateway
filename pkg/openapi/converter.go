@@ -36,6 +36,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create base MCP configuration
 	mcpConfig := &config.MCPConfig{
 		Name:      doc.Info.Title,
+		Tenant:    "/default", // Default tenant prefix
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Routers:   make([]config.RouterConfig, 0),
@@ -46,7 +47,6 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create server configuration
 	server := config.ServerConfig{
 		Name:         doc.Info.Title,
-		Namespace:    "default",
 		Description:  doc.Info.Description,
 		Config:       make(map[string]string),
 		AllowedTools: make([]string, 0),
@@ -60,7 +60,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create a default router for the server
 	router := config.RouterConfig{
 		Server: doc.Info.Title,
-		Prefix: "/", // Default to root path
+		Prefix: "/mcp", // TODO: Get prefix from tenant
 		CORS: &config.CORSConfig{
 			AllowOrigins:     []string{"*"},
 			AllowMethods:     []string{"GET", "POST", "OPTIONS"},

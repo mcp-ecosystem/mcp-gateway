@@ -21,7 +21,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getTenants, createTenant, updateTenant, deleteTenant } from '../../services/api';
-import { toast } from '../../utils/toast';
 
 interface Tenant {
   id: number;

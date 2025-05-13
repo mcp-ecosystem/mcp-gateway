@@ -26,9 +26,10 @@ type RedisStore struct {
 var _ Store = (*RedisStore)(nil)
 
 // NewRedisStore creates a new Redis-based session store
-func NewRedisStore(logger *zap.Logger, addr, password string, db int, topic string) (*RedisStore, error) {
+func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, topic string) (*RedisStore, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
+		Username: username,
 		Password: password,
 		DB:       db,
 	})

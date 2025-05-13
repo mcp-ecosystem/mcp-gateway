@@ -19,6 +19,7 @@ type (
 
 	MCPConfig struct {
 		Name      string         `yaml:"name" gorm:"primaryKey"`
+		Tenant    string         `yaml:"tenant" gorm:"index"`
 		CreatedAt time.Time      `yaml:"created_at"`
 		UpdatedAt time.Time      `yaml:"updated_at"`
 		Routers   []RouterConfig `yaml:"routers" gorm:"type:json"`
