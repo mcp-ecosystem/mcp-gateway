@@ -39,7 +39,7 @@ func NewLogger(cfg *config.LoggerConfig) (*zap.Logger, error) {
 		}
 		syncer = getLogWriter(cfg)
 	} else {
-		syncer = zap.CombineWriteSyncers(syncer, os.Stdout)
+		syncer = zapcore.AddSync(os.Stdout)
 	}
 
 	level := getLogLevel(cfg.Level)
