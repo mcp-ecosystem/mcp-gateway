@@ -84,6 +84,12 @@ func setLoggerDefaults(cfg *config.LoggerConfig) {
 	if cfg.MaxAge == 0 {
 		cfg.MaxAge = 7 // 7 days
 	}
+	if cfg.TimeZone == "" {
+		cfg.TimeZone = "Local"
+	}
+	if cfg.TimeFormat == "" {
+		cfg.TimeFormat = "2006-01-02 15:04:05"
+	}
 }
 
 // getEncoder creates a zapcore.Encoder based on the configuration
