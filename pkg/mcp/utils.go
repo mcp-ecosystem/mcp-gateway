@@ -89,6 +89,14 @@ func ExtractString(data map[string]any, key string) string {
 	return ""
 }
 
+func CoverToStdioClientEnv(env map[string]string) []string {
+	envList := []string{}
+	for k, v := range env {
+		envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+	}
+	return envList
+}
+
 // NewTextContent
 // Helper function to create a new TextContent
 func NewTextContent(text string) TextContent {

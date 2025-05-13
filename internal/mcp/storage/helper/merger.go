@@ -59,7 +59,7 @@ func mergeStdioConfig(base, override *config.MCPConfig) error {
 	base.Servers = mergeConfigServers(base.Servers, override.Servers)
 
 	// Merge stdio configs
-	base.StdioConfigs = mergeConfigStdio(base.StdioConfigs, override.StdioConfigs)
+	base.StdioServer = mergeConfigStdio(base.StdioServer, override.StdioServer)
 
 	return nil
 }
@@ -72,43 +72,17 @@ func mergeSSEConfig(base, override *config.MCPConfig) error {
 	base.Servers = mergeConfigServers(base.Servers, override.Servers)
 
 	// Merge sse configs
-	base.SSEConfigs = mergeConfigSSE(base.SSEConfigs, override.SSEConfigs)
+	base.SSEServer = mergeConfigSSE(base.SSEServer, override.SSEServer)
 
 	return nil
 }
 
-func mergeConfigStdio(base, override []config.StdioConfig) []config.StdioConfig {
-	stdioServerMap := make(map[string]config.StdioConfig)
-	for _, server := range base {
-		stdioServerMap[server.Name] = server
-	}
-	for _, server := range override {
-		stdioServerMap[server.Name] = server
-	}
-
-	mergedStdioConfigs := make([]config.StdioConfig, 0, len(stdioServerMap))
-	for _, server := range stdioServerMap {
-		mergedStdioConfigs = append(mergedStdioConfigs, server)
-	}
-
-	return mergedStdioConfigs
+func mergeConfigStdio(base, override config.StdioServerConfig) config.StdioServerConfig {
+	return override
 }
 
-func mergeConfigSSE(base, override []config.SSEConfig) []config.SSEConfig {
-	sseServerMap := make(map[string]config.SSEConfig)
-	for _, server := range base {
-		sseServerMap[server.Name] = server
-	}
-	for _, server := range override {
-		sseServerMap[server.Name] = server
-	}
-
-	mergedSSEConfigs := make([]config.SSEConfig, 0, len(sseServerMap))
-	for _, server := range sseServerMap {
-		mergedSSEConfigs = append(mergedSSEConfigs, server)
-	}
-
-	return mergedSSEConfigs
+func mergeConfigSSE(base, override config.SSEServerConfig) config.SSEServerConfig {
+	return override
 }
 
 func mergeConfigRouters(base, override []config.RouterConfig) []config.RouterConfig {

@@ -12,7 +12,6 @@ func NewStdioMCPClient(
 	env []string,
 	args ...string,
 ) (*Client, error) {
-
 	stdioTransport := transport.NewStdio(command, env, args...)
 	err := stdioTransport.Start(context.Background())
 	if err != nil {

@@ -11,15 +11,15 @@ import (
 
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
-	Name         string `gorm:"primaryKey; column:name"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	ProtoType    string `gorm:"type:varchar(64); column:proto_type; required"`
-	Routers      string `gorm:"type:text; column:routers; default:''"`
-	Servers      string `gorm:"type:text; column:servers; default:''"`
-	Tools        string `gorm:"type:text; column:tools; default:''"`
-	StdioConfigs string `gorm:"type:text; column:stdio_configs; default:''"`
-	SSEConfigs   string `gorm:"type:text; column:sse_configs; default:''"`
+	Name        string `gorm:"primaryKey; column:name"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ProtoType   string `gorm:"type:varchar(64); column:proto_type; required"`
+	Routers     string `gorm:"type:text; column:routers; default:''"`
+	Servers     string `gorm:"type:text; column:servers; default:''"`
+	Tools       string `gorm:"type:text; column:tools; default:''"`
+	StdioServer string `gorm:"type:text; column:stdio_server; default:''"`
+	SSEServer   string `gorm:"type:text; column:sse_server; default:''"`
 }
 
 // ToMCPConfig converts the database model to MCPConfig
@@ -46,13 +46,13 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 			return nil, err
 		}
 	}
-	if len(m.StdioConfigs) > 0 {
-		if err := json.Unmarshal([]byte(m.StdioConfigs), &cfg.StdioConfigs); err != nil {
+	if len(m.StdioServer) > 0 {
+		if err := json.Unmarshal([]byte(m.StdioServer), &cfg.StdioServer); err != nil {
 			return nil, err
 		}
 	}
-	if len(m.SSEConfigs) > 0 {
-		if err := json.Unmarshal([]byte(m.SSEConfigs), &cfg.SSEConfigs); err != nil {
+	if len(m.SSEServer) > 0 {
+		if err := json.Unmarshal([]byte(m.SSEServer), &cfg.SSEServer); err != nil {
 			return nil, err
 		}
 	}
@@ -77,26 +77,26 @@ func FromMCPConfig(cfg *config.MCPConfig) (*MCPConfig, error) {
 		return nil, err
 	}
 
-	stdioConfigs, err := json.Marshal(cfg.StdioConfigs)
+	stdioConfigs, err := json.Marshal(cfg.StdioServer)
 	if err != nil {
 		return nil, err
 	}
 
-	sseConfigs, err := json.Marshal(cfg.SSEConfigs)
+	sseConfigs, err := json.Marshal(cfg.SSEServer)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MCPConfig{
-		Name:         cfg.Name,
-		CreatedAt:    cfg.CreatedAt,
-		UpdatedAt:    cfg.UpdatedAt,
-		ProtoType:    string(cfg.ProtoType),
-		Routers:      string(routers),
-		Servers:      string(servers),
-		Tools:        string(tools),
-		StdioConfigs: string(stdioConfigs),
-		SSEConfigs:   string(sseConfigs),
+		Name:        cfg.Name,
+		CreatedAt:   cfg.CreatedAt,
+		UpdatedAt:   cfg.UpdatedAt,
+		ProtoType:   string(cfg.ProtoType),
+		Routers:     string(routers),
+		Servers:     string(servers),
+		Tools:       string(tools),
+		StdioServer: string(stdioConfigs),
+		SSEServer:   string(sseConfigs),
 	}, nil
 }
 

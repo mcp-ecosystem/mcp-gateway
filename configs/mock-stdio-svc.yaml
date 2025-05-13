@@ -1,8 +1,9 @@
 name: "mock-stdio-svc"
+tenant: "default"
 
 routers:
   - server: "mock-stdio-svc"
-    prefix: "/mcp/stdio"
+    prefix: "/mcp/stdio-service/amap-maps"
     cors:
       allowOrigins:
         - "*"
@@ -23,22 +24,15 @@ servers:
     namespace: "stdio-service"
     description: "Mock Stdio Service"
 
-stdio_configs:
-  - name: "amap-maps"
-    command: "npx"
-    args:
-      - "-y"
-      - "@amap/amap-maps-mcp-server"
-    env:
-      AMAP_MAPS_API_KEY: "{{.Args.AMAP_MAPS_API_KEY}}"
-  - name: "github"
-    command: "npx"
-    args:
-      - "-y"
-      - "@github/github-mcp-server"
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: "{{.Args.GITHUB_PERSONAL_ACCESS_TOKEN}}"
+stdio_server:
+  name: "amap-maps"
+  command: "npx"
+  args:
+    - "-y"
+    - "@amap/amap-maps-mcp-server"
+  env:
+    AMAP_MAPS_API_KEY: "{{.Request.Headers.Apikey}}"
 
-sse_configs:
-  - name: "web-search"
-    url: "http://localhost:5236/web-search"
+sse_server:
+  name: "web-search"
+  url: "http://localhost:5236/web-search"

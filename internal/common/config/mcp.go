@@ -19,16 +19,16 @@ type (
 	}
 
 	MCPConfig struct {
-		Name         string         `yaml:"name" gorm:"primaryKey"`
-		Tenant       string         `yaml:"tenant" gorm:"index"`
-		CreatedAt    time.Time      `yaml:"created_at"`
-		UpdatedAt    time.Time      `yaml:"updated_at"`
-		ProtoType    cnst.ProtoType `yaml:"proto_type" gorm:"type:varchar(64)"`
-		Routers      []RouterConfig `yaml:"routers" gorm:"type:json"`
-		Servers      []ServerConfig `yaml:"servers" gorm:"type:json"`
-		Tools        []ToolConfig   `yaml:"tools" gorm:"type:json"`
-		StdioConfigs []StdioConfig  `yaml:"stdio_configs" gorm:"type:json"`
-		SSEConfigs   []SSEConfig    `yaml:"sse_configs" gorm:"type:json"`
+		Name        string            `yaml:"name" gorm:"primaryKey"`
+		Tenant      string            `yaml:"tenant" gorm:"index"`
+		CreatedAt   time.Time         `yaml:"created_at"`
+		UpdatedAt   time.Time         `yaml:"updated_at"`
+		ProtoType   cnst.ProtoType    `yaml:"proto_type" gorm:"type:varchar(64)"`
+		Routers     []RouterConfig    `yaml:"routers" gorm:"type:json"`
+		Servers     []ServerConfig    `yaml:"servers" gorm:"type:json"`
+		Tools       []ToolConfig      `yaml:"tools" gorm:"type:json"`
+		StdioServer StdioServerConfig `yaml:"stdio_server" gorm:"type:json"`
+		SSEServer   SSEServerConfig   `yaml:"sse_server" gorm:"type:json"`
 	}
 
 	RouterConfig struct {
@@ -65,14 +65,14 @@ type (
 		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
 	}
 
-	StdioConfig struct {
+	StdioServerConfig struct {
 		Name    string            `yaml:"name"`
 		Command string            `yaml:"command"`
 		Args    []string          `yaml:"args"`
 		Env     map[string]string `yaml:"env"`
 	}
 
-	SSEConfig struct {
+	SSEServerConfig struct {
 		Name string `yaml:"name"`
 		URL  string `yaml:"url"`
 	}

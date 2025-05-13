@@ -29,14 +29,14 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
-		tools                []mcp.Tool
-		toolMap              map[string]*config.ToolConfig
-		stdioMap             map[string]*config.StdioConfig
-		sseMap               map[string]*config.SSEConfig
-		prefixToTools        map[string][]mcp.Tool
-		prefixToServerConfig map[string]*config.ServerConfig
-		prefixToRouterConfig map[string]*config.RouterConfig
-		prefixToProtoType    map[string]cnst.ProtoType
+		tools                     []mcp.Tool
+		toolMap                   map[string]*config.ToolConfig
+		prefixToTools             map[string][]mcp.Tool
+		prefixToServerConfig      map[string]*config.ServerConfig
+		prefixToRouterConfig      map[string]*config.RouterConfig
+		prefixToStdioServerConfig map[string]*config.StdioServerConfig
+		prefixToSSEServerConfig   map[string]*config.SSEServerConfig
+		prefixToProtoType         map[string]cnst.ProtoType
 	}
 )
 
@@ -73,7 +73,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine, cfgs []*config.MCPConfig) er
 	router.Use(s.recoveryMiddleware())
 
 	// Create new state and load configuration
-	newState, err := loadConfig(cfgs)
+	newState, err := initState(cfgs)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -130,18 +130,18 @@ func (s *Server) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// loadConfig creates a new serverState from the given configuration
-func loadConfig(cfgs []*config.MCPConfig) (*serverState, error) {
+// initState creates a new serverState from the given configuration
+func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
-		tools:                make([]mcp.Tool, 0),
-		toolMap:              make(map[string]*config.ToolConfig),
-		stdioMap:             make(map[string]*config.StdioConfig),
-		sseMap:               make(map[string]*config.SSEConfig),
-		prefixToTools:        make(map[string][]mcp.Tool),
-		prefixToServerConfig: make(map[string]*config.ServerConfig),
-		prefixToRouterConfig: make(map[string]*config.RouterConfig),
-		prefixToProtoType:    make(map[string]cnst.ProtoType),
+		tools:                     make([]mcp.Tool, 0),
+		toolMap:                   make(map[string]*config.ToolConfig),
+		prefixToTools:             make(map[string][]mcp.Tool),
+		prefixToServerConfig:      make(map[string]*config.ServerConfig),
+		prefixToRouterConfig:      make(map[string]*config.RouterConfig),
+		prefixToStdioServerConfig: make(map[string]*config.StdioServerConfig),
+		prefixToSSEServerConfig:   make(map[string]*config.SSEServerConfig),
+		prefixToProtoType:         make(map[string]cnst.ProtoType),
 	}
 
 	for idx := range cfgs {
@@ -170,6 +170,10 @@ func loadConfig(cfgs []*config.MCPConfig) (*serverState, error) {
 			newState.prefixToTools[prefix] = allowedTools
 			newState.prefixToServerConfig[prefix] = &serverCfg
 			newState.prefixToProtoType[prefix] = cfg.ProtoType
+
+			// Add stdio and sse configs to the state
+			newState.prefixToStdioServerConfig[prefix] = &cfg.StdioServer
+			newState.prefixToSSEServerConfig[prefix] = &cfg.SSEServer
 		}
 
 		// Initialize tool map and list for MCP servers
@@ -178,20 +182,10 @@ func loadConfig(cfgs []*config.MCPConfig) (*serverState, error) {
 			newState.toolMap[tool.Name] = tool
 			newState.tools = append(newState.tools, tool.ToToolSchema())
 		}
-
-		// Initialize stdio map and list for MCP servers
-		for j := range cfg.StdioConfigs {
-			stdioConfig := &cfg.StdioConfigs[j]
-			newState.stdioMap[stdioConfig.Name] = stdioConfig
-		}
-
-		// Initialize sse map and list for MCP servers
-		for k := range cfg.SSEConfigs {
-			sseConfig := &cfg.SSEConfigs[k]
-			newState.sseMap[sseConfig.Name] = sseConfig
-		}
 	}
 
+	fmt.Println("aaaa")
+	fmt.Printf("%+v\n", newState)
 	return newState, nil
 }
 
@@ -203,7 +197,7 @@ func (s *Server) UpdateConfig(cfgs []*config.MCPConfig) error {
 	}
 
 	// Create new state and load configuration
-	newState, err := loadConfig(cfgs)
+	newState, err := initState(cfgs)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}

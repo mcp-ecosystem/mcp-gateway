@@ -248,7 +248,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		}
 
 		// Execute the tool
-		result, err := s.executeTool(tool, args, c.Request, serverCfg.Config)
+		result, err := s.executeHTTPTool(tool, args, c.Request, serverCfg.Config)
 		if err != nil {
 			s.logger.Error("failed to execute tool", zap.Error(err))
 			// For tool execution errors, return them in the result with isError=true

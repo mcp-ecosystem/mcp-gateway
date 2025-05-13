@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +12,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpclient"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
@@ -182,7 +186,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoStdio:
-			tools, err = s.fetchStdioToolList(conn)
+			tools, err = s.fetchStdioToolList(c.Request.Context(), conn)
 			if err != nil {
 				s.sendProtocolError(c, req.ID, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -197,46 +201,48 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
-		// Execute the tool and return the result
-		var params mcp.CallToolParams
-		if err := json.Unmarshal(req.Params.([]byte), &params); err != nil {
-			s.sendProtocolError(c, req.ID, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		// Marshal the request params
+		paramsBytes, err := json.Marshal(req.Params)
+		if err != nil {
+			s.sendProtocolError(c, req.ID, "Failed to marshal tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
-		// Find the tool in the precomputed map
-		tool, exists := s.state.toolMap[params.Name]
-		if !exists {
-			s.sendProtocolError(c, req.ID, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
-			return
-		}
-
-		// Convert arguments to map[string]any
-		var args map[string]any
-		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			s.sendProtocolError(c, req.ID, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
-			return
-		}
-
-		// Get server configuration
-		serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
+		// Get the proto type for this prefix
+		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
 			s.sendProtocolError(c, req.ID, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
 
-		// Execute the tool
-		result, err := s.executeTool(tool, args, c.Request, serverCfg.Config)
-		if err != nil {
-			s.sendToolExecutionError(c, conn, req, err, true)
+		// Execute the tool and return the result
+		var params mcp.CallToolParams
+		if err := json.Unmarshal(paramsBytes, &params); err != nil {
+			s.sendProtocolError(c, req.ID, "Invalid tool call parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
+		var result []mcp.Content
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			result, err = s.invokeHTTPTool(c, req, conn, params)
+			if err != nil {
+				// just return, the error already sent
+				return
+			}
+		case cnst.BackendProtoStdio:
+			result, err = s.invokeStdioTool(c, req, conn, params)
+			if err != nil {
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.ID, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
 
 		// Send the result
 		toolResult := mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.NewTextContent(result),
-			},
+			Content: result,
 			IsError: false,
 		}
 		s.sendSuccessResponse(c, conn, req, toolResult, true)
@@ -255,8 +261,176 @@ func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.Tool, error) 
 	return tools, nil
 }
 
-func (s *Server) fetchStdioToolList(conn session.Connection) ([]mcp.Tool, error) {
+func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection) ([]mcp.Tool, error) {
 	// Get stdio tools for this prefix
+	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
+	if !ok {
+		return []mcp.Tool{}, nil
+	}
 
-	return []mcp.Tool{}, nil
+	stdioClientEnv := mcp.CoverToStdioClientEnv(stdioCfg.Env)
+	stdioClient, err := mcpclient.NewStdioMCPClient(stdioCfg.Command, stdioClientEnv, stdioCfg.Args...)
+	if err != nil {
+		return []mcp.Tool{}, err
+	}
+	defer stdioClient.Close()
+
+	// initialize stdio client
+	initRequest := mcp.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcp.LatestProtocolVersion
+	initRequest.Params.ClientInfo = mcp.Implementation{
+		Name:    "mcp-gateway",
+		Version: "0.1.0",
+	}
+	_, err = stdioClient.Initialize(ctx, initRequest)
+	if err != nil {
+		return []mcp.Tool{}, err
+	}
+
+	// list tools
+	listToolsResult, err := stdioClient.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		return []mcp.Tool{}, err
+	}
+
+	return listToolsResult.Tools, nil
+}
+
+func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) ([]mcp.Content, error) {
+	// Find the tool in the precomputed map
+	tool, exists := s.state.toolMap[params.Name]
+	if !exists {
+		errMsg := "Tool not found"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		return nil, errors.New(errMsg)
+	}
+
+	// Convert arguments to map[string]any
+	var args map[string]any
+	if err := json.Unmarshal(params.Arguments, &args); err != nil {
+		errMsg := "Invalid tool arguments"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		return nil, errors.New(errMsg)
+	}
+
+	// Get server configuration
+	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
+	if !ok {
+		errMsg := "Server configuration not found"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		return nil, errors.New(errMsg)
+	}
+
+	// Execute the tool
+	result, err := s.executeHTTPTool(tool, args, c.Request, serverCfg.Config)
+	if err != nil {
+		s.sendToolExecutionError(c, conn, req, err, true)
+		return nil, err
+	}
+
+	return []mcp.Content{mcp.NewTextContent(result)}, nil
+}
+
+func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) ([]mcp.Content, error) {
+	// Get stdio tools for this prefix
+	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
+	if !ok {
+		errMsg := "Server configuration not found"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		return nil, errors.New(errMsg)
+	}
+
+	// Get server configuration
+	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
+	if !ok {
+		errMsg := "Server configuration not found"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		return nil, errors.New(errMsg)
+	}
+
+	// Convert arguments to map[string]any
+	var args map[string]any
+	if err := json.Unmarshal(params.Arguments, &args); err != nil {
+		errMsg := "Invalid tool arguments"
+		s.sendProtocolError(c, req.ID, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		return nil, errors.New(errMsg)
+	}
+
+	result, err := s.executeStdioTool(c, stdioCfg, args, c.Request, serverCfg.Config, params)
+	if err != nil {
+		s.sendToolExecutionError(c, conn, req, err, true)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *Server) executeStdioTool(
+	c *gin.Context,
+	tool *config.StdioServerConfig,
+	args map[string]any,
+	request *http.Request,
+	serverCfg map[string]string,
+	params mcp.CallToolParams,
+) ([]mcp.Content, error) {
+	// Prepare template context
+	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	renderedClientEnv := make(map[string]string)
+	for k, v := range tool.Env {
+		rendered, err := renderTemplate(v, tmplCtx)
+		if err != nil {
+			return nil, err
+		}
+		renderedClientEnv[k] = rendered
+	}
+
+	toolCallRequestParams := make(map[string]interface{})
+	if err := json.Unmarshal(params.Arguments, &toolCallRequestParams); err != nil {
+		return nil, err
+	}
+
+	fmt.Println("111111111")
+	fmt.Printf("%+v\n", renderedClientEnv)
+
+	stdioClientEnv := mcp.CoverToStdioClientEnv(renderedClientEnv)
+	stdioClient, err := mcpclient.NewStdioMCPClient(tool.Command, stdioClientEnv, tool.Args...)
+	if err != nil {
+		return nil, err
+	}
+	defer stdioClient.Close()
+
+	// initialize stdio client
+	initRequest := mcp.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcp.LatestProtocolVersion
+	initRequest.Params.ClientInfo = mcp.Implementation{
+		Name:    "mcp-gateway",
+		Version: "0.1.0",
+	}
+	_, err = stdioClient.Initialize(c.Request.Context(), initRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// call tool
+	toolCallRequest := mcp.CallToolRequest{
+		Request: mcp.Request{
+			Method: "tools/call",
+		},
+	}
+	toolCallRequest.Params.Name = params.Name
+	toolCallRequest.Params.Arguments = toolCallRequestParams
+
+	result, err := stdioClient.CallTool(c.Request.Context(), toolCallRequest)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Content) == 0 {
+		return nil, nil
+	}
+
+	return result.Content, nil
 }

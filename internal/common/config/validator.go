@@ -122,44 +122,6 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 		}
 	}
 
-	// Check for duplicate stdio names
-	stdioNameMap := make(map[string][]Location)
-	for _, cfg := range configs {
-		for _, stdio := range cfg.StdioConfigs {
-			stdioNameMap[stdio.Name] = append(stdioNameMap[stdio.Name], Location{
-				File: cfg.Name,
-			})
-		}
-	}
-
-	for name, locations := range stdioNameMap {
-		if len(locations) > 1 {
-			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate stdio name '%s' found in stdio configurations", name),
-				Locations: locations,
-			})
-		}
-	}
-
-	// Check for duplicate sse names
-	sseNameMap := make(map[string][]Location)
-	for _, cfg := range configs {
-		for _, sse := range cfg.SSEConfigs {
-			sseNameMap[sse.Name] = append(sseNameMap[sse.Name], Location{
-				File: cfg.Name,
-			})
-		}
-	}
-
-	for name, locations := range sseNameMap {
-		if len(locations) > 1 {
-			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate sse name '%s' found in sse configurations", name),
-				Locations: locations,
-			})
-		}
-	}
-
 	if len(errors) > 0 {
 		var sb strings.Builder
 		for i, err := range errors {

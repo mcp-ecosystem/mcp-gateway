@@ -41,6 +41,9 @@ func prepareTemplateContext(args map[string]any, request *http.Request, serverCf
 		}
 	}
 
+	fmt.Println("222222222")
+	fmt.Printf("%+v\n", tmplCtx)
+
 	return tmplCtx, nil
 }
 
@@ -155,8 +158,8 @@ func processResponse(resp *http.Response, tool *config.ToolConfig, tmplCtx *temp
 	return rendered, nil
 }
 
-// executeTool executes a tool with the given arguments
-func (s *Server) executeTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (string, error) {
+// executeHTTPTool executes a tool with the given arguments for HTTP protocol
+func (s *Server) executeHTTPTool(tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (string, error) {
 	// Prepare template context
 	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
 	if err != nil {
