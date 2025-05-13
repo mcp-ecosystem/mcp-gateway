@@ -6,6 +6,7 @@ import { LoginPage } from './pages/auth/login';
 import { ChatInterface } from './pages/chat/chat-interface';
 import { GatewayManager } from './pages/gateway/gateway-manager';
 import { UserManagement } from './pages/users/user-management';
+import { TenantManagement } from './pages/users/tenant-management';
 
 // Route guard component
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ function MainLayout() {
         <Route path="/chat/:sessionId" element={<ChatInterface />} />
         <Route path="/gateway/*" element={<GatewayManager />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/tenants" element={<TenantManagement />} />
       </Routes>
     </Layout>
   );

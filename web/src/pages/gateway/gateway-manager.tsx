@@ -1,4 +1,4 @@
-import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Autocomplete, AutocompleteItem } from "@heroui/react";
 import { Icon } from '@iconify/react';
 import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';
@@ -6,7 +6,7 @@ import { configureMonacoYaml } from 'monaco-yaml';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers } from '../../services/api';
+import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers, getUserAuthorizedTenants } from '../../services/api';
 import { toast } from '../../utils/toast';
 
 import OpenAPIImport from './components/OpenAPIImport';
@@ -65,6 +65,14 @@ interface ToolConfig {
   method: string;
 }
 
+interface Tenant {
+  id: number;
+  name: string;
+  prefix: string;
+  description: string;
+  isActive: boolean;
+}
+
 export function GatewayManager() {
   const { t } = useTranslation();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
@@ -76,6 +84,9 @@ export function GatewayManager() {
   const [newConfig, setNewConfig] = React.useState('');
   const [parsedMCPServers, setParsedMCPServers] = React.useState<Gateway[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [tenants, setTenants] = React.useState<Tenant[]>([]);
+  const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
+  const [tenantInputValue, setTenantInputValue] = React.useState('');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
   });
@@ -114,12 +125,14 @@ export function GatewayManager() {
     }
   }, []);
 
-  // 获取 MCP servers 列表
+  // Get MCP servers list
   React.useEffect(() => {
     const fetchMCPServers = async () => {
       try {
         setIsLoading(true);
-        const servers = await getMCPServers();
+        // 如果有选择租户，则使用第一个选中的租户ID过滤
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+        const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
       } catch {
         toast.error(t('errors.fetch_mcp_servers'));
@@ -129,6 +142,20 @@ export function GatewayManager() {
     };
 
     fetchMCPServers();
+  }, [t, selectedTenants]);
+
+  // Get user's authorized tenants
+  React.useEffect(() => {
+    const fetchAuthorizedTenants = async () => {
+      try {
+        const tenantsData = await getUserAuthorizedTenants();
+        setTenants(tenantsData);
+      } catch {
+        toast.error(t('errors.fetch_authorized_tenants'));
+      }
+    };
+
+    fetchAuthorizedTenants();
   }, [t]);
 
   const handleEdit = (server: Gateway) => {
@@ -144,7 +171,8 @@ export function GatewayManager() {
 
       if (currentMCPServer) {
         await updateMCPServer(currentMCPServer.name, editConfig);
-        const servers = await getMCPServers();
+        const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+        const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
         toast.success(t('gateway.edit_success'));
       }
@@ -157,7 +185,8 @@ export function GatewayManager() {
   const handleDelete = async (server: Gateway) => {
     try {
       await deleteMCPServer(server.name);
-      const servers = await getMCPServers();
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+      const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.delete_success'));
     } catch {
@@ -169,7 +198,8 @@ export function GatewayManager() {
     try {
       setIsLoading(true);
       await syncMCPServers();
-      const servers = await getMCPServers();
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+      const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       toast.success(t('gateway.sync_success'));
     } catch {
@@ -200,7 +230,8 @@ export function GatewayManager() {
 
       // If YAML is valid, proceed with creation
       await createMCPServer(newConfig);
-      const servers = await getMCPServers();
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+      const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onCreateOpenChange();
       setNewConfig('');
@@ -212,7 +243,8 @@ export function GatewayManager() {
 
   const handleImportSuccess = async () => {
     try {
-      const servers = await getMCPServers();
+      const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
+      const servers = await getMCPServers(tenantId);
       setMCPServers(servers);
       onImportOpenChange();
       toast.success(t('gateway.import_success'));
@@ -266,6 +298,36 @@ export function GatewayManager() {
     })
   };
 
+  // Define custom filter function for tenants
+  const customTenantFilter = (inputValue: string, items: Tenant[]) => {
+    const lowerCaseInput = inputValue.toLowerCase();
+    return items.filter(item => 
+      item.name.toLowerCase().includes(lowerCaseInput) || 
+      item.prefix.toLowerCase().includes(lowerCaseInput)
+    );
+  };
+
+  const handleTenantSelect = (key: React.Key | null) => {
+    if (key === null) return;
+    
+    const tenant = tenants.find(t => t.id === parseInt(key.toString(), 10));
+    if (tenant && !selectedTenants.some(t => t.id === tenant.id)) {
+      setSelectedTenants(prev => [...prev, tenant]);
+    }
+    setTenantInputValue('');
+  };
+  
+  const handleRemoveTenant = (tenantId: number) => {
+    setSelectedTenants(prev => prev.filter(t => t.id !== tenantId));
+  };
+  
+  // 过滤出未选择的租户供选择
+  const availableTenants = React.useMemo(() => {
+    return tenants.filter(tenant => 
+      !selectedTenants.some(selected => selected.id === tenant.id)
+    );
+  }, [tenants, selectedTenants]);
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
@@ -296,6 +358,50 @@ export function GatewayManager() {
             {t('gateway.sync')}
           </Button>
         </div>
+      </div>
+
+      <div className="mb-4 max-w-md">
+        <label className="block text-sm font-medium mb-1">{t('gateway.select_tenant')}</label>
+        
+        {/* 显示已选择的租户 */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {selectedTenants.map(tenant => (
+            <Chip 
+              key={tenant.id} 
+              onClose={() => handleRemoveTenant(tenant.id)}
+              variant="flat"
+            >
+              {`${tenant.name}(${tenant.prefix})`}
+            </Chip>
+          ))}
+        </div>
+        
+        <Autocomplete
+          placeholder={t('gateway.search_tenant')}
+          defaultItems={availableTenants}
+          inputValue={tenantInputValue}
+          onInputChange={setTenantInputValue}
+          onSelectionChange={handleTenantSelect}
+          menuTrigger="focus"
+          isClearable
+          startContent={<Icon icon="lucide:search" className="text-gray-400" />}
+          listboxProps={{
+            emptyContent: t('common.no_results')
+          }}
+          items={customTenantFilter(tenantInputValue, availableTenants)}
+        >
+          {(tenant) => (
+            <AutocompleteItem 
+              key={tenant.id.toString()} 
+              textValue={`${tenant.name}(${tenant.prefix})`}
+            >
+              <div className="flex flex-col">
+                <span>{tenant.name}</span>
+                <span className="text-xs text-gray-500">{tenant.prefix}</span>
+              </div>
+            </AutocompleteItem>
+          )}
+        </Autocomplete>
       </div>
 
       {isLoading ? (

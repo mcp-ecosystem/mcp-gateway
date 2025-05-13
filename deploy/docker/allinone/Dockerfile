@@ -42,16 +42,25 @@ RUN npm run build
 
 FROM ubuntu:22.04
 
+# Set default timezone
+ENV TZ=UTC
+
 RUN apt-get update && apt-get install -y \
     supervisor \
     nginx \
     curl \
     vim \
-    && rm -rf /var/lib/apt/lists/*
+    tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata
 
 COPY deploy/docker/allinone/supervisord.conf /etc/supervisor/conf.d/
-
 COPY deploy/docker/allinone/nginx.conf /etc/nginx/nginx.conf
+RUN mkdir -p /app/data
+COPY configs/apiserver.yaml /etc/mcp-gateway/
+COPY configs/mcp-gateway.yaml /etc/mcp-gateway/
 
 COPY --from=builder /app/bin/mcp-gateway /usr/local/bin/
 COPY --from=builder /app/bin/mock-user-svc /usr/local/bin/

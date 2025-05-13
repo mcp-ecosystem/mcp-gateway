@@ -22,6 +22,16 @@ RUN npm run build
 
 FROM nginx:1.27.5-bookworm
 
+# Set default timezone
+ENV TZ=UTC
+
+RUN apt-get update && apt-get install -y \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata
+
 COPY --from=builder /app/web/dist /usr/share/nginx/html
 
 COPY deploy/docker/multi/nginx.conf /etc/nginx/nginx.conf

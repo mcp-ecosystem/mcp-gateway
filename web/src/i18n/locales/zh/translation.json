@@ -21,6 +21,7 @@
     "details": "详情",
     "description": "描述",
     "name": "名称",
+    "name_placeholder": "仅支持英文和数字",
     "type": "类型",
     "created_at": "创建时间",
     "updated_at": "更新时间",
@@ -54,7 +55,11 @@
     "about": "关于",
     "contact": "联系我们",
     "feedback": "反馈",
-    "report": "报告"
+    "report": "报告",
+    "join_wechat_community": "加入微信社区",
+    "join_discord_community": "加入Discord社区",
+    "switch_theme_theme": "切换到{{theme}}主题",
+    "no_results": "未找到结果"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -62,7 +67,8 @@
     "profile": "个人资料",
     "gateway": "网关",
     "chat": "聊天",
-    "users": "用户"
+    "users": "用户",
+    "tenants": "租户"
   },
   "auth": {
     "login": "登录",
@@ -112,7 +118,9 @@
     "sync_success": "配置同步成功",
     "sync_failed": "配置同步失败",
     "import_success": "OpenAPI 规范导入成功",
-    "import_failed": "OpenAPI 规范导入失败"
+    "import_failed": "OpenAPI 规范导入失败",
+    "select_tenant": "选择租户(多选)",
+    "search_tenant": "搜索租户..."
   },
   "chat": {
     "title": "聊天",
@@ -177,6 +185,7 @@
     "add": "添加用户",
     "edit": "编辑用户",
     "delete": "删除用户",
+    "delete_title": "删除用户",
     "username": "用户名",
     "password": "密码",
     "role": "角色",
@@ -198,7 +207,48 @@
     "enable_success": "用户启用成功",
     "disable_success": "用户禁用成功",
     "enable_failed": "启用用户失败",
-    "disable_failed": "禁用用户失败"
+    "disable_failed": "禁用用户失败",
+    "select_tenants": "选择租户",
+    "search_tenants": "搜索租户...",
+    "update_tenants_success": "更新用户租户关联成功",
+    "update_tenants_failed": "更新用户租户关联失败",
+    "no_tenants": "未关联任何租户",
+    "manage_tenants": "管理租户",
+    "tenants": "关联租户"
+  },
+  "tenants": {
+    "title": "租户管理",
+    "add": "添加租户",
+    "edit": "编辑租户",
+    "delete": "删除租户",
+    "delete_title": "删除租户",
+    "name": "名称",
+    "name_placeholder": "仅支持英文和数字",
+    "prefix": "前缀",
+    "prefix_placeholder": "例如 tenant1 或 /tenant2/abc(根/不可用)",
+    "description": "描述",
+    "status": "状态",
+    "created_at": "创建时间", 
+    "actions": "操作",
+    "status_enabled": "已启用",
+    "status_disabled": "已禁用",
+    "confirm_delete": "确定要删除这个租户吗？",
+    "add_success": "租户添加成功",
+    "edit_success": "租户更新成功",
+    "delete_success": "租户删除成功",
+    "add_failed": "添加租户失败",
+    "edit_failed": "更新租户失败",
+    "delete_failed": "删除租户失败",
+    "enable_success": "租户启用成功",
+    "disable_success": "租户禁用成功",
+    "enable_failed": "启用租户失败",
+    "disable_failed": "禁用租户失败",
+    "no_description": "暂无描述",
+    "save": "保存",
+    "prefix_conflict": "前缀已存在，请使用其他前缀",
+    "name_conflict": "租户名称已存在，请使用其他名称",
+    "prefix_path_conflict": "前缀路径冲突，不能添加已存在前缀的子路径或父路径",
+    "root_prefix_not_allowed": "不允许使用根级别目录 '/' 作为前缀"
   },
   "errors": {
     "required": "此字段为必填项",
@@ -218,6 +268,7 @@
     "invalid_yaml": "无效的 YAML 格式",
     "parse_config": "解析配置失败: {{name}}",
     "fetch_users": "获取用户列表失败",
+    "fetch_user": "获取用户信息失败",
     "invalid_tool_name": "工具名称格式错误",
     "server_not_connected": "服务器 {{server}} 未连接",
     "tool_call_failed": "工具调用失败: {{error}}",
@@ -228,7 +279,6 @@
     "no_server_config": "未找到服务器 {{server}} 的配置",
     "terminate_session": "终止会话失败: {{error}}",
     "disconnect_failed": "断开连接失败: {{error}}",
-    "fetch_user_info": "获取用户信息失败: {{error}}",
     "websocket_disconnected": "WebSocket 连接已断开",
     "websocket_error": "WebSocket 发生错误: {{error}}",
     "invalid_openapi_file": "请选择有效的 OpenAPI 规范文件",
@@ -242,6 +292,12 @@
     "delete_mcp_server": "删除 MCP 服务器失败",
     "sync_mcp_server": "同步 MCP 服务器失败",
     "fetch_chat_messages": "获取聊天消息失败",
-    "fetch_chat_sessions": "获取聊天会话列表失败"
+    "fetch_chat_sessions": "获取聊天会话列表失败",
+    "fetch_tenants": "获取租户列表失败",
+    "fetch_tenant": "获取租户详情失败",
+    "create_tenant": "创建租户失败",
+    "update_tenant": "更新租户失败",
+    "delete_tenant": "删除租户失败",
+    "fetch_authorized_tenants": "获取有权限的租户失败"
   }
 } 

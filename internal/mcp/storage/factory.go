@@ -3,8 +3,9 @@ package storage
 import (
 	"fmt"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"go.uber.org/zap"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 )
 
 // NewStore creates a new store based on configuration
@@ -19,6 +20,8 @@ func NewStore(logger *zap.Logger, cfg *config.StorageConfig) (Store, error) {
 			return nil, err
 		}
 		return NewDBStore(logger, DatabaseType(cfg.Database.Type), dsn)
+	case "api":
+		return NewAPIStore(logger, cfg.API.Url, cfg.API.ConfigJSONPath, cfg.API.Timeout)
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", cfg.Type)
 	}

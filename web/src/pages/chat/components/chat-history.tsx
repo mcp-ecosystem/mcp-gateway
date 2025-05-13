@@ -83,7 +83,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   if (isCollapsed) return null;
   return (
     <Card className="w-64 relative group bg-card transition-all duration-200">
-      {/* Resize bar 仅在展开时显示 */}
+      {/* Resize bar only shown when expanded */}
       <button
         type="button"
         aria-label={t('chat.resize_history')}

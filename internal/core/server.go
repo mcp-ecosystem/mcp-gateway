@@ -81,7 +81,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine, cfg *config.MCPConfig) error
 	s.state = newState
 
 	// Register all routes under root path
-	router.Any("/*path", s.handleRoot)
+	router.NoRoute(s.handleRoot)
 
 	return nil
 }
@@ -97,7 +97,7 @@ func (s *Server) handleRoot(c *gin.Context) {
 	endpoint := parts[len(parts)-1]
 	prefix := "/" + strings.Join(parts[:len(parts)-1], "/")
 
-	// 动态设置CORS
+	// Dynamically set CORS
 	if routerCfg, ok := s.state.prefixToRouterConfig[prefix]; ok && routerCfg.CORS != nil {
 		s.corsMiddleware(routerCfg.CORS)(c)
 		if c.IsAborted() {

@@ -8,6 +8,7 @@ services:
       - "5236:5236"
     environment:
       - ENV=production
+      - TZ=${TZ:-UTC}
     volumes:
       - ./configs:/app/configs
       - ./data:/app/data

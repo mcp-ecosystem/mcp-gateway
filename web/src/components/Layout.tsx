@@ -78,12 +78,20 @@ export function Layout({ children }: LayoutProps) {
       icon: 'lucide:server',
       path: '/gateway',
     },
-    ...(userInfo?.role === 'admin' ? [{
-      key: 'users',
-      label: t('nav.users'),
-      icon: 'lucide:users',
-      path: '/users',
-    }] : []),
+    ...(userInfo?.role === 'admin' ? [
+      {
+        key: 'users',
+        label: t('nav.users'),
+        icon: 'lucide:users',
+        path: '/users',
+      },
+      {
+        key: 'tenants',
+        label: t('nav.tenants'),
+        icon: 'lucide:building',
+        path: '/tenants',
+      }
+    ] : []),
   ];
 
   const handleLogout = () => {

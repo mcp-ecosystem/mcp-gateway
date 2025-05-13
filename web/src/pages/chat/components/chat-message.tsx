@@ -38,7 +38,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         return;
       }
 
-      // 解析 serverName:toolName 格式
+      // Parse serverName:toolName format
       const [serverName, toolName] = tool.function.name.split(':');
       if (!serverName || !toolName) {
         toast.error(t('errors.invalid_tool_name'), {
@@ -56,16 +56,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
         return;
       }
 
-      // 解析 arguments 字符串为对象
+      // Parse arguments string to object
       const args = JSON.parse(tool.function.arguments);
       const result = await mcpService.callTool(serverName, toolName, args);
 
-      // 显示工具调用结果
+      // Display tool call result
       toast.success(t('chat.tool_call_success', { result }), {
         duration: 3000,
       });
 
-      // 将工具调用结果作为新消息发送
+      // Send tool call result as a new message
       await wsService.sendToolResult(tool.function.name, tool.id, result);
     } catch (error) {
       toast.error(t('errors.tool_call_failed', { error: (error as Error).message }), {

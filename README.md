@@ -43,37 +43,66 @@ https://github.com/user-attachments/assets/2a812a14-85cf-45d6-9f37-cc08d8579b33
 
 MCP Gateway supports a ready-to-run Docker deployment. Full deployment and configuration instructions are available in the [docs](https://mcp.ifuryst.com/getting-started/quick-start).
 
-### Run with Docker
+### Quick Launch with Docker
+
+Configure environment variables:
 
 ```bash
-mkdir -p mcp-gateway/{configs,data}
-cd mcp-gateway/
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/configs/apiserver.yaml -o configs/apiserver.yaml
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/configs/mcp-gateway.yaml -o configs/mcp-gateway.yaml
-curl -sL https://raw.githubusercontent.com/mcp-ecosystem/mcp-gateway/refs/heads/main/.env.example -o .env.allinone
-
-docker run -d \
-           --name mcp-gateway \
-           -p 8080:80 \
-           -p 5234:5234 \
-           -p 5235:5235 \
-           -p 5335:5335 \
-           -p 5236:5236 \
-           -e ENV=production \
-           -v $(pwd)/configs:/app/configs \
-           -v $(pwd)/data:/app/data \
-           -v $(pwd)/.env.allinone:/app/.env \
-           --restart unless-stopped \
-           ghcr.io/mcp-ecosystem/mcp-gateway/allinone:latest
+export OPENAI_API_KEY="sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
+export OPENAI_MODEL="gpt-4o-mini"
+export APISERVER_JWT_SECRET_KEY="fec6d38f73d4211318e7c85617f0e333PlsChangeMe"
+export SUPER_ADMIN_USERNAME="admin"
+export SUPER_ADMIN_PASSWORD="297df52fbc321ebf7198d497fe1c9206PlsChangeMe"
 ```
 
-> For users in China, you can pull the image from Alibaba Cloud registry:
->
-> ```bash
-> registry.ap-southeast-1.aliyuncs.com/mcp-ecosystem/mcp-gateway-allinone:latest
-> ```
+Launch the container:
 
-Visit http://localhost:8080/ to start configuring.
+```bash
+docker run -d \
+  --name mcp-gateway \
+  -p 8080:80 \
+  -p 5234:5234 \
+  -p 5235:5235 \
+  -p 5335:5335 \
+  -p 5236:5236 \
+  -e ENV=production \
+  -e TZ=Asia/Shanghai \
+  -e OPENAI_API_KEY=${OPENAI_API_KEY} \
+  -e OPENAI_MODEL=${OPENAI_MODEL} \
+  -e APISERVER_JWT_SECRET_KEY=${APISERVER_JWT_SECRET_KEY} \
+  -e SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME} \
+  -e SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD} \
+  --restart unless-stopped \
+  ghcr.io/mcp-ecosystem/mcp-gateway/allinone:latest
+```
+
+### Access and Configuration
+
+1. Access the Web Interface:
+   - Open http://localhost:8080/ in your browser
+   - Login with the administrator credentials you configured
+
+2. Add an MCP Server:
+   - Copy the config from: https://github.com/mcp-ecosystem/mcp-gateway/blob/main/configs/mock-user-svc.yaml
+   - Click "Add MCP Server" in the web interface
+   - Paste the configuration and save
+
+### Available Endpoints
+
+After configuration, the service will be available at these endpoints:
+
+- MCP SSE: http://localhost:5235/mcp/user/sse
+- MCP SSE Message: http://localhost:5235/mcp/user/message
+- MCP Streamable HTTP: http://localhost:5235/mcp/user/mcp
+
+Configure your MCP Client with the `/sse` or `/mcp` suffix URLs to start using it.
+
+### Testing
+
+You can test the service using:
+
+1. The MCP Chat page in the web interface
+2. Your own MCP Client (**recommended**)
 
 📖 Read the full guide → [Quick Start »](https://mcp.ifuryst.com/getting-started/quick-start)
 
@@ -110,3 +139,13 @@ For more usage patterns, configuration examples, and integration guides, please 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## 💬 Join Our WeChat Community
+
+Scan the QR code below to add us on WeChat. Please include a note: `mcp-gateway` or `mcpgw`.
+
+<img src="web/public/wechat-qrcode.png" alt="WeChat QR Code" width="350" height="350" />
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=mcp-ecosystem/mcp-gateway&type=Date)](https://star-history.com/#mcp-ecosystem/mcp-gateway&Date)

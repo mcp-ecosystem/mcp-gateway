@@ -126,6 +126,26 @@ func run() {
 		c.JSON(http.StatusOK, user)
 	})
 
+	router.POST("/users/:email/avatar", func(c *gin.Context) {
+		email := c.Param("email")
+		_, exists := users[email]
+		if !exists {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+
+		avatarURL := c.PostForm("url")
+		if avatarURL == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing url in form"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "avatar updated",
+			"avatarUrl": avatarURL,
+		})
+	})
+
 	// Start server
 	srv := &http.Server{
 		Addr:    ":5236",

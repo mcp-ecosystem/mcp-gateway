@@ -48,7 +48,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&configPath, "conf", cnst.ApiServerYaml, "path to configuration file, like /etc/mcp-gateway/apiserver.yaml")
+	rootCmd.PersistentFlags().StringVarP(&configPath, "conf", "c", cnst.ApiServerYaml, "path to configuration file, like /etc/mcp-gateway/apiserver.yaml")
 	rootCmd.AddCommand(versionCmd)
 }
 
@@ -171,6 +171,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		// Auth routes
 		protected.POST("/auth/change-password", authH.ChangePassword)
 		protected.GET("/auth/user/info", authH.GetUserInfo)
+		protected.GET("/auth/user", authH.GetUserWithTenants)
 
 		// User management routes (admin only)
 		userMgmt := protected.Group("/auth/users")
@@ -180,6 +181,19 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 			userMgmt.POST("", authH.CreateUser)
 			userMgmt.PUT("", authH.UpdateUser)
 			userMgmt.DELETE("/:username", authH.DeleteUser)
+			userMgmt.GET("/:username", authH.GetUserWithTenants)
+			userMgmt.PUT("/tenants", authH.UpdateUserTenants)
+		}
+
+		// Tenant management routes (admin only)
+		tenantMgmt := protected.Group("/auth/tenants")
+		tenantMgmt.Use(apiserverHandler.AdminAuthMiddleware())
+		{
+			tenantMgmt.GET("", authH.ListTenants)
+			tenantMgmt.POST("", authH.CreateTenant)
+			tenantMgmt.PUT("", authH.UpdateTenant)
+			tenantMgmt.DELETE("/:name", authH.DeleteTenant)
+			tenantMgmt.GET("/:name", authH.GetTenantInfo)
 		}
 
 		// Configure routes
