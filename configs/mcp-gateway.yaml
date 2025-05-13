@@ -53,6 +53,7 @@ notifier:
   # Redis configuration (only used when type is redis)
   redis:
     addr: "${NOTIFIER_REDIS_ADDR:localhost:6379}"
+    username: "${NOTIFIER_REDIS_USERNAME:default}"
     password: "${NOTIFIER_REDIS_PASSWORD:UseStrongPasswordIsAGoodPractice}"
     db: ${NOTIFIER_REDIS_DB:0}
     topic: "${NOTIFIER_REDIS_TOPIC:mcp-gateway:reload}"
@@ -62,6 +63,7 @@ session:
   type: "${SESSION_STORAGE_TYPE:memory}"  # memory or redis
   redis:
     addr: "${SESSION_REDIS_ADDR:localhost:6379}"
+    username: "${SESSION_REDIS_USERNAME:default}"
     password: "${SESSION_REDIS_PASSWORD:}"
     db: ${SESSION_REDIS_DB:0}
     topic: "${SESSION_REDIS_TOPIC:mcp-gateway:session}"
