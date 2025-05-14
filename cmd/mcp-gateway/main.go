@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
@@ -170,6 +171,30 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 	logger.Info("Configuration reloaded successfully")
 }
 
+func handleMerge(ctx context.Context, logger *zap.Logger, srv *core.Server, mcpConfig *config.MCPConfig) {
+	logger.Info("Reloading MCP configuration")
+	// Validate configurations before merging
+	if err := config.ValidateMCPConfig(mcpConfig); err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			logger.Error("Configuration validation failed",
+				zap.String("error", validationErr.Error()))
+		} else {
+			logger.Error("failed to validate configurations",
+				zap.Error(err))
+		}
+		return
+	}
+
+	// Update server configuration in place
+	if err := srv.MergeConfig(mcpConfig); err != nil {
+		logger.Error("failed to update server configuration",
+			zap.Error(err))
+		return
+	}
+
+	logger.Info("Configuration reloaded successfully")
+}
 func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -276,6 +301,9 @@ func run() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+	// periodically reload the configuration as a fallback mechanism for the notifier
+	ticker := time.NewTicker(cfg.ReloadInterval)
+
 	for {
 		select {
 		case <-quit:
@@ -294,10 +322,16 @@ func run() {
 			}
 
 			return
-		case <-updateCh:
-			logger.Info("Received reload signal")
+		case updateMCPConfig, ok := <-updateCh:
+			if ok {
+				logger.Info("Received update signal")
+				handleMerge(ctx, logger, srv, updateMCPConfig)
+			}
+		case <-ticker.C:
+			logger.Info("Received ticker signal")
 			handleReload(ctx, logger, store, srv, cfg)
 		}
+
 	}
 }
 

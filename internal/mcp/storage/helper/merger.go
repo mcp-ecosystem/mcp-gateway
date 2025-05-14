@@ -5,10 +5,15 @@ import (
 )
 
 // MergeConfigs merges all configurations
-func MergeConfigs(configs []*config.MCPConfig) ([]*config.MCPConfig, error) {
+func MergeConfigs(configs []*config.MCPConfig, items ...*config.MCPConfig) ([]*config.MCPConfig, error) {
 	mergedConfig := &config.MCPConfig{}
 
 	for _, cfg := range configs {
+		if err := mergeConfig(mergedConfig, cfg); err != nil {
+			return nil, err
+		}
+	}
+	for _, cfg := range items {
 		if err := mergeConfig(mergedConfig, cfg); err != nil {
 			return nil, err
 		}

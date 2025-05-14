@@ -10,6 +10,7 @@ import (
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage/helper"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,7 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
+		rawConfigs              []*config.MCPConfig
 		tools                   []mcp.ToolSchema
 		toolMap                 map[string]*config.ToolConfig
 		prefixToTools           map[string][]mcp.ToolSchema
@@ -53,6 +55,7 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	return &Server{
 		logger: logger,
 		state: &serverState{
+			rawConfigs:              make([]*config.MCPConfig, 0),
 			tools:                   make([]mcp.ToolSchema, 0),
 			toolMap:                 make(map[string]*config.ToolConfig),
 			prefixToTools:           make(map[string][]mcp.ToolSchema),
@@ -140,6 +143,7 @@ func (s *Server) Shutdown(_ context.Context) error {
 func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
+		rawConfigs:              cfgs,
 		tools:                   make([]mcp.ToolSchema, 0),
 		toolMap:                 make(map[string]*config.ToolConfig),
 		prefixToTools:           make(map[string][]mcp.ToolSchema),
@@ -219,6 +223,29 @@ func (s *Server) UpdateConfig(cfgs []*config.MCPConfig) error {
 
 	// Create new state and load configuration
 	newState, err := initState(cfgs)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Atomically replace the state
+	s.state = newState
+
+	return nil
+}
+
+// MergeConfig updates the server configuration incrementally
+func (s *Server) MergeConfig(cfg *config.MCPConfig) error {
+	// Validate configuration before updating
+	if err := config.ValidateMCPConfig(cfg); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	newConfig, err := helper.MergeConfigs(s.state.rawConfigs, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to merge configuration: %w", err)
+	}
+	// Create new state and load configuration
+	newState, err := initState(newConfig)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}

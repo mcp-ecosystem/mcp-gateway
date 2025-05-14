@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/helper"
 
@@ -23,14 +24,15 @@ type (
 
 	// MCPGatewayConfig represents the MCP gateway configuration
 	MCPGatewayConfig struct {
-		Port       int              `yaml:"port"`
-		ReloadPort int              `yaml:"reload_port"`
-		PID        string           `yaml:"pid"`
-		SuperAdmin SuperAdminConfig `yaml:"super_admin"`
-		Logger     LoggerConfig     `yaml:"logger"`
-		Storage    StorageConfig    `yaml:"storage"`
-		Notifier   NotifierConfig   `yaml:"notifier"`
-		Session    SessionConfig    `yaml:"session"`
+		Port           int              `yaml:"port"`
+		ReloadPort     int              `yaml:"reload_port"`
+		ReloadInterval time.Duration    `yaml:"reload_interval"`
+		PID            string           `yaml:"pid"`
+		SuperAdmin     SuperAdminConfig `yaml:"super_admin"`
+		Logger         LoggerConfig     `yaml:"logger"`
+		Storage        StorageConfig    `yaml:"storage"`
+		Notifier       NotifierConfig   `yaml:"notifier"`
+		Session        SessionConfig    `yaml:"session"`
 	}
 
 	// SessionConfig represents the session storage configuration
