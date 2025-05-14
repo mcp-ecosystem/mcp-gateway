@@ -303,6 +303,7 @@ func run() {
 
 	// periodically reload the configuration as a fallback mechanism for the notifier
 	ticker := time.NewTicker(cfg.ReloadInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -322,11 +323,9 @@ func run() {
 			}
 
 			return
-		case updateMCPConfig, ok := <-updateCh:
-			if ok {
-				logger.Info("Received update signal")
-				handleMerge(ctx, logger, srv, updateMCPConfig)
-			}
+		case updateMCPConfig, _ := <-updateCh:
+			logger.Info("Received update signal")
+			handleMerge(ctx, logger, srv, updateMCPConfig)
 		case <-ticker.C:
 			logger.Info("Received ticker signal")
 			handleReload(ctx, logger, store, srv, cfg)
