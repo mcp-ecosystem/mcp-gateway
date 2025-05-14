@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gateway
+  namespace: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+    spec:
+      containers:
+      - name: mcp-gateway
+        image: ghcr.io/mcp-ecosystem/mcp-gateway/mcp-gateway:latest
+        env:
+        - name: ENV
+          value: production
+        - name: TZ
+          value: UTC
+        ports:
+        - containerPort: 5235
+        volumeMounts:
+        - name: configs
+          mountPath: /app/configs
+        - name: data
+          mountPath: /app/data
+        - name: env-file
+          mountPath: /app/.env
+          subPath: .env
+      volumes:
+      - name: configs
+        configMap:
+          name: app-configs
+      - name: data
+        emptyDir: {}
+      - name: env-file
+        configMap:
+          name: app-env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-gateway
+  namespace: mcp-gateway
+spec:
+  ports:
+  - port: 5235
+    targetPort: 5235
+  selector:
+    app: mcp-gateway

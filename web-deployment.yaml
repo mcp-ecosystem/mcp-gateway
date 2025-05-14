@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: ghcr.io/mcp-ecosystem/mcp-gateway/web:latest
+        env:
+        - name: TZ
+          value: UTC
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: mcp-gateway
+spec:
+  type: NodePort  # 或者使用 LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080  # 可选，指定节点端口
+  selector:
+    app: web
