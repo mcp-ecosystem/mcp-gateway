@@ -4,22 +4,19 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"gorm.io/gorm"
 )
 
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
-	Name        string `gorm:"primaryKey; column:name"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ProtoType   string `gorm:"type:varchar(64); column:proto_type; required"`
-	Routers     string `gorm:"type:text; column:routers; default:''"`
-	Servers     string `gorm:"type:text; column:servers; default:''"`
-	Tools       string `gorm:"type:text; column:tools; default:''"`
-	StdioServer string `gorm:"type:text; column:stdio_server; default:''"`
-	SSEServer   string `gorm:"type:text; column:sse_server; default:''"`
+	Name       string `gorm:"primaryKey; column:name"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Routers    string `gorm:"type:text; column:routers; default:''"`
+	Servers    string `gorm:"type:text; column:servers; default:''"`
+	Tools      string `gorm:"type:text; column:tools; default:''"`
+	McpServers string `gorm:"type:text; column:mcp_servers; default:''"`
 }
 
 // ToMCPConfig converts the database model to MCPConfig
@@ -28,7 +25,6 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 		Name:      m.Name,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
-		ProtoType: cnst.ProtoType(m.ProtoType),
 	}
 
 	if len(m.Routers) > 0 {
@@ -46,13 +42,8 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 			return nil, err
 		}
 	}
-	if len(m.StdioServer) > 0 {
-		if err := json.Unmarshal([]byte(m.StdioServer), &cfg.StdioServer); err != nil {
-			return nil, err
-		}
-	}
-	if len(m.SSEServer) > 0 {
-		if err := json.Unmarshal([]byte(m.SSEServer), &cfg.SSEServer); err != nil {
+	if len(m.McpServers) > 0 {
+		if err := json.Unmarshal([]byte(m.McpServers), &cfg.McpServers); err != nil {
 			return nil, err
 		}
 	}
@@ -77,26 +68,19 @@ func FromMCPConfig(cfg *config.MCPConfig) (*MCPConfig, error) {
 		return nil, err
 	}
 
-	stdioConfigs, err := json.Marshal(cfg.StdioServer)
-	if err != nil {
-		return nil, err
-	}
-
-	sseConfigs, err := json.Marshal(cfg.SSEServer)
+	mcpServers, err := json.Marshal(cfg.McpServers)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MCPConfig{
-		Name:        cfg.Name,
-		CreatedAt:   cfg.CreatedAt,
-		UpdatedAt:   cfg.UpdatedAt,
-		ProtoType:   string(cfg.ProtoType),
-		Routers:     string(routers),
-		Servers:     string(servers),
-		Tools:       string(tools),
-		StdioServer: string(stdioConfigs),
-		SSEServer:   string(sseConfigs),
+		Name:       cfg.Name,
+		CreatedAt:  cfg.CreatedAt,
+		UpdatedAt:  cfg.UpdatedAt,
+		Routers:    string(routers),
+		Servers:    string(servers),
+		Tools:      string(tools),
+		McpServers: string(mcpServers),
 	}, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
@@ -31,14 +32,13 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
-		tools                     []mcp.ToolSchema
-		toolMap                   map[string]*config.ToolConfig
-		prefixToTools             map[string][]mcp.ToolSchema
-		prefixToServerConfig      map[string]*config.ServerConfig
-		prefixToRouterConfig      map[string]*config.RouterConfig
-		prefixToStdioServerConfig map[string]*config.StdioServerConfig
-		prefixToSSEServerConfig   map[string]*config.SSEServerConfig
-		prefixToProtoType         map[string]cnst.ProtoType
+		tools                   []mcp.ToolSchema
+		toolMap                 map[string]*config.ToolConfig
+		prefixToTools           map[string][]mcp.ToolSchema
+		prefixToServerConfig    map[string]*config.ServerConfig
+		prefixToRouterConfig    map[string]*config.RouterConfig
+		prefixToMCPServerConfig map[string]config.MCPServerConfig
+		prefixToProtoType       map[string]cnst.ProtoType
 	}
 )
 
@@ -138,14 +138,13 @@ func (s *Server) Shutdown(_ context.Context) error {
 func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
-		tools:                     make([]mcp.ToolSchema, 0),
-		toolMap:                   make(map[string]*config.ToolConfig),
-		prefixToTools:             make(map[string][]mcp.ToolSchema),
-		prefixToServerConfig:      make(map[string]*config.ServerConfig),
-		prefixToRouterConfig:      make(map[string]*config.RouterConfig),
-		prefixToStdioServerConfig: make(map[string]*config.StdioServerConfig),
-		prefixToSSEServerConfig:   make(map[string]*config.SSEServerConfig),
-		prefixToProtoType:         make(map[string]cnst.ProtoType),
+		tools:                   make([]mcp.ToolSchema, 0),
+		toolMap:                 make(map[string]*config.ToolConfig),
+		prefixToTools:           make(map[string][]mcp.ToolSchema),
+		prefixToServerConfig:    make(map[string]*config.ServerConfig),
+		prefixToRouterConfig:    make(map[string]*config.RouterConfig),
+		prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
+		prefixToProtoType:       make(map[string]cnst.ProtoType),
 	}
 
 	for idx := range cfgs {
@@ -180,11 +179,27 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			}
 			newState.prefixToTools[prefix] = allowedTools
 			newState.prefixToServerConfig[prefix] = &serverCfg
-			newState.prefixToProtoType[prefix] = cfg.ProtoType
 
 			// Add stdio and sse configs to the state
-			newState.prefixToStdioServerConfig[prefix] = &cfg.StdioServer
-			newState.prefixToSSEServerConfig[prefix] = &cfg.SSEServer
+			for _, mcpServer := range cfg.McpServers {
+				if mcpServer.Name == serverCfg.Name {
+					newState.prefixToMCPServerConfig[prefix] = mcpServer
+
+					// Map protocol type based on server type
+					switch mcpServer.Type {
+					case "stdio":
+						newState.prefixToProtoType[prefix] = cnst.BackendProtoStdio
+					case "sse":
+						newState.prefixToProtoType[prefix] = cnst.BackendProtoSSE
+					case "streamable-http":
+						newState.prefixToProtoType[prefix] = cnst.BackendProtoStreamable
+					default:
+						newState.prefixToProtoType[prefix] = cnst.BackendProtoHttp
+					}
+
+					break
+				}
+			}
 		}
 	}
 

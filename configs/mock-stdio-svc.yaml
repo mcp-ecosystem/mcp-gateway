@@ -1,11 +1,9 @@
 name: "mock-stdio-svc"
 tenant: "default"
 
-protoType: "stdio"
-
 routers:
-  - server: "mock-stdio-svc"
-    prefix: "/mcp/stdio-service/amap-maps"
+  - server: "amap-maps"
+    prefix: "/mcp/amap-maps"
     cors:
       allowOrigins:
         - "*"
@@ -26,15 +24,20 @@ servers:
     namespace: "stdio-service"
     description: "Mock Stdio Service"
 
-stdioServer:
-  name: "amap-maps"
-  command: "npx"
-  args:
-    - "-y"
-    - "@amap/amap-maps-mcp-server"
-  env:
-    AMAP_MAPS_API_KEY: "{{.Request.Headers.Apikey}}"
+mcpServers:
+  - type: "stdio"
+    name: "amap-maps"
+    command: "npx"
+    args:
+      - "-y"
+      - "@amap/amap-maps-mcp-server"
+    env:
+      AMAP_MAPS_API_KEY: "{{.Request.Headers.Apikey}}"
 
-sseServer:
-  name: "web-search"
-  url: "http://localhost:5236/web-search"
+  - type: "sse" # unimplemented for now
+    name: "mcp-user-sse"
+    url: "http://localhost:5235/mcp/user/sse"
+
+  - type: "streamable-http"  # unimplemented for now
+    name: "mcp-user-streamable-http"
+    url: "http://localhost:5235/mcp/user/mcp"

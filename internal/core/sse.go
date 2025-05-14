@@ -260,7 +260,7 @@ func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, e
 
 func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection) ([]mcp.ToolSchema, error) {
 	// Get stdio tools for this prefix
-	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
+	stdioCfg, ok := s.state.prefixToMCPServerConfig[conn.Meta().Prefix]
 	if !ok {
 		return []mcp.ToolSchema{}, nil
 	}
@@ -345,7 +345,7 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 
 func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Get stdio tools for this prefix
-	stdioCfg, ok := s.state.prefixToStdioServerConfig[conn.Meta().Prefix]
+	stdioCfg, ok := s.state.prefixToMCPServerConfig[conn.Meta().Prefix]
 	if !ok {
 		errMsg := "Server configuration not found"
 		s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
@@ -368,7 +368,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 		return nil, errors.New(errMsg)
 	}
 
-	result, err := s.executeStdioTool(c, stdioCfg, args, c.Request, serverCfg.Config, params)
+	result, err := s.executeStdioTool(c, &stdioCfg, args, c.Request, serverCfg.Config, params)
 	if err != nil {
 		s.sendToolExecutionError(c, conn, req, err, true)
 		return nil, err
@@ -379,7 +379,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 
 func (s *Server) executeStdioTool(
 	c *gin.Context,
-	tool *config.StdioServerConfig,
+	tool *config.MCPServerConfig,
 	args map[string]any,
 	request *http.Request,
 	serverCfg map[string]string,

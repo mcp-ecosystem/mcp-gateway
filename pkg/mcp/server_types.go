@@ -331,3 +331,18 @@ func NewCallToolResultAudio(audioData, mimeType string) *CallToolResult {
 		IsError: false,
 	}
 }
+
+// NewCallToolResultError creates a new CallToolResult with an error message
+// @param text the error message
+// @return *CallToolResult the CallToolResult object with the error message
+func NewCallToolResultError(text string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			&TextContent{
+				Type: TextContentType,
+				Text: text,
+			},
+		},
+		IsError: true,
+	}
+}

@@ -5,7 +5,7 @@ type ProtoType string
 const (
 	BackendProtoStdio      ProtoType = "stdio"
 	BackendProtoSSE        ProtoType = "sse"
-	BackendProtoStreamable ProtoType = "streamable"
+	BackendProtoStreamable ProtoType = "streamable-http"
 	BackendProtoHttp       ProtoType = "http"
 	BackendProtoGrpc       ProtoType = "grpc"
 )

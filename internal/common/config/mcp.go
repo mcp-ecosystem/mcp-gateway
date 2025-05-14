@@ -5,7 +5,6 @@ import (
 
 	"github.com/ifuryst/lol"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
@@ -19,16 +18,14 @@ type (
 	}
 
 	MCPConfig struct {
-		Name        string            `yaml:"name" gorm:"primaryKey"`
-		Tenant      string            `yaml:"tenant" gorm:"index"`
-		CreatedAt   time.Time         `yaml:"created_at"`
-		UpdatedAt   time.Time         `yaml:"updated_at"`
-		ProtoType   cnst.ProtoType    `yaml:"protoType" gorm:"type:varchar(64)"`
-		Routers     []RouterConfig    `yaml:"routers" gorm:"type:json"`
-		Servers     []ServerConfig    `yaml:"servers" gorm:"type:json"`
-		Tools       []ToolConfig      `yaml:"tools" gorm:"type:json"`
-		StdioServer StdioServerConfig `yaml:"stdioServer" gorm:"type:json"`
-		SSEServer   SSEServerConfig   `yaml:"sseServer" gorm:"type:json"`
+		Name       string            `yaml:"name" gorm:"primaryKey"`
+		Tenant     string            `yaml:"tenant" gorm:"index"`
+		CreatedAt  time.Time         `yaml:"created_at"`
+		UpdatedAt  time.Time         `yaml:"updated_at"`
+		Routers    []RouterConfig    `yaml:"routers" gorm:"type:json"`
+		Servers    []ServerConfig    `yaml:"servers" gorm:"type:json"`
+		Tools      []ToolConfig      `yaml:"tools" gorm:"type:json"`
+		McpServers []MCPServerConfig `yaml:"mcpServers" gorm:"type:json"` // proxy mcp servers
 	}
 
 	RouterConfig struct {
@@ -65,16 +62,13 @@ type (
 		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
 	}
 
-	StdioServerConfig struct {
-		Name    string            `yaml:"name"`
-		Command string            `yaml:"command"`
-		Args    []string          `yaml:"args"`
-		Env     map[string]string `yaml:"env"`
-	}
-
-	SSEServerConfig struct {
-		Name string `yaml:"name"`
-		URL  string `yaml:"url"`
+	MCPServerConfig struct {
+		Type    string            `yaml:"type"`              // sse, stdio and streamable-http
+		Name    string            `yaml:"name"`              // server name
+		Command string            `yaml:"command,omitempty"` // for stdio
+		Args    []string          `yaml:"args,omitempty"`    // for stdio
+		Env     map[string]string `yaml:"env,omitempty"`     // for stdio
+		URL     string            `yaml:"url,omitempty"`     // for sse and streamable-http
 	}
 
 	ArgConfig struct {

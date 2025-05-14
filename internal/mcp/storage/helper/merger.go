@@ -1,49 +1,24 @@
 package helper
 
 import (
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 )
 
 // MergeConfigs merges all configurations
 func MergeConfigs(configs []*config.MCPConfig) ([]*config.MCPConfig, error) {
-	mergedHTTPConfig := &config.MCPConfig{
-		ProtoType: cnst.BackendProtoHttp,
-	}
-	mergedStdioConfig := &config.MCPConfig{
-		ProtoType: cnst.BackendProtoStdio,
-	}
-	mergedSSEConfig := &config.MCPConfig{
-		ProtoType: cnst.BackendProtoSSE,
-	}
+	mergedConfig := &config.MCPConfig{}
 
 	for _, cfg := range configs {
-		switch cfg.ProtoType {
-		case cnst.BackendProtoHttp:
-			if err := mergeHTTPConfig(mergedHTTPConfig, cfg); err != nil {
-				return nil, err
-			}
-		case cnst.BackendProtoStdio:
-			if err := mergeStdioConfig(mergedStdioConfig, cfg); err != nil {
-				return nil, err
-			}
-		case cnst.BackendProtoSSE:
-			if err := mergeSSEConfig(mergedSSEConfig, cfg); err != nil {
-				return nil, err
-			}
-		default:
-			// back compatible
-			if err := mergeHTTPConfig(mergedHTTPConfig, cfg); err != nil {
-				return nil, err
-			}
+		if err := mergeConfig(mergedConfig, cfg); err != nil {
+			return nil, err
 		}
 	}
 
-	return []*config.MCPConfig{mergedHTTPConfig, mergedStdioConfig, mergedSSEConfig}, nil
+	return []*config.MCPConfig{mergedConfig}, nil
 }
 
-// mergeHTTPConfig merges two configurations for HTTP protocol
-func mergeHTTPConfig(base, override *config.MCPConfig) error {
+// mergeConfig merges two configurations
+func mergeConfig(base, override *config.MCPConfig) error {
 	// Merge routers
 	base.Routers = mergeConfigRouters(base.Routers, override.Routers)
 
@@ -53,44 +28,27 @@ func mergeHTTPConfig(base, override *config.MCPConfig) error {
 	// Merge tools
 	base.Tools = mergeConfigTools(base.Tools, override.Tools)
 
-	return nil
-}
-
-func mergeStdioConfig(base, override *config.MCPConfig) error {
-	// Merge routers
-	base.Routers = mergeConfigRouters(base.Routers, override.Routers)
-
-	// Merge servers
-	base.Servers = mergeConfigServers(base.Servers, override.Servers)
-
-	// Merge stdio configs
-	base.StdioServer = mergeConfigStdio(base.StdioServer, override.StdioServer)
+	// Merge MCP servers
+	base.McpServers = mergeConfigMCPServers(base.McpServers, override.McpServers)
 
 	return nil
 }
 
-func mergeSSEConfig(base, override *config.MCPConfig) error {
-	// Merge routers
-	base.Routers = mergeConfigRouters(base.Routers, override.Routers)
+func mergeConfigMCPServers(base, override []config.MCPServerConfig) []config.MCPServerConfig {
+	mcpServerMap := make(map[string]config.MCPServerConfig)
+	for _, mcpServer := range base {
+		mcpServerMap[mcpServer.Name] = mcpServer
+	}
+	for _, mcpServer := range override {
+		mcpServerMap[mcpServer.Name] = mcpServer
+	}
 
-	// Merge servers
-	base.Servers = mergeConfigServers(base.Servers, override.Servers)
+	mergedMCPServers := make([]config.MCPServerConfig, 0, len(mcpServerMap))
+	for _, mcpServer := range mcpServerMap {
+		mergedMCPServers = append(mergedMCPServers, mcpServer)
+	}
 
-	// Merge tools
-	base.Tools = mergeConfigTools(base.Tools, override.Tools)
-
-	// Merge sse configs
-	base.SSEServer = mergeConfigSSE(base.SSEServer, override.SSEServer)
-
-	return nil
-}
-
-func mergeConfigStdio(base, override config.StdioServerConfig) config.StdioServerConfig {
-	return override
-}
-
-func mergeConfigSSE(base, override config.SSEServerConfig) config.SSEServerConfig {
-	return override
+	return mergedMCPServers
 }
 
 func mergeConfigRouters(base, override []config.RouterConfig) []config.RouterConfig {
