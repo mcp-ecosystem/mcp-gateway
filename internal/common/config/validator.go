@@ -109,6 +109,11 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 			serverNames[server.Name] = true
 		}
 
+		// Also add MCP servers to the server name map
+		for _, mcpServer := range cfg.McpServers {
+			serverNames[mcpServer.Name] = true
+		}
+
 		// Check if all referenced servers exist
 		for _, router := range cfg.Routers {
 			if !serverNames[router.Server] {

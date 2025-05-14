@@ -1,4 +1,4 @@
-name: "mock-stdio-svc"
+name: "proxy-mcp-exp"
 tenant: "default"
 
 routers:
@@ -18,11 +18,6 @@ routers:
       exposeHeaders:
         - "Mcp-Session-Id"
       allowCredentials: true
-
-servers:
-  - name: "mock-stdio-svc"
-    namespace: "stdio-service"
-    description: "Mock Stdio Service"
 
 mcpServers:
   - type: "stdio"

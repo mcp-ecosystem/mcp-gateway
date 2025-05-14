@@ -53,11 +53,13 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	return &Server{
 		logger: logger,
 		state: &serverState{
-			tools:                make([]mcp.ToolSchema, 0),
-			toolMap:              make(map[string]*config.ToolConfig),
-			prefixToTools:        make(map[string][]mcp.ToolSchema),
-			prefixToServerConfig: make(map[string]*config.ServerConfig),
-			prefixToRouterConfig: make(map[string]*config.RouterConfig),
+			tools:                   make([]mcp.ToolSchema, 0),
+			toolMap:                 make(map[string]*config.ToolConfig),
+			prefixToTools:           make(map[string][]mcp.ToolSchema),
+			prefixToServerConfig:    make(map[string]*config.ServerConfig),
+			prefixToRouterConfig:    make(map[string]*config.RouterConfig),
+			prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
+			prefixToProtoType:       make(map[string]cnst.ProtoType),
 		},
 		sessions:        sessionStore,
 		shutdownCh:      make(chan struct{}),
@@ -164,6 +166,7 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			newState.prefixToRouterConfig[routerCfg.Prefix] = &cfg.Routers[i]
 		}
 
+		// Process regular HTTP servers
 		for _, serverCfg := range cfg.Servers {
 			prefix, exists := prefixMap[serverCfg.Name]
 			if !exists {
@@ -179,26 +182,27 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			}
 			newState.prefixToTools[prefix] = allowedTools
 			newState.prefixToServerConfig[prefix] = &serverCfg
+			newState.prefixToProtoType[prefix] = cnst.BackendProtoHttp
+		}
 
-			// Add stdio and sse configs to the state
-			for _, mcpServer := range cfg.McpServers {
-				if mcpServer.Name == serverCfg.Name {
-					newState.prefixToMCPServerConfig[prefix] = mcpServer
+		// Process MCP servers
+		for _, mcpServer := range cfg.McpServers {
+			prefix, exists := prefixMap[mcpServer.Name]
+			if !exists {
+				continue // Skip MCP servers without router prefix
+			}
 
-					// Map protocol type based on server type
-					switch mcpServer.Type {
-					case "stdio":
-						newState.prefixToProtoType[prefix] = cnst.BackendProtoStdio
-					case "sse":
-						newState.prefixToProtoType[prefix] = cnst.BackendProtoSSE
-					case "streamable-http":
-						newState.prefixToProtoType[prefix] = cnst.BackendProtoStreamable
-					default:
-						newState.prefixToProtoType[prefix] = cnst.BackendProtoHttp
-					}
+			// Map prefix to MCP server config
+			newState.prefixToMCPServerConfig[prefix] = mcpServer
 
-					break
-				}
+			// Map protocol type based on server type
+			switch mcpServer.Type {
+			case "stdio":
+				newState.prefixToProtoType[prefix] = cnst.BackendProtoStdio
+			case "sse":
+				newState.prefixToProtoType[prefix] = cnst.BackendProtoSSE
+			case "streamable-http":
+				newState.prefixToProtoType[prefix] = cnst.BackendProtoStreamable
 			}
 		}
 	}
