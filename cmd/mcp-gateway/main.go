@@ -172,7 +172,7 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 }
 
 func handleMerge(ctx context.Context, logger *zap.Logger, srv *core.Server, mcpConfig *config.MCPConfig) {
-	logger.Info("Reloading MCP configuration")
+	logger.Info("Merging MCP configuration")
 	// Validate configurations before merging
 	if err := config.ValidateMCPConfig(mcpConfig); err != nil {
 		var validationErr *config.ValidationError
@@ -188,12 +188,12 @@ func handleMerge(ctx context.Context, logger *zap.Logger, srv *core.Server, mcpC
 
 	// Update server configuration in place
 	if err := srv.MergeConfig(mcpConfig); err != nil {
-		logger.Error("failed to update server configuration",
+		logger.Error("failed to merge server configuration",
 			zap.Error(err))
 		return
 	}
 
-	logger.Info("Configuration reloaded successfully")
+	logger.Info("Configuration merged successfully", zap.Int("servers", len(mcpConfig.Servers)))
 }
 func run() {
 	ctx, cancel := context.WithCancel(context.Background())

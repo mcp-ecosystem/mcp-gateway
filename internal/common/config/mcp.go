@@ -22,6 +22,7 @@ type (
 		Tenant     string            `yaml:"tenant" gorm:"index"`
 		CreatedAt  time.Time         `yaml:"created_at"`
 		UpdatedAt  time.Time         `yaml:"updated_at"`
+		DeletedAt  time.Time         `yaml:"deleted_at"` // non-zero indicates that all information has been deleted
 		Routers    []RouterConfig    `yaml:"routers" gorm:"type:json"`
 		Servers    []ServerConfig    `yaml:"servers" gorm:"type:json"`
 		Tools      []ToolConfig      `yaml:"tools" gorm:"type:json"`
