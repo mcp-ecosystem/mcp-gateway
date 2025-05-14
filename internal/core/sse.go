@@ -13,12 +13,14 @@ import (
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpclient"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
 
 // handleSSE handles SSE connections
@@ -265,43 +267,80 @@ func (s *Server) fetchStdioToolList(ctx context.Context, conn session.Connection
 		return []mcp.ToolSchema{}, nil
 	}
 
+	// Create stdio transport with the command and arguments
+	command := stdioCfg.Command
+	args := stdioCfg.Args
 	stdioClientEnv := mcp.CoverToStdioClientEnv(stdioCfg.Env)
-	stdioClient, err := mcpclient.NewStdioMCPClient(stdioCfg.Command, stdioClientEnv, stdioCfg.Args...)
-	if err != nil {
-		return []mcp.ToolSchema{}, err
-	}
-	defer stdioClient.Close()
 
-	// initialize stdio client
-	initRequest := mcp.InitializeRequestSchema{}
-	var initParams mcp.InitializeRequestParams
-	initParams.ProtocolVersion = mcp.LatestProtocolVersion
-	initParams.ClientInfo = mcp.ImplementationSchema{
+	// Create mcp-go stdio transport
+	stdioTransport := transport.NewStdio(command, stdioClientEnv, args...)
+
+	// Start the transport
+	if err := stdioTransport.Start(ctx); err != nil {
+		return []mcp.ToolSchema{}, fmt.Errorf("failed to start stdio transport: %w", err)
+	}
+
+	// Create client with the transport
+	c := client.NewClient(stdioTransport)
+	defer c.Close()
+
+	// Initialize the client
+	initRequest := mcpgo.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
+	initRequest.Params.ClientInfo = mcpgo.Implementation{
 		Name:    "mcp-gateway",
 		Version: "0.1.0",
 	}
-	paramsBytes, _ := json.Marshal(initParams)
-	initRequest.Params = paramsBytes
-	initRequest.Method = mcp.Initialize
-	initRequest.JSONRPC = mcp.JSPNRPCVersion
 
-	_, err = stdioClient.Initialize(ctx, initRequest)
+	_, err := c.Initialize(ctx, initRequest)
 	if err != nil {
-		return []mcp.ToolSchema{}, err
+		return []mcp.ToolSchema{}, fmt.Errorf("failed to initialize: %w", err)
 	}
 
-	// list tools
-	listToolsResult, err := stdioClient.ListTools(ctx, mcp.ListToolsRequest{})
+	// List available tools
+	toolsRequest := mcpgo.ListToolsRequest{}
+	toolsResult, err := c.ListTools(ctx, toolsRequest)
 	if err != nil {
-		return []mcp.ToolSchema{}, err
+		return []mcp.ToolSchema{}, fmt.Errorf("failed to list tools: %w", err)
 	}
 
-	tools := make([]mcp.ToolSchema, len(listToolsResult.Tools))
-	for i, schema := range listToolsResult.Tools {
+	// Convert from mcpgo.Tool to mcp.ToolSchema
+	tools := make([]mcp.ToolSchema, len(toolsResult.Tools))
+	for i, schema := range toolsResult.Tools {
+		// Create local mcp package ToolInputSchema
+		inputSchema := mcp.ToolInputSchema{
+			Type:       "object",
+			Properties: make(map[string]any),
+		}
+
+		// Convert mcpgo InputSchema to local mcp format
+		rawSchema, err := json.Marshal(schema.InputSchema)
+		if err == nil {
+			// Parse schema properties
+			var schemaMap map[string]interface{}
+			if err := json.Unmarshal(rawSchema, &schemaMap); err == nil {
+				if properties, ok := schemaMap["properties"].(map[string]interface{}); ok {
+					inputSchema.Properties = properties
+				}
+				if typ, ok := schemaMap["type"].(string); ok {
+					inputSchema.Type = typ
+				}
+				if required, ok := schemaMap["required"].([]interface{}); ok {
+					reqStrings := make([]string, len(required))
+					for j, r := range required {
+						if rStr, ok := r.(string); ok {
+							reqStrings[j] = rStr
+						}
+					}
+					inputSchema.Required = reqStrings
+				}
+			}
+		}
+
 		tools[i] = mcp.ToolSchema{
 			Name:        schema.Name,
 			Description: schema.Description,
-			InputSchema: schema.InputSchema,
+			InputSchema: inputSchema,
 		}
 	}
 
@@ -352,14 +391,6 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 		return nil, errors.New(errMsg)
 	}
 
-	// Get server configuration
-	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
-	if !ok {
-		errMsg := "Server configuration not found"
-		s.sendProtocolError(c, req.Id, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
-		return nil, errors.New(errMsg)
-	}
-
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -368,7 +399,7 @@ func (s *Server) invokeStdioTool(c *gin.Context, req mcp.JSONRPCRequest, conn se
 		return nil, errors.New(errMsg)
 	}
 
-	result, err := s.executeStdioTool(c, &stdioCfg, args, c.Request, serverCfg.Config, params)
+	result, err := s.executeStdioTool(c, &stdioCfg, args, c.Request, params)
 	if err != nil {
 		s.sendToolExecutionError(c, conn, req, err, true)
 		return nil, err
@@ -382,11 +413,10 @@ func (s *Server) executeStdioTool(
 	tool *config.MCPServerConfig,
 	args map[string]any,
 	request *http.Request,
-	serverCfg map[string]string,
 	params mcp.CallToolParams,
 ) (*mcp.CallToolResult, error) {
 	// Prepare template context
-	tmplCtx, err := prepareTemplateContext(args, request, serverCfg)
+	tmplCtx, err := prepareTemplateContextForMCPBackend(args, request)
 	if err != nil {
 		return nil, err
 	}
@@ -405,43 +435,129 @@ func (s *Server) executeStdioTool(
 		return nil, err
 	}
 
+	// Use mcp-go client
+	command := tool.Command
+	cmdArgs := tool.Args
 	stdioClientEnv := mcp.CoverToStdioClientEnv(renderedClientEnv)
-	stdioClient, err := mcpclient.NewStdioMCPClient(tool.Command, stdioClientEnv, tool.Args...)
-	if err != nil {
-		return nil, err
-	}
-	defer stdioClient.Close()
 
-	// initialize stdio client
-	initRequest := mcp.InitializeRequestSchema{}
-	var initParams mcp.InitializeRequestParams
-	initParams.ProtocolVersion = mcp.LatestProtocolVersion
-	initParams.ClientInfo = mcp.ImplementationSchema{
+	// Create stdio transport
+	stdioTransport := transport.NewStdio(command, stdioClientEnv, cmdArgs...)
+
+	// Start the transport
+	if err := stdioTransport.Start(c.Request.Context()); err != nil {
+		return nil, fmt.Errorf("failed to start stdio transport: %w", err)
+	}
+
+	// Create client
+	mcpClient := client.NewClient(stdioTransport)
+	defer mcpClient.Close()
+
+	// Initialize client
+	initRequest := mcpgo.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
+	initRequest.Params.ClientInfo = mcpgo.Implementation{
 		Name:    "mcp-gateway",
 		Version: "0.1.0",
 	}
-	paramsBytes, _ := json.Marshal(initParams)
-	initRequest.Params = paramsBytes
-	initRequest.Method = mcp.Initialize
-	initRequest.JSONRPC = mcp.JSPNRPCVersion
 
-	_, err = stdioClient.Initialize(c.Request.Context(), initRequest)
+	_, err = mcpClient.Initialize(c.Request.Context(), initRequest)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize stdio client: %w", err)
 	}
 
-	// call tool
-	toolCallRequest := mcp.CallToolRequest{
-		Request: mcp.Request{
-			Method: "tools/call",
-		},
-	}
-	toolCallRequest.Params.Name = params.Name
-	toolCallRequest.Params.Arguments = toolCallRequestParams
+	// Call tool
+	callRequest := mcpgo.CallToolRequest{}
+	callRequest.Params.Name = params.Name
 
-	result, err := stdioClient.CallTool(c.Request.Context(), toolCallRequest)
+	// Convert parameters to mcp-go format
+	callRequest.Params.Arguments = toolCallRequestParams
+
+	mcpgoResult, err := mcpClient.CallTool(c.Request.Context(), callRequest)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to call tool: %w", err)
+	}
+
+	// Convert mcp-go result to local mcp format
+	result := &mcp.CallToolResult{
+		IsError: mcpgoResult.IsError,
+	}
+
+	// Process content items
+	if len(mcpgoResult.Content) > 0 {
+		var validContents []mcp.Content
+
+		for _, content := range mcpgoResult.Content {
+			// Skip null content
+			if content == nil {
+				continue
+			}
+
+			// Try to get content type
+			contentType := ""
+			switch c := content.(type) {
+			case *mcpgo.TextContent:
+				contentType = "text"
+				validContents = append(validContents, &mcp.TextContent{
+					Type: "text",
+					Text: c.Text,
+				})
+			case *mcpgo.ImageContent:
+				contentType = "image"
+				validContents = append(validContents, &mcp.ImageContent{
+					Type:     "image",
+					Data:     c.Data,
+					MimeType: c.MIMEType,
+				})
+			case *mcpgo.AudioContent:
+				contentType = "audio"
+				validContents = append(validContents, &mcp.AudioContent{
+					Type:     "audio",
+					Data:     c.Data,
+					MimeType: c.MIMEType,
+				})
+			default:
+				// Try to parse from raw content
+				rawContent, err := json.Marshal(content)
+				if err == nil {
+					var contentMap map[string]interface{}
+					if json.Unmarshal(rawContent, &contentMap) == nil {
+						if typ, ok := contentMap["type"].(string); ok {
+							contentType = typ
+
+							switch contentType {
+							case "text":
+								if text, ok := contentMap["text"].(string); ok {
+									validContents = append(validContents, &mcp.TextContent{
+										Type: "text",
+										Text: text,
+									})
+								}
+							case "image":
+								data, _ := contentMap["data"].(string)
+								mimeType, _ := contentMap["mimeType"].(string)
+								validContents = append(validContents, &mcp.ImageContent{
+									Type:     "image",
+									Data:     data,
+									MimeType: mimeType,
+								})
+							case "audio":
+								data, _ := contentMap["data"].(string)
+								mimeType, _ := contentMap["mimeType"].(string)
+								validContents = append(validContents, &mcp.AudioContent{
+									Type:     "audio",
+									Data:     data,
+									MimeType: mimeType,
+								})
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if len(validContents) > 0 {
+			result.Content = validContents
+		}
 	}
 
 	return result, nil

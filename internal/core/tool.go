@@ -46,6 +46,21 @@ func prepareTemplateContext(args map[string]any, request *http.Request, serverCf
 	return tmplCtx, nil
 }
 
+// prepareTemplateContextForMCPBackend prepares the template context with request and config data
+func prepareTemplateContextForMCPBackend(args map[string]any, request *http.Request) (*template.Context, error) {
+	tmplCtx := template.NewContext()
+	tmplCtx.Args = preprocessArgs(args)
+
+	// Process request headers
+	for k, v := range request.Header {
+		if len(v) > 0 {
+			tmplCtx.Request.Headers[k] = v[0]
+		}
+	}
+
+	return tmplCtx, nil
+}
+
 // prepareRequest prepares the HTTP request with templates and arguments
 func prepareRequest(tool *config.ToolConfig, tmplCtx *template.Context) (*http.Request, error) {
 	// Process endpoint template
