@@ -145,7 +145,7 @@ other = "MCP server not found"
 other = "MCP server already exists"
 
 [ErrorMCPServerValidation]
-other = "MCP server validation failed"
+other = "MCP server validation failed: {{.Reason}}"
 
 [ErrorMCPServerNameRequired]
 other = "MCP server name is required"

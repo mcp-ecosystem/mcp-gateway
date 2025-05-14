@@ -130,12 +130,6 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 		return
 	}
 
-	// Check if the server name in config matches the name parameter
-	if len(cfg.Servers) == 0 {
-		i18n.RespondWithError(c, i18n.ErrorMCPServerValidation.WithParam("Reason", "Server name in configuration must match name parameter"))
-		return
-	}
-
 	// Get existing server
 	oldCfg, err := h.store.Get(c.Request.Context(), name)
 	if err != nil {
@@ -309,12 +303,6 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 	var cfg config.MCPConfig
 	if err := yaml.Unmarshal(content, &cfg); err != nil {
 		i18n.RespondWithError(c, i18n.ErrorMCPServerValidation.WithParam("Reason", "Invalid YAML content: "+err.Error()))
-		return
-	}
-
-	// Check if there is at least one server in the config
-	if len(cfg.Servers) == 0 {
-		i18n.RespondWithError(c, i18n.ErrorMCPServerValidation.WithParam("Reason", "No server configuration found in YAML"))
 		return
 	}
 

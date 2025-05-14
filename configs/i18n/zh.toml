@@ -145,7 +145,7 @@ other = "MCP服务器不存在"
 other = "MCP服务器已存在"
 
 [ErrorMCPServerValidation]
-other = "MCP服务器验证失败"
+other = "MCP服务器验证失败: {{.Reason}}"
 
 [ErrorMCPServerNameRequired]
 other = "MCP服务器名称不能为空"
