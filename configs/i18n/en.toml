@@ -1,0 +1,358 @@
+# Common errors
+[ErrorTenantRequired]
+other = "Tenant name is required"
+
+[ErrorTenantNotFound]
+other = "Tenant with name '{{.Name}}' not found"
+
+[ErrorRouterPrefixError]
+other = "Router prefix must start with tenant prefix followed by a path separator"
+
+[ErrorTenantPermissionError]
+other = "You do not have permission to access this tenant"
+
+# Tenant specific errors
+[ErrorTenantRequiredFields]
+other = "Tenant name and prefix are required"
+
+[ErrorTenantNameExists]
+other = "Tenant name already exists"
+
+[ErrorTenantPrefixExists]
+other = "Tenant prefix already exists"
+
+[ErrorTenantNameRequired]
+other = "Tenant name is required"
+
+# Tenant success messages
+[SuccessTenantCreated]
+other = "Tenant created successfully"
+
+[SuccessTenantUpdated]
+other = "Tenant updated successfully"
+
+[SuccessTenantDeleted]
+other = "Tenant deleted successfully"
+
+# Authentication errors
+[ErrorUnauthorized]
+other = "Unauthorized access"
+
+[ErrorInvalidToken]
+other = "Invalid or expired token"
+
+# Resource errors
+[ErrorResourceNotFound]
+other = "Resource not found"
+
+[ErrorPrefixConflict]
+other = "Prefix conflicts with existing prefix"
+
+[ErrorNamespacePermissionError]
+other = "User does not have permission to configure namespace"
+
+# Validation errors
+[ErrorValidationFailed]
+other = "Validation failed: {{.Reason}}"
+
+[ErrorInvalidYaml]
+other = "Invalid YAML format"
+
+[ErrorInvalidJson]
+other = "Invalid JSON format"
+
+# Success messages
+[SuccessResourceCreated]
+other = "Resource created successfully"
+
+[SuccessResourceUpdated]
+other = "Resource updated successfully"
+
+[SuccessResourceDeleted]
+other = "Resource deleted successfully"
+
+# Info messages
+[InfoOperationInProgress]
+other = "Operation in progress, please wait"
+
+[InfoNoChangesDetected]
+other = "No changes detected"
+
+# Common errors
+[ErrorNotFound]
+other = "Resource not found"
+
+[ErrorForbidden]
+other = "Access forbidden"
+
+[ErrorBadRequest]
+other = "Bad request"
+
+[ErrorInternalServer]
+other = "Internal server error"
+
+[ErrorMethodNotAllowed]
+other = "Method not allowed"
+
+[ErrorConflict]
+other = "Resource conflict"
+
+[ErrorTooManyRequests]
+other = "Too many requests"
+
+[ErrorServiceUnavailable]
+other = "Service unavailable"
+
+[ErrorGatewayTimeout]
+other = "Gateway timeout"
+
+[ErrorUnsupportedMedia]
+other = "Unsupported media type"
+
+# User related errors
+[ErrorUserNotFound]
+other = "User not found"
+
+[ErrorInvalidCredentials]
+other = "Invalid username or password"
+
+[ErrorUserDisabled]
+other = "User account is disabled"
+
+[ErrorUserNamePasswordRequired]
+other = "Username and password are required"
+
+[ErrorInvalidOldPassword]
+other = "Old password is incorrect"
+
+[ErrorUsernameExists]
+other = "Username already exists"
+
+[ErrorInvalidUsername]
+other = "Invalid username format"
+
+[ErrorEmailExists]
+other = "Email already exists"
+
+[ErrorInvalidEmail]
+other = "Invalid email format"
+
+# MCP related errors
+[ErrorMCPServerNotFound]
+other = "MCP server not found"
+
+[ErrorMCPServerExists]
+other = "MCP server already exists"
+
+[ErrorMCPServerValidation]
+other = "MCP server validation failed: {{.Reason}}"
+
+[ErrorMCPServerNameRequired]
+other = "MCP server name is required"
+
+[ErrorMCPConfigInvalid]
+other = "MCP configuration is invalid"
+
+[ErrorMCPRequestFailed]
+other = "MCP request failed"
+
+# API related errors
+[ErrorAPINotFound]
+other = "API not found"
+
+[ErrorAPIMethodNotAllowed]
+other = "API method not allowed"
+
+[ErrorAPIRateLimitExceeded]
+other = "API rate limit exceeded"
+
+[ErrorAPIUnavailable]
+other = "API unavailable"
+
+[ErrorAPITimeout]
+other = "API request timeout"
+
+[ErrorAPIValidationFailed]
+other = "API validation failed"
+
+[ErrorAPIMalformedRequest]
+other = "Malformed API request"
+
+[ErrorAPIResponseInvalid]
+other = "Invalid API response"
+
+[ErrorAPIInvalidCredentials]
+other = "Invalid API credentials"
+
+[ErrorAPIPermissionDenied]
+other = "API permission denied"
+
+[ErrorAPIUnsupportedMediaType]
+other = "Unsupported media type for API"
+
+# General validation errors
+[ErrorRequiredField]
+other = "Required field is missing"
+
+[ErrorInvalidFormat]
+other = "Invalid format"
+
+[ErrorInvalidValue]
+other = "Invalid value"
+
+[ErrorDuplicateEntity]
+other = "Duplicate entity"
+
+[ErrorDataIntegrityViolation]
+other = "Data integrity violation"
+
+# Tenant related success messages
+[SuccessTenantInfo]
+other = "Tenant information retrieved successfully"
+
+[SuccessTenantList]
+other = "Tenant list retrieved successfully"
+
+[SuccessTenantStatus]
+other = "Tenant status updated successfully"
+
+# User related success messages
+[SuccessLogin]
+other = "Login successful"
+
+[SuccessLogout]
+other = "Logout successful"
+
+[SuccessPasswordChanged]
+other = "Password changed successfully"
+
+[SuccessUserCreated]
+other = "User created successfully"
+
+[SuccessUserUpdated]
+other = "User updated successfully"
+
+[SuccessUserDeleted]
+other = "User deleted successfully"
+
+[SuccessUserInfo]
+other = "User information retrieved successfully"
+
+[SuccessUserList]
+other = "User list retrieved successfully"
+
+[SuccessUserWithTenants]
+other = "User with tenants retrieved successfully"
+
+[SuccessUserTenantsUpdated]
+other = "User tenants updated successfully"
+
+# MCP related success messages
+[SuccessMCPServerCreated]
+other = "MCP server created successfully"
+
+[SuccessMCPServerUpdated]
+other = "MCP server updated successfully"
+
+[SuccessMCPServerDeleted]
+other = "MCP server deleted successfully"
+
+[SuccessMCPServerSynced]
+other = "MCP server synced successfully"
+
+[SuccessMCPServerList]
+other = "MCP server list retrieved successfully"
+
+[SuccessMCPServerInfo]
+other = "MCP server information retrieved successfully"
+
+[SuccessMCPServerStatus]
+other = "MCP server status updated successfully"
+
+# OpenAPI related success messages
+[SuccessOpenAPIImported]
+other = "OpenAPI specification imported successfully"
+
+[SuccessOpenAPIExported]
+other = "OpenAPI specification exported successfully"
+
+[SuccessOpenAPIValidated]
+other = "OpenAPI specification validated successfully"
+
+# API related success messages
+[SuccessAPICreated]
+other = "API created successfully"
+
+[SuccessAPIUpdated]
+other = "API updated successfully"
+
+[SuccessAPIDeleted]
+other = "API deleted successfully"
+
+[SuccessAPIList]
+other = "API list retrieved successfully"
+
+[SuccessAPIInfo]
+other = "API information retrieved successfully"
+
+[SuccessAPIKeyCreated]
+other = "API key created successfully"
+
+[SuccessAPIKeyRevoked]
+other = "API key revoked successfully"
+
+[SuccessAPIKeyList]
+other = "API key list retrieved successfully"
+
+[SuccessAPIRouteCreated]
+other = "API route created successfully"
+
+[SuccessAPIRouteUpdated]
+other = "API route updated successfully"
+
+[SuccessAPIRouteDeleted]
+other = "API route deleted successfully"
+
+[SuccessAPIRouteList]
+other = "API route list retrieved successfully"
+
+# Chat related success messages
+[SuccessChatSessions]
+other = "Chat sessions retrieved successfully"
+
+[SuccessChatMessages]
+other = "Chat messages retrieved successfully"
+
+[SuccessChatCreated]
+other = "Chat created successfully"
+
+[SuccessChatUpdated]
+other = "Chat updated successfully"
+
+[SuccessChatDeleted]
+other = "Chat deleted successfully"
+
+[SuccessChatHistory]
+other = "Chat history retrieved successfully"
+
+# General success messages
+[SuccessOperationCompleted]
+other = "Operation completed successfully"
+
+[SuccessItemCreated]
+other = "Item created successfully"
+
+[SuccessItemUpdated]
+other = "Item updated successfully"
+
+[SuccessItemDeleted]
+other = "Item deleted successfully"
+
+[SuccessDataExported]
+other = "Data exported successfully"
+
+[SuccessDataImported]
+other = "Data imported successfully"
+
+[SuccessDataSaved]
+other = "Data saved successfully"

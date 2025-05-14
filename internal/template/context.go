@@ -14,6 +14,7 @@ type (
 	RequestWrapper struct {
 		Headers map[string]string `json:"headers"`
 		Query   map[string]string `json:"query"`
+		Cookies map[string]string `json:"cookies"`
 		Path    map[string]string `json:"path"`
 		Body    map[string]any    `json:"body"`
 	}
@@ -31,6 +32,7 @@ func NewContext() *Context {
 		Request: RequestWrapper{
 			Headers: make(map[string]string),
 			Query:   make(map[string]string),
+			Cookies: make(map[string]string),
 			Path:    make(map[string]string),
 			Body:    make(map[string]any),
 		},

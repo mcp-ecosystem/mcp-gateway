@@ -109,6 +109,8 @@
     "routing_config": "Routing Configuration",
     "enabled_tools": "Enabled Tools",
     "all_tools": "All Tools",
+    "mcp_config": "MCP Configuration",
+    "backend_config": "Backend Configuration",
     "add_success": "Gateway created successfully",
     "add_failed": "Failed to create gateway",
     "edit_success": "Configuration saved successfully",

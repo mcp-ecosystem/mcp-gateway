@@ -10,12 +10,13 @@ import (
 
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
-	Name      string `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Routers   string `gorm:"type:text"`
-	Servers   string `gorm:"type:text"`
-	Tools     string `gorm:"type:text"`
+	Name       string `gorm:"primaryKey; column:name"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Routers    string `gorm:"type:text; column:routers; default:''"`
+	Servers    string `gorm:"type:text; column:servers; default:''"`
+	Tools      string `gorm:"type:text; column:tools; default:''"`
+	McpServers string `gorm:"type:text; column:mcp_servers; default:''"`
 }
 
 // ToMCPConfig converts the database model to MCPConfig
@@ -26,14 +27,25 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 		UpdatedAt: m.UpdatedAt,
 	}
 
-	if err := json.Unmarshal([]byte(m.Routers), &cfg.Routers); err != nil {
-		return nil, err
+	if len(m.Routers) > 0 {
+		if err := json.Unmarshal([]byte(m.Routers), &cfg.Routers); err != nil {
+			return nil, err
+		}
 	}
-	if err := json.Unmarshal([]byte(m.Servers), &cfg.Servers); err != nil {
-		return nil, err
+	if len(m.Servers) > 0 {
+		if err := json.Unmarshal([]byte(m.Servers), &cfg.Servers); err != nil {
+			return nil, err
+		}
 	}
-	if err := json.Unmarshal([]byte(m.Tools), &cfg.Tools); err != nil {
-		return nil, err
+	if len(m.Tools) > 0 {
+		if err := json.Unmarshal([]byte(m.Tools), &cfg.Tools); err != nil {
+			return nil, err
+		}
+	}
+	if len(m.McpServers) > 0 {
+		if err := json.Unmarshal([]byte(m.McpServers), &cfg.McpServers); err != nil {
+			return nil, err
+		}
 	}
 
 	return cfg, nil
@@ -45,22 +57,30 @@ func FromMCPConfig(cfg *config.MCPConfig) (*MCPConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	servers, err := json.Marshal(cfg.Servers)
 	if err != nil {
 		return nil, err
 	}
+
 	tools, err := json.Marshal(cfg.Tools)
 	if err != nil {
 		return nil, err
 	}
 
+	mcpServers, err := json.Marshal(cfg.McpServers)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MCPConfig{
-		Name:      cfg.Name,
-		CreatedAt: cfg.CreatedAt,
-		UpdatedAt: cfg.UpdatedAt,
-		Routers:   string(routers),
-		Servers:   string(servers),
-		Tools:     string(tools),
+		Name:       cfg.Name,
+		CreatedAt:  cfg.CreatedAt,
+		UpdatedAt:  cfg.UpdatedAt,
+		Routers:    string(routers),
+		Servers:    string(servers),
+		Tools:      string(tools),
+		McpServers: string(mcpServers),
 	}, nil
 }
 

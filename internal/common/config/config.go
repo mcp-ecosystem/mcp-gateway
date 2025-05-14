@@ -60,6 +60,8 @@ type (
 		Compress   bool   `yaml:"compress"`    // whether to compress backup files
 		Color      bool   `yaml:"color"`       // whether to use color in console output
 		Stacktrace bool   `yaml:"stacktrace"`  // whether to include stacktrace in error logs
+		TimeZone   string `yaml:"time_zone"`   // time zone for log timestamps, e.g., "UTC", default is local
+		TimeFormat string `yaml:"time_format"` // time format for log timestamps, default is "2006-01-02 15:04:05"
 	}
 )
 

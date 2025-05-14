@@ -109,6 +109,8 @@
     "routing_config": "路由配置",
     "enabled_tools": "已启用的工具",
     "all_tools": "所有工具",
+    "mcp_config": "MCP 配置",
+    "backend_config": "后端配置",
     "add_success": "网关创建成功",
     "add_failed": "网关创建失败",
     "edit_success": "配置保存成功",

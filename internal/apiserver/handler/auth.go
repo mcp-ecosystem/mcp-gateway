@@ -11,6 +11,7 @@ import (
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,33 +35,33 @@ func NewHandler(db database.Database, jwtService *jwt.Service, cfg *config.MCPGa
 func (h *Handler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
 	// Get user from database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), req.Username)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		i18n.RespondWithError(c, i18n.ErrorInvalidCredentials)
 		return
 	}
 
 	// Check if user is active
 	if !user.IsActive {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User is disabled"})
+		i18n.RespondWithError(c, i18n.ErrorUserDisabled)
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		i18n.RespondWithError(c, i18n.ErrorInvalidCredentials)
 		return
 	}
 
 	// Generate JWT token
 	token, err := h.jwtService.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
@@ -72,24 +73,24 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 	c.Set("user", userInfo)
 
-	c.JSON(http.StatusOK, gin.H{
-		"token": token,
-		"user":  userInfo,
-	})
+	i18n.Success(i18n.SuccessLogin).
+		With("token", token).
+		With("user", userInfo).
+		Send(c)
 }
 
 // ChangePassword handles password change requests
 func (h *Handler) ChangePassword(c *gin.Context) {
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
 	// Get the user from the context
 	claims, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
 		return
 	}
 	jwtClaims := claims.(*jwt.Claims)
@@ -97,20 +98,20 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	// Get the user from the database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
 	// Compare the old password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "invalid old password"})
+		i18n.RespondWithError(c, i18n.ErrorInvalidOldPassword)
 		return
 	}
 
 	// Hash the new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
@@ -118,11 +119,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	user.Password = string(hashedPassword)
 	user.UpdatedAt = time.Now()
 	if err := h.db.UpdateUser(c.Request.Context(), user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.ChangePasswordResponse{Success: true})
+	i18n.Success(i18n.SuccessPasswordChanged).With("success", true).Send(c)
 }
 
 // AdminAuthMiddleware creates a middleware that checks if the user has admin role
@@ -130,14 +131,14 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, exists := c.Get("claims")
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			i18n.RespondWithError(c, i18n.ErrUnauthorized)
 			c.Abort()
 			return
 		}
 
 		jwtClaims, ok := claims.(*jwt.Claims)
 		if !ok || jwtClaims.Role != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Only administrators can access this resource"})
+			i18n.RespondWithError(c, i18n.ErrForbidden.WithParam("Reason", "Only administrators can access this resource"))
 			c.Abort()
 			return
 		}
@@ -149,7 +150,7 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 func (h *Handler) ListUsers(c *gin.Context) {
 	users, err := h.db.ListUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
@@ -160,20 +161,20 @@ func (h *Handler) ListUsers(c *gin.Context) {
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
 	// Validate request
 	if req.Username == "" || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		i18n.RespondWithError(c, i18n.ErrorUserNamePasswordRequired)
 		return
 	}
 
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
@@ -209,25 +210,25 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": userID})
+	i18n.Created(i18n.SuccessUserCreated).With("id", userID).Send(c)
 }
 
 // UpdateUser handles user updates
 func (h *Handler) UpdateUser(c *gin.Context) {
 	var req dto.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
 	// Get the user from the database
 	existingUser, err := h.db.GetUserByUsername(c.Request.Context(), req.Username)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", req.Username))
 		return
 	}
 
@@ -296,25 +297,25 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+	i18n.Success(i18n.SuccessUserUpdated).Send(c)
 }
 
 // DeleteUser handles user deletion
 func (h *Handler) DeleteUser(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Username is required"))
 		return
 	}
 
 	// Get the user from the database
 	existingUser, err := h.db.GetUserByUsername(c.Request.Context(), username)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", username))
 		return
 	}
 
@@ -334,11 +335,11 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+	i18n.Success(i18n.SuccessUserDeleted).Send(c)
 }
 
 // GetUserInfo handles getting current user info
@@ -346,7 +347,7 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 	// Get the user from the context
 	claims, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
 		return
 	}
 	jwtClaims := claims.(*jwt.Claims)
@@ -354,7 +355,7 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 	// Get the user from the database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 	}
 
 	if err2 != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get tenants"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to get tenants"))
 		return
 	}
 
@@ -386,13 +387,13 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"role":     user.Role,
-		"isActive": user.IsActive,
-		"tenants":  tenantResponses,
-	})
+	i18n.Success(i18n.SuccessUserInfo).
+		With("id", user.ID).
+		With("username", user.Username).
+		With("role", user.Role).
+		With("isActive", user.IsActive).
+		With("tenants", tenantResponses).
+		Send(c)
 }
 
 // GetUserWithTenants gets a user with their associated tenants
@@ -400,7 +401,7 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	// Get current logged-in user information for permission checking
 	claims, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
 		return
 	}
 	currentUserClaims := claims.(*jwt.Claims)
@@ -415,7 +416,7 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	} else {
 		// Only administrators can view information of other users
 		if currentUserClaims.Role != "admin" && username != currentUserClaims.Username {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Only administrators can access other users' information"})
+			i18n.RespondWithError(c, i18n.ErrForbidden.WithParam("Reason", "Only administrators can access other users' information"))
 			return
 		}
 	}
@@ -423,7 +424,7 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	// Get user from database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), username)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", username))
 		return
 	}
 
@@ -439,7 +440,7 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	}
 
 	if err2 != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user tenants"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to get user tenants"))
 		return
 	}
 
@@ -464,14 +465,14 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 		Tenants:  tenantResponses,
 	}
 
-	c.JSON(http.StatusOK, userResponse)
+	i18n.Success(i18n.SuccessUserWithTenants).WithPayload(userResponse).Send(c)
 }
 
 // UpdateUserTenants updates the tenant associations for a user
 func (h *Handler) UpdateUserTenants(c *gin.Context) {
 	var req dto.UserTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
@@ -517,9 +518,9 @@ func (h *Handler) UpdateUserTenants(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User tenant associations updated successfully"})
+	i18n.Success(i18n.SuccessUserTenantsUpdated).Send(c)
 }

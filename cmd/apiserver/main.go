@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
+
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/logger"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
@@ -230,6 +232,18 @@ func startServer(logger *zap.Logger, router *gin.Engine) {
 	}
 }
 
+// initI18n initializes the i18n translator
+func initI18n(cfg *config.I18nConfig) {
+	translationsPath := cfg.Path
+	if translationsPath == "" {
+		translationsPath = "configs/i18n"
+	}
+
+	if err := i18n.InitTranslator(translationsPath); err != nil {
+		log.Printf("Warning: Failed to load translations: %v\n", err)
+	}
+}
+
 func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -248,6 +262,9 @@ func run() {
 	openaiClient := initOpenAI(&cfg.OpenAI)
 	db := initDatabase(logger, &cfg.Database)
 	defer db.Close()
+
+	// Initialize i18n translator
+	initI18n(&cfg.I18n)
 
 	// Initialize super admin
 	if err := initSuperAdmin(ctx, db, cfg); err != nil {

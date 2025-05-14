@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
-	"net/http"
 	"strconv"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,16 +20,16 @@ func NewChat(db database.Database) *Chat {
 func (h *Chat) HandleGetChatSessions(c *gin.Context) {
 	sessions, err := h.db.GetSessions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get chat sessions"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to get chat sessions"))
 		return
 	}
-	c.JSON(http.StatusOK, sessions)
+	i18n.Success(i18n.SuccessChatSessions).WithPayload(sessions).Send(c)
 }
 
 func (h *Chat) HandleGetChatMessages(c *gin.Context) {
 	sessionId := c.Param("sessionId")
 	if sessionId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "sessionId is required"})
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "SessionId is required"))
 		return
 	}
 
@@ -50,9 +51,9 @@ func (h *Chat) HandleGetChatMessages(c *gin.Context) {
 	// Get messages with pagination
 	messages, err := h.db.GetMessagesWithPagination(c.Request.Context(), sessionId, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get messages"})
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to get messages"))
 		return
 	}
 
-	c.JSON(http.StatusOK, messages)
+	i18n.Success(i18n.SuccessChatMessages).WithPayload(messages).Send(c)
 }

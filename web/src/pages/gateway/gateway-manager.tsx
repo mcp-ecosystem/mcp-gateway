@@ -44,6 +44,14 @@ interface Gateway {
       description: string;
       method: string;
     }>;
+    mcpServers?: Array<{
+      type: string;
+      name: string;
+      command?: string;
+      args?: string[];
+      env?: Record<string, string>;
+      url?: string;
+    }>;
   };
 }
 
@@ -557,6 +565,51 @@ export function GatewayManager() {
                             </div>
                           </div>
 
+                          {/* 显示MCP后端配置 */}
+                          {server.parsedConfig?.mcpServers && server.parsedConfig.mcpServers.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
+                              <div className="flex flex-col gap-2">
+                                {server.parsedConfig.mcpServers.map((mcpServer, idx) => (
+                                  <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">{mcpServer.name}</span>
+                                      <Chip size="sm" variant="flat" color="warning">{mcpServer.type}</Chip>
+                                    </div>
+                                    {mcpServer.type === 'stdio' && (
+                                      <div className="text-xs">
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-medium">Command:</span>
+                                          <code className="bg-default-100 px-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
+                                        </div>
+                                        {mcpServer.env && Object.keys(mcpServer.env).length > 0 && (
+                                          <div className="mt-1">
+                                            <span className="font-medium">Env:</span>
+                                            <div className="mt-1 pl-2">
+                                              {Object.entries(mcpServer.env).map(([key, value]) => (
+                                                <div key={key} className="text-xs truncate">
+                                                  <span className="text-default-500">{key}:</span> {value}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {(mcpServer.type === 'sse' || mcpServer.type === 'streamable-http') && mcpServer.url && (
+                                      <div className="text-xs">
+                                        <div className="flex items-start gap-1">
+                                          <span className="font-medium mt-1">URL:</span>
+                                          <code className="bg-default-100 px-1 py-1 rounded break-all">{mcpServer.url}</code>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="space-y-3">
                             <div>
                               <h4 className="text-sm font-semibold mb-1">{t('gateway.enabled_tools')}:</h4>
@@ -597,6 +650,85 @@ export function GatewayManager() {
                         </div>
                       );
                     })}
+
+                    {/* 处理只有routers和mcpServers的情况，比如proxy-mcp-exp.yaml */}
+                    {(!server.parsedConfig.servers || server.parsedConfig.servers.length === 0) && (
+                      <div className="space-y-3">
+                        {server.parsedConfig.routers && server.parsedConfig.routers.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">{t('gateway.routing_config')}</h4>
+                            <div className="flex flex-col gap-2">
+                              {server.parsedConfig.routers.map((router: RouterConfig, idx: number) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                  <Chip
+                                    color="primary"
+                                    variant="flat"
+                                    size="sm"
+                                    className="cursor-pointer hover:opacity-80 select-none"
+                                    onClick={() => handleCopyToClipboard(router.prefix)}
+                                  >
+                                    {router.prefix}
+                                  </Chip>
+                                  <Icon icon="lucide:arrow-right" className="text-sm" />
+                                  <Chip
+                                    variant="flat"
+                                    size="sm"
+                                    className="cursor-pointer hover:opacity-80 select-none"
+                                    onClick={() => handleCopyToClipboard(router.server)}
+                                  >
+                                    {router.server}
+                                  </Chip>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {server.parsedConfig.mcpServers && server.parsedConfig.mcpServers.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">{t('gateway.mcp_config')}</h4>
+                            <div className="flex flex-col gap-2">
+                              {server.parsedConfig.mcpServers.map((mcpServer, idx) => (
+                                <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{mcpServer.name}</span>
+                                    <Chip size="sm" variant="flat" color="warning">{mcpServer.type}</Chip>
+                                  </div>
+                                  {mcpServer.type === 'stdio' && (
+                                    <div className="text-xs">
+                                      <div className="flex items-center gap-1">
+                                        <span className="font-medium">Command:</span>
+                                        <code className="bg-default-100 px-1 rounded">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
+                                      </div>
+                                      {mcpServer.env && Object.keys(mcpServer.env).length > 0 && (
+                                        <div className="mt-1">
+                                          <span className="font-medium">Env:</span>
+                                          <div className="mt-1 pl-2">
+                                            {Object.entries(mcpServer.env).map(([key, value]) => (
+                                              <div key={key} className="text-xs truncate">
+                                                <span className="text-default-500">{key}:</span> {value}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {(mcpServer.type === 'sse' || mcpServer.type === 'streamable-http') && mcpServer.url && (
+                                    <div className="text-xs">
+                                      <div className="flex items-start gap-1">
+                                        <span className="font-medium mt-1">URL:</span>
+                                        <code className="bg-default-100 px-1 py-1 rounded break-all">{mcpServer.url}</code>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardBody>

@@ -11,6 +11,10 @@ logger:
   color: ${APISERVER_LOGGER_COLOR:true}                                           # whether to use color in console output
   stacktrace: ${APISERVER_LOGGER_STACKTRACE:true}                                 # whether to include stacktrace in error logs
 
+# i18n configuration
+i18n:
+  path: "${APISERVER_I18N_PATH:./configs/i18n}"                                     # path to i18n translation files
+
 # Super admin configuration
 super_admin:
   username: "${SUPER_ADMIN_USERNAME:admin}"

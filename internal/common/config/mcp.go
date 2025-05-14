@@ -18,13 +18,14 @@ type (
 	}
 
 	MCPConfig struct {
-		Name      string         `yaml:"name" gorm:"primaryKey"`
-		Tenant    string         `yaml:"tenant" gorm:"index"`
-		CreatedAt time.Time      `yaml:"created_at"`
-		UpdatedAt time.Time      `yaml:"updated_at"`
-		Routers   []RouterConfig `yaml:"routers" gorm:"type:json"`
-		Servers   []ServerConfig `yaml:"servers" gorm:"type:json"`
-		Tools     []ToolConfig   `yaml:"tools" gorm:"type:json"`
+		Name       string            `yaml:"name" gorm:"primaryKey"`
+		Tenant     string            `yaml:"tenant" gorm:"index"`
+		CreatedAt  time.Time         `yaml:"created_at"`
+		UpdatedAt  time.Time         `yaml:"updated_at"`
+		Routers    []RouterConfig    `yaml:"routers" gorm:"type:json"`
+		Servers    []ServerConfig    `yaml:"servers" gorm:"type:json"`
+		Tools      []ToolConfig      `yaml:"tools" gorm:"type:json"`
+		McpServers []MCPServerConfig `yaml:"mcpServers" gorm:"type:json"` // proxy mcp servers
 	}
 
 	RouterConfig struct {
@@ -59,6 +60,15 @@ type (
 		RequestBody  string            `yaml:"requestBody"`
 		ResponseBody string            `yaml:"responseBody"`
 		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
+	}
+
+	MCPServerConfig struct {
+		Type    string            `yaml:"type"`              // sse, stdio and streamable-http
+		Name    string            `yaml:"name"`              // server name
+		Command string            `yaml:"command,omitempty"` // for stdio
+		Args    []string          `yaml:"args,omitempty"`    // for stdio
+		Env     map[string]string `yaml:"env,omitempty"`     // for stdio
+		URL     string            `yaml:"url,omitempty"`     // for sse and streamable-http
 	}
 
 	ArgConfig struct {
