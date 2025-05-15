@@ -82,7 +82,6 @@ func LoadConfig[T Type](filename string) (*T, string, error) {
 
 	// Resolve environment variables
 	data = resolveEnv(data)
-	fmt.Println(string(data))
 	var cfg T
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, cfgPath, err
