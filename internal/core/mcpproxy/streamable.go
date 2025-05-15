@@ -10,13 +10,14 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
 )
 
 // FetchStreamableToolList fetches the list of available tools from a Streamable HTTP backend
-func FetchStreamableToolList(ctx context.Context, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+func FetchStreamableToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
 	// Create Streamable HTTP transport
 	streamableTransport, err := transport.NewStreamableHTTP(mcpProxyCfg.URL)
 	if err != nil {
@@ -95,7 +96,7 @@ func FetchStreamableToolList(ctx context.Context, mcpProxyCfg config.MCPServerCo
 }
 
 // InvokeStreamableTool handles tool invocation for Streamable HTTP MCP protocol
-func InvokeStreamableTool(ctx *gin.Context, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+func InvokeStreamableTool(ctx *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -103,7 +104,7 @@ func InvokeStreamableTool(ctx *gin.Context, mcpProxyCfg config.MCPServerConfig, 
 	}
 
 	// Prepare template context for environment variables
-	tmplCtx, err := template.PrepareTemplateContext(args, ctx.Request, nil)
+	tmplCtx, err := template.PrepareTemplateContext(conn.Meta().Request, args, ctx.Request, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare template context: %w", err)
 	}

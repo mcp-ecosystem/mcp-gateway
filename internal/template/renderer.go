@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"text/template"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 )
 
 // Renderer is responsible for rendering templates
@@ -60,25 +62,40 @@ func RenderTemplate(tmpl string, ctx *Context) (string, error) {
 }
 
 // PrepareTemplateContext prepares the template context with request and config data
-func PrepareTemplateContext(args map[string]any, request *http.Request, serverCfg map[string]string) (*Context, error) {
+func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]any, request *http.Request, serverCfg map[string]string) (*Context, error) {
 	tmplCtx := NewContext()
 	tmplCtx.Args = preprocessArgs(args)
 
-	// Process request headers
+	// Process request headers. We use current request to override the first request.
+	if requestMeta != nil && requestMeta.Headers != nil {
+		for k, v := range requestMeta.Headers {
+			tmplCtx.Request.Headers[k] = v
+		}
+	}
 	for k, v := range request.Header {
 		if len(v) > 0 {
 			tmplCtx.Request.Headers[k] = v[0]
 		}
 	}
 
-	// Process request querystring
+	// Process request querystring. We use current request to override the first request.
+	if requestMeta != nil && requestMeta.Query != nil {
+		for k, v := range requestMeta.Query {
+			tmplCtx.Request.Query[k] = v
+		}
+	}
 	for k, v := range request.URL.Query() {
 		if len(v) > 0 {
 			tmplCtx.Request.Query[k] = v[0]
 		}
 	}
 
-	// Process request cookies
+	// Process request cookies. We use current request to override the first request.
+	if requestMeta != nil && requestMeta.Cookies != nil {
+		for k, v := range requestMeta.Cookies {
+			tmplCtx.Request.Cookies[k] = v
+		}
+	}
 	for _, cookie := range request.Cookies() {
 		if cookie.Name != "" {
 			tmplCtx.Request.Cookies[cookie.Name] = cookie.Value

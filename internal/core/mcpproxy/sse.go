@@ -10,13 +10,14 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
 )
 
 // FetchSSEToolList fetches the list of available tools from an SSE backend
-func FetchSSEToolList(ctx context.Context, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+func FetchSSEToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
 	// Create SSE transport
 	sseTransport, err := transport.NewSSE(mcpProxyCfg.URL)
 	if err != nil {
@@ -95,7 +96,7 @@ func FetchSSEToolList(ctx context.Context, mcpProxyCfg config.MCPServerConfig) (
 }
 
 // InvokeSSETool handles tool invocation for SSE MCP protocol
-func InvokeSSETool(c *gin.Context, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+func InvokeSSETool(c *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -103,7 +104,7 @@ func InvokeSSETool(c *gin.Context, mcpProxyCfg config.MCPServerConfig, params mc
 	}
 
 	// Prepare template context for environment variables
-	tmplCtx, err := template.PrepareTemplateContext(args, c.Request, nil)
+	tmplCtx, err := template.PrepareTemplateContext(conn.Meta().Request, args, c.Request, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare template context: %w", err)
 	}

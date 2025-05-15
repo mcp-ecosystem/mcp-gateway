@@ -31,12 +31,31 @@ func (s *Server) handleSSE(c *gin.Context) {
 		prefix = "/"
 	}
 
+	requestInfo := &session.RequestInfo{
+		Headers: make(map[string]string),
+		Query:   make(map[string]string),
+		Cookies: make(map[string]string),
+	}
+	// Process request headers
+	for k, v := range c.Request.Header {
+		requestInfo.Headers[k] = v[0]
+	}
+	// Process request querystring
+	for k, v := range c.Request.URL.Query() {
+		requestInfo.Query[k] = v[0]
+	}
+	// Process request cookies
+	for _, cookie := range c.Request.Cookies() {
+		requestInfo.Cookies[cookie.Name] = cookie.Value
+	}
+
 	sessionID := uuid.New().String()
 	meta := &session.Meta{
 		ID:        sessionID,
 		CreatedAt: time.Now(),
 		Prefix:    prefix,
 		Type:      "sse",
+		Request:   requestInfo,
 		Extra:     nil,
 	}
 
@@ -197,7 +216,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 
-			tools, err = mcpproxy.FetchStdioToolList(c.Request.Context(), mcpProxyCfg)
+			tools, err = mcpproxy.FetchStdioToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -209,7 +228,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 
-			tools, err = mcpproxy.FetchSSEToolList(c.Request.Context(), mcpProxyCfg)
+			tools, err = mcpproxy.FetchSSEToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -221,7 +240,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 
-			tools, err = mcpproxy.FetchStreamableToolList(c.Request.Context(), mcpProxyCfg)
+			tools, err = mcpproxy.FetchStreamableToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -272,7 +291,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeStdioTool(c, mcpProxyCfg, params)
+			result, err = mcpproxy.InvokeStdioTool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
@@ -284,7 +303,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeSSETool(c, mcpProxyCfg, params)
+			result, err = mcpproxy.InvokeSSETool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
@@ -296,7 +315,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeStreamableTool(c, mcpProxyCfg, params)
+			result, err = mcpproxy.InvokeStreamableTool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
