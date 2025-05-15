@@ -1,10 +1,11 @@
-name: Docker Build and Publish Apiserver
+name: Docker Build and Publish Web
 
 on:
   push:
     tags:
       - 'v*'
     paths:
+      - 'web/**'
       - 'cmd/**'
       - 'internal/**'
       - 'pkg/**'
@@ -64,19 +65,24 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Build and push apiserver image
+      - name: Build and push web image (with apiserver)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: deploy/docker/multi/apiserver/Dockerfile
+          file: deploy/docker/multi/web/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_WS_BASE_URL=/ws
+            VITE_MCP_GATEWAY_BASE_URL=/mcp
+            VITE_BASE_URL=/
           tags: |
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-apiserver:latest', env.DOCKER_HUB_USERNAME) || '' }}
-            ${{ format('{0}/mcp-gateway-apiserver:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('ghcr.io/{0}/apiserver:latest', github.repository) || '' }}
-            ${{ format('ghcr.io/{0}/apiserver:{1}', github.repository, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-apiserver:latest', env.ALIYUN_REGISTRY) || '' }}
-            ${{ format('{0}/mcp-gateway-apiserver:{1}', env.ALIYUN_REGISTRY, github.ref_name) }} 
+            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-web:latest', env.DOCKER_HUB_USERNAME) || '' }}
+            ${{ format('{0}/mcp-gateway-web:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}
+            ${{ env.PUSH_LATEST == 'true' && format('ghcr.io/{0}/web:latest', github.repository) || '' }}
+            ${{ format('ghcr.io/{0}/web:{1}', github.repository, github.ref_name) }}
+            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-web:latest', env.ALIYUN_REGISTRY) || '' }}
+            ${{ format('{0}/mcp-gateway-web:{1}', env.ALIYUN_REGISTRY, github.ref_name) }}

@@ -14,17 +14,6 @@ services:
     image: ${WEB_IMAGE:-ghcr.io/mcp-ecosystem/mcp-gateway/web:latest}
     ports:
       - "80:80"
-    environment:
-      - TZ=${TZ:-UTC}
-    depends_on:
-      - apiserver
-      - mcp-gateway
-      - mock-user-svc
-    restart: unless-stopped
-
-  apiserver:
-    image: ${APISERVER_IMAGE:-ghcr.io/mcp-ecosystem/mcp-gateway/apiserver:latest}
-    ports:
       - "5234:5234"
     environment:
       - ENV=production
@@ -35,6 +24,8 @@ services:
       - ./.env.multi:/app/.env
     depends_on:
       - postgres
+      - mcp-gateway
+      - mock-user-svc
     restart: unless-stopped
 
   mcp-gateway:

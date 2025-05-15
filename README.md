@@ -1,11 +1,12 @@
 # MCP Gateway
 
-> 🚀 Instantly transform your existing APIs into [MCP](https://modelcontextprotocol.io/) servers — without changing a line of code.
+> 🚀 Instantly transform your existing MCP Servers and APIs into [MCP](https://modelcontextprotocol.io/) endpoints — without changing a line of code.
 
 [![English](https://img.shields.io/badge/English-Click-yellow)](./README.md)
 [![简体中文](https://img.shields.io/badge/简体中文-点击查看-orange)](docs/README.zh-CN.md)
 [![Release](https://img.shields.io/github/v/release/mcp-ecosystem/mcp-gateway)](https://github.com/mcp-ecosystem/mcp-gateway/releases)
 [![Docs](https://img.shields.io/badge/Docs-View%20Online-blue)](https://mcp.ifuryst.com)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mcp-ecosystem/mcp-gateway)
 [![Discord](https://img.shields.io/badge/Discord-Join%20our%20Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/udf69cT9TY)
 
 ---
@@ -26,9 +27,9 @@ Every upvote helps more developers discover it! ❤️
 
 ## ✨ What is MCP Gateway?
 
-**MCP Gateway** is a lightweight and highly available gateway service written in Go. It enables individuals and organizations to convert their existing APIs into services compliant with the [MCP Protocol](https://modelcontextprotocol.io/) — all through configuration, with **zero code changes**.
+**MCP Gateway** is a lightweight and highly available gateway service written in Go. It enables individuals and organizations to convert their existing MCP Servers and APIs into services compliant with the [MCP Protocol](https://modelcontextprotocol.io/) — all through configuration, with **zero code changes**.
 
-https://github.com/user-attachments/assets/2a812a14-85cf-45d6-9f37-cc08d8579b33
+https://github.com/user-attachments/assets/69480eda-7aa7-4be7-9bc7-cae57fe16c54
 
 ### 🔧 Core Design Principles
 
@@ -108,23 +109,38 @@ You can test the service using:
 
 ---
 
-## 📋 TODOs
+## 🚀 Core Features
 
-- [x] Convert RESTful API to MCP-Server
-- [ ] Convert gRPC to MCP-Server
-- [x] Request/Response body transformation
-- [x] Management interface
-- [x] Session persistence
-- [x] MCP SSE support
-- [x] MCP Streamable HTTP support
-- [ ] Migratable and restorable sessions
-- [ ] Pre-request authentication
-- [ ] Configuration versioning
-- [ ] Distributed configuration persistence
-- [ ] Multi-replica service support
-- [x] Docker support
-- [ ] Kubernetes integration
-- [ ] Helm chart support
+### 🔌 Protocol & Proxy Capabilities
+- [x] Support for converting RESTful APIs to MCP Server — Client → MCP Gateway → APIs  
+- [x] Support proxying MCP services — Client → MCP Gateway → MCP Servers  
+- [ ] Support for converting gRPC to MCP Server — Client → MCP Gateway → gRPC  
+- [ ] Support for converting WebSocket to MCP Server — Client → MCP Gateway → WebSocket  
+- [x] Support for MCP SSE  
+- [x] Support for MCP Streamable HTTP  
+- [x] Support for MCP responses including text, images, and audio  
+
+### 🧠 Session & Multi-Tenant Support
+- [x] Persistent and recoverable session support  
+- [x] Multi-tenant support  
+- [ ] Support for grouping and aggregating MCP servers  
+
+### 🛠 Configuration & Management
+- [x] Automatic configuration fetching and seamless hot-reloading  
+- [x] Configuration persistence (Disk/SQLite/PostgreSQL/MySQL)  
+- [x] Configuration sync via OS Signals, HTTP, or Redis PubSub  
+- [ ] Version control for configuration  
+
+### 🔐 Security & Authentication
+- [ ] OAuth-based pre-authentication support for MCP Servers  
+
+### 🖥 User Interface
+- [x] Intuitive and lightweight management UI  
+
+### 📦 Deployment & Operations
+- [x] Multi-replica service support  
+- [x] Docker support  
+- [ ] Kubernetes and Helm deployment support  
 
 ---
 
