@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mock-user-svc
+  name: mcp-gateway
   namespace: mcp-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mock-user-svc
+      app: mcp-gateway
   template:
     metadata:
       labels:
-        app: mock-user-svc
+        app: mcp-gateway
     spec:
       containers:
-      - name: mock-user-svc
-        image: ghcr.io/mcp-ecosystem/mcp-gateway/mock-user-svc:latest
+      - name: mcp-gateway
+        image: localhost:8500/mcp-gateway:latest
         env:
         - name: ENV
           value: production
         - name: TZ
           value: UTC
         ports:
-        - containerPort: 5236
+        - containerPort: 5235
         volumeMounts:
         - name: configs
           mountPath: /app/configs
@@ -44,11 +44,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mock-user-svc
+  name: mcp-gateway
   namespace: mcp-gateway
 spec:
+  type: NodePort
   ports:
-  - port: 5236
-    targetPort: 5236
+    - port: 5235
+      targetPort: 5235
+      nodePort: 30235
   selector:
-    app: mock-user-svc
+    app: mcp-gateway

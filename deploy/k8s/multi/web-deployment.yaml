@@ -15,12 +15,20 @@ spec:
     spec:
       containers:
       - name: web
-        image: ghcr.io/mcp-ecosystem/mcp-gateway/web:latest
+        image: localhost:8500/mcp-gateway-web:latest
         env:
         - name: TZ
           value: UTC
         ports:
         - containerPort: 80
+        volumeMounts:
+          - name: web-env
+            mountPath: /app/.env
+            subPath: .env
+      volumes:
+        - name: web-env
+          configMap:
+            name: web-env
 ---
 apiVersion: v1
 kind: Service
