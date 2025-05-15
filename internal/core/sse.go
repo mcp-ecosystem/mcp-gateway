@@ -38,15 +38,21 @@ func (s *Server) handleSSE(c *gin.Context) {
 	}
 	// Process request headers
 	for k, v := range c.Request.Header {
-		requestInfo.Headers[k] = v[0]
+		if len(v) > 0 {
+			requestInfo.Headers[k] = v[0]
+		}
 	}
 	// Process request querystring
 	for k, v := range c.Request.URL.Query() {
-		requestInfo.Query[k] = v[0]
+		if len(v) > 0 {
+			requestInfo.Query[k] = v[0]
+		}
 	}
 	// Process request cookies
 	for _, cookie := range c.Request.Cookies() {
-		requestInfo.Cookies[cookie.Name] = cookie.Value
+		if cookie != nil && cookie.Name != "" {
+			requestInfo.Cookies[cookie.Name] = cookie.Value
+		}
 	}
 
 	sessionID := uuid.New().String()
