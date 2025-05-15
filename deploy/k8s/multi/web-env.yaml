@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-env
+  namespace: mcp-gateway
+data:
+  .env: |
+    VITE_API_BASE_URL=/api
+    VITE_WS_BASE_URL=http://127.0.0.1:30234
+    VITE_MCP_GATEWAY_BASE_URL=http://127.0.0.1:30235
+    VITE_BASE_URL=/
+    VITE_DEV_API_BASE_URL=http://localhost:30234
+    
+    
+    
+    
