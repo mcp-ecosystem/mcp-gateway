@@ -327,8 +327,10 @@ func run() {
 			logger.Info("Received update signal")
 			handleMerge(ctx, logger, srv, updateMCPConfig)
 		case <-ticker.C:
-			logger.Info("Received ticker signal")
-			handleReload(ctx, logger, store, srv, cfg)
+			logger.Info("Received ticker signal", zap.Bool("reload_switch", cfg.ReloadSwitch))
+			if cfg.ReloadSwitch {
+				handleReload(ctx, logger, store, srv, cfg)
+			}
 		}
 
 	}

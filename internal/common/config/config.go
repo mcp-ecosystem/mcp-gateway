@@ -27,6 +27,7 @@ type (
 		Port           int              `yaml:"port"`
 		ReloadPort     int              `yaml:"reload_port"`
 		ReloadInterval time.Duration    `yaml:"reload_interval"`
+		ReloadSwitch   bool             `yaml:"reload_switch"`
 		PID            string           `yaml:"pid"`
 		SuperAdmin     SuperAdminConfig `yaml:"super_admin"`
 		Logger         LoggerConfig     `yaml:"logger"`

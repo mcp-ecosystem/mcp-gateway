@@ -235,14 +235,14 @@ func (s *Server) UpdateConfig(cfgs []*config.MCPConfig) error {
 
 // MergeConfig updates the server configuration incrementally
 func (s *Server) MergeConfig(cfg *config.MCPConfig) error {
-	// Validate configuration before updating
-	if err := config.ValidateMCPConfig(cfg); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
-	}
-
 	newConfig, err := helper.MergeConfigs(s.state.rawConfigs, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to merge configuration: %w", err)
+	}
+
+	// Validate configuration after merge
+	if err := config.ValidateMCPConfig(cfg); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 	// Create new state and load configuration
 	newState, err := initState(newConfig)
