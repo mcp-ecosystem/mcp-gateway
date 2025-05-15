@@ -133,7 +133,7 @@ func init() {
 
 func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, srv *core.Server, cfg *config.MCPGatewayConfig) {
 	logger.Info("Reloading MCP configuration")
-
+	//todo we can use hash or version to check if the configuration is changed
 	mcpConfigs, err := store.List(ctx)
 	if err != nil {
 		logger.Error("Failed to load MCP configurations",
