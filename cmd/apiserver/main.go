@@ -169,6 +169,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		chatHandler := apiserverHandler.NewChat(db, logger)
 		mcpHandler := apiserverHandler.NewMCP(db, store, ntf, logger)
 		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf, logger)
+		swaggerHandler := apiserverHandler.NewSwagger(db, store, ntf, logger)
 
 		// Auth routes
 		protected.POST("/auth/change-password", authH.ChangePassword)
@@ -207,6 +208,9 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 
 		// OpenAPI routes
 		protected.POST("/openapi/import", openapiHandler.HandleImport)
+
+		// Swagger routes
+		protected.POST("/swagger/import", swaggerHandler.HandleImport)
 
 		protected.GET("/chat/sessions", chatHandler.HandleGetChatSessions)
 		protected.GET("/chat/sessions/:sessionId/messages", chatHandler.HandleGetChatMessages)

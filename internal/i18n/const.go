@@ -110,6 +110,13 @@ const (
 	SuccessOpenAPIValidated = "SuccessOpenAPIValidated"
 )
 
+// Swagger related success messages
+const (
+	SuccessSwaggerImported  = "SuccessSwaggerImported"
+	SuccessSwaggerExported  = "SuccessSwaggerExported"
+	SuccessSwaggerValidated = "SuccessSwaggerValidated"
+)
+
 // API related success messages
 const (
 	SuccessAPICreated      = "SuccessAPICreated"
