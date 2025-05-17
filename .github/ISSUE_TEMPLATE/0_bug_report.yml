@@ -34,12 +34,15 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: os
+  - type: dropdown
+    id: platform
     attributes:
-      label: "Operating System"
-      description: "The OS you're using"
-      placeholder: "Ubuntu 22.04, macOS 14.0"
+      label: Platform
+      description: What platform are you using?
+      options:
+        - Windows
+        - macOS
+        - Linux
     validations:
       required: true
 
