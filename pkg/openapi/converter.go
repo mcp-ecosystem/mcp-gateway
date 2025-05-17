@@ -1,19 +1,32 @@
 package openapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi2"
+	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/ifuryst/lol"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"gopkg.in/yaml.v3"
 )
 
 // Converter handles the conversion from OpenAPI to MCP configuration
 type Converter struct {
 	// Add any necessary fields here
 }
+
+const (
+	// OpenAPIVersion2 openapi 2.0
+	OpenAPIVersion2 = "2.0"
+	// OpenAPIVersion3 openapi 3.0
+	OpenAPIVersion3 = "3.0"
+	// OpenAPIVersion31 openapi 3.1
+	OpenAPIVersion31 = "3.1"
+)
 
 // NewConverter creates a new Converter instance
 func NewConverter() *Converter {
@@ -22,16 +35,36 @@ func NewConverter() *Converter {
 
 // Convert converts OpenAPI specification to MCP configuration
 func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
-	// Parse OpenAPI specification
+	// check OpenAPI version
+	version, err := detectOpenAPIVersion(specData)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据版本选择处理方法
+	if strings.HasPrefix(version, OpenAPIVersion2) {
+		// handler Swagger 2.0
+		return c.convertSwagger2(specData)
+	}
+
+	// handler OpenAPI 3.x
 	loader := openapi3.NewLoader()
+
+	// if version is 3.1, allow external references
+	if strings.HasPrefix(version, OpenAPIVersion31) {
+		loader.IsExternalRefsAllowed = true
+	}
+
 	doc, err := loader.LoadFromData(specData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OpenAPI specification: %w", err)
 	}
 
-	// Validate the OpenAPI document
-	if err := doc.Validate(loader.Context); err != nil {
-		return nil, fmt.Errorf("invalid OpenAPI specification: %w", err)
+	// if the version is 3.0, validate the document
+	if strings.HasPrefix(version, OpenAPIVersion3) {
+		if err := doc.Validate(loader.Context); err != nil {
+			return nil, fmt.Errorf("invalid OpenAPI specification: %w", err)
+		}
 	}
 
 	rs := lol.RandomString(4)
@@ -231,6 +264,52 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	mcpConfig.Routers = append(mcpConfig.Routers, router)
 
 	return mcpConfig, nil
+}
+
+// convertSwagger2 converts Swagger 2.0 specification to OpenAPI 3.0 and then to MCP configuration
+func (c *Converter) convertSwagger2(specData []byte) (*config.MCPConfig, error) {
+	var swagger2Doc openapi2.T
+	if err := json.Unmarshal(specData, &swagger2Doc); err != nil {
+		if err := yaml.Unmarshal(specData, &swagger2Doc); err != nil {
+			return nil, fmt.Errorf("failed to parse Swagger 2.0 specification: %w", err)
+		}
+	}
+
+	// convert Swagger 2.0 to OpenAPI 3.0
+	openapi3Doc, err := openapi2conv.ToV3(&swagger2Doc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert Swagger 2.0 to OpenAPI 3.0: %w", err)
+	}
+
+	openapi3Data, err := json.Marshal(openapi3Doc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize OpenAPI 3.0 document: %w", err)
+	}
+
+	return c.Convert(openapi3Data)
+}
+
+// detectOpenAPIVersion detects the OpenAPI version from the specification data
+func detectOpenAPIVersion(specData []byte) (string, error) {
+	var spec map[string]interface{}
+
+	if err := json.Unmarshal(specData, &spec); err != nil {
+		if err := yaml.Unmarshal(specData, &spec); err != nil {
+			return "", fmt.Errorf("failed to parse specification: %w", err)
+		}
+	}
+
+	// check if OpenAPI 3.x
+	if openapi, ok := spec["openapi"].(string); ok {
+		return openapi, nil
+	}
+
+	// check if Swagger 2.0
+	if swagger, ok := spec["swagger"].(string); ok {
+		return swagger, nil
+	}
+
+	return "", fmt.Errorf("could not determine OpenAPI version")
 }
 
 // ConvertFromJSON converts JSON OpenAPI specification to MCP configuration
