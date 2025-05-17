@@ -49,6 +49,7 @@ type (
 		Password string `yaml:"password"`
 		DB       int    `yaml:"db"`
 		Topic    string `yaml:"topic"`
+		Prefix   string `yaml:"prefix"`
 	}
 
 	// LoggerConfig represents the logger configuration
