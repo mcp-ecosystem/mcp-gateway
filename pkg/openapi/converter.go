@@ -293,20 +293,18 @@ func (c *Converter) convertSwagger2(specData []byte) (*config.MCPConfig, error) 
 func detectOpenAPIVersion(specData []byte) (string, error) {
 	var spec map[string]interface{}
 
-	// 尝试解析为 JSON
 	if err := json.Unmarshal(specData, &spec); err != nil {
-		// 尝试解析为 YAML
 		if err := yaml.Unmarshal(specData, &spec); err != nil {
 			return "", fmt.Errorf("failed to parse specification: %w", err)
 		}
 	}
 
-	// 检查是否为 OpenAPI 3.x
+	// check if OpenAPI 3.x
 	if openapi, ok := spec["openapi"].(string); ok {
 		return openapi, nil
 	}
 
-	// 检查是否为 Swagger 2.0
+	// check if Swagger 2.0
 	if swagger, ok := spec["swagger"].(string); ok {
 		return swagger, nil
 	}
