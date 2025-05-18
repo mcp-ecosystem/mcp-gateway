@@ -14,21 +14,33 @@ spec:
         app: web
     spec:
       containers:
-      - name: web
-        image: localhost:8500/mcp-gateway-web:latest
-        env:
-        - name: TZ
-          value: UTC
-        ports:
-        - containerPort: 80
-        volumeMounts:
-          - name: web-env
-            mountPath: /app/.env
-            subPath: .env
+        - name: web
+          image: ghcr.io/mcp-ecosystem/mcp-gateway/web:latest
+          env:
+            - name: TZ
+              value: UTC
+            - name: ENV
+              value: production
+          ports:
+            - containerPort: 80
+            - containerPort: 5234
+          volumeMounts:
+            - name: web-env
+              mountPath: /app/.env
+              subPath: .env
+            - name: configs
+              mountPath: /app/configs
+            - name: data
+              mountPath: /app/data
       volumes:
         - name: web-env
           configMap:
             name: web-env
+        - name: configs
+          configMap:
+            name: app-configs
+        - name: data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -36,10 +48,13 @@ metadata:
   name: web
   namespace: mcp-gateway
 spec:
-  type: NodePort  # 或者使用 LoadBalancer
+  type: NodePort
   ports:
-  - port: 80
-    targetPort: 80
-    nodePort: 30080  # 可选，指定节点端口
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+    - port: 5234
+      targetPort: 5234
+      nodePort: 30081
   selector:
     app: web

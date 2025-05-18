@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: mcp-gateway
-        image: localhost:8500/mcp-gateway:latest
+        image: ghcr.io/mcp-ecosystem/mcp-gateway/mcp-gateway:latest
         env:
         - name: ENV
           value: production
