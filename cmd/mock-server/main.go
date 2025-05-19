@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/mcp-ecosystem/mcp-gateway/cmd/mock-servers/backend"
+	"github.com/mcp-ecosystem/mcp-gateway/cmd/mock-server/backend"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
 	"github.com/spf13/cobra"
 )
