@@ -25,7 +25,7 @@ services:
     depends_on:
       - postgres
       - mcp-gateway
-      - mock-user-svc
+      - mock-server
     restart: unless-stopped
 
   mcp-gateway:
@@ -43,8 +43,8 @@ services:
       - postgres
     restart: unless-stopped
 
-  mock-user-svc:
-    image: ${MOCK_USER_SVC_IMAGE:-ghcr.io/mcp-ecosystem/mcp-gateway/mock-user-svc:latest}
+  mock-server:
+    image: ${MOCK_USER_SVC_IMAGE:-ghcr.io/mcp-ecosystem/mcp-gateway/mock-server:latest}
     ports:
       - "5236:5236"
     environment:

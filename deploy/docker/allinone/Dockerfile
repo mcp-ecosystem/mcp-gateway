@@ -10,7 +10,7 @@ COPY . .
 
 RUN GOOS=linux go build -o /app/bin/apiserver ./cmd/apiserver
 RUN GOOS=linux go build -o /app/bin/mcp-gateway ./cmd/mcp-gateway
-RUN GOOS=linux go build -o /app/bin/mock-user-svc ./cmd/mock-user-svc
+RUN GOOS=linux go build -o /app/bin/mock-server ./cmd/mock-server
 
 FROM node:20.18.0 AS web-builder
 
@@ -57,7 +57,7 @@ COPY configs/mcp-gateway.yaml /etc/mcp-gateway/
 COPY configs/i18n /app/configs/i18n/
 
 COPY --from=builder /app/bin/mcp-gateway /usr/local/bin/
-COPY --from=builder /app/bin/mock-user-svc /usr/local/bin/
+COPY --from=builder /app/bin/mock-server /usr/local/bin/
 COPY --from=builder /app/bin/apiserver /usr/local/bin/
 
 COPY --from=web-builder /app/web/dist /usr/share/nginx/html

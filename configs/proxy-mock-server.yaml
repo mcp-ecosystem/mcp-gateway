@@ -1,8 +1,8 @@
-name: "mock-user-svc"
+name: "mock-server"
 tenant: "default"
 
 routers:
-  - server: "mock-user-svc"
+  - server: "mock-server"
     prefix: "/mcp/user"
     cors:
       allowOrigins:
@@ -21,7 +21,7 @@ routers:
       allowCredentials: true
 
 servers:
-  - name: "mock-user-svc"
+  - name: "mock-server"
     namespace: "user-service"
     description: "Mock User Service"
     allowedTools:

@@ -61,26 +61,26 @@ jobs:
         run: |
           GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mcp-gateway-windows-amd64.exe ./cmd/mcp-gateway
 
-      # Build mock-user-svc
-      - name: Build mock-user-svc for Linux amd64
+      # Build mock-server
+      - name: Build mock-server for Linux amd64
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-user-svc-linux-amd64 ./cmd/mock-user-svc
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-server-linux-amd64 ./cmd/mock-server
 
-      - name: Build mock-user-svc for Linux arm64
+      - name: Build mock-server for Linux arm64
         run: |
-          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-user-svc-linux-arm64 ./cmd/mock-user-svc
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-server-linux-arm64 ./cmd/mock-server
 
-      - name: Build mock-user-svc for macOS amd64
+      - name: Build mock-server for macOS amd64
         run: |
-          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-user-svc-darwin-amd64 ./cmd/mock-user-svc
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-server-darwin-amd64 ./cmd/mock-server
 
-      - name: Build mock-user-svc for macOS arm64
+      - name: Build mock-server for macOS arm64
         run: |
-          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-user-svc-darwin-arm64 ./cmd/mock-user-svc
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-server-darwin-arm64 ./cmd/mock-server
 
-      - name: Build mock-user-svc for Windows amd64
+      - name: Build mock-server for Windows amd64
         run: |
-          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-user-svc-windows-amd64.exe ./cmd/mock-user-svc
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=${{ env.VERSION }}" -o mock-server-windows-amd64.exe ./cmd/mock-server
 
       # Build apiserver
       - name: Build apiserver for Linux amd64
@@ -126,7 +126,7 @@ jobs:
           # Copy binaries
           cp mcp-gateway-linux-amd64 release/linux-amd64/mcp-gateway
           cp apiserver-linux-amd64 release/linux-amd64/apiserver
-          cp mock-user-svc-linux-amd64 release/linux-amd64/mock-user-svc
+          cp mock-server-linux-amd64 release/linux-amd64/mock-server
           # Copy configs
           mkdir -p release/linux-amd64/configs
           cp configs/apiserver.yaml release/linux-amd64/configs/
@@ -150,7 +150,7 @@ jobs:
           # Copy binaries
           cp mcp-gateway-linux-arm64 release/linux-arm64/mcp-gateway
           cp apiserver-linux-arm64 release/linux-arm64/apiserver
-          cp mock-user-svc-linux-arm64 release/linux-arm64/mock-user-svc
+          cp mock-server-linux-arm64 release/linux-arm64/mock-server
           # Copy configs
           mkdir -p release/linux-arm64/configs
           cp configs/apiserver.yaml release/linux-arm64/configs/
@@ -174,7 +174,7 @@ jobs:
           # Copy binaries
           cp mcp-gateway-darwin-amd64 release/darwin-amd64/mcp-gateway
           cp apiserver-darwin-amd64 release/darwin-amd64/apiserver
-          cp mock-user-svc-darwin-amd64 release/darwin-amd64/mock-user-svc
+          cp mock-server-darwin-amd64 release/darwin-amd64/mock-server
           # Copy configs
           mkdir -p release/darwin-amd64/configs
           cp configs/apiserver.yaml release/darwin-amd64/configs/
@@ -198,7 +198,7 @@ jobs:
           # Copy binaries
           cp mcp-gateway-darwin-arm64 release/darwin-arm64/mcp-gateway
           cp apiserver-darwin-arm64 release/darwin-arm64/apiserver
-          cp mock-user-svc-darwin-arm64 release/darwin-arm64/mock-user-svc
+          cp mock-server-darwin-arm64 release/darwin-arm64/mock-server
           # Copy configs
           mkdir -p release/darwin-arm64/configs
           cp configs/apiserver.yaml release/darwin-arm64/configs/
@@ -222,7 +222,7 @@ jobs:
           # Copy binaries
           cp mcp-gateway-windows-amd64.exe release/windows-amd64/mcp-gateway.exe
           cp apiserver-windows-amd64.exe release/windows-amd64/apiserver.exe
-          cp mock-user-svc-windows-amd64.exe release/windows-amd64/mock-user-svc.exe
+          cp mock-server-windows-amd64.exe release/windows-amd64/mock-server.exe
           # Copy configs
           mkdir -p release/windows-amd64/configs
           cp configs/apiserver.yaml release/windows-amd64/configs/
