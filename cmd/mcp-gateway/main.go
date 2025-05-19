@@ -114,7 +114,7 @@ var (
 		},
 	}
 	rootCmd = &cobra.Command{
-		Use:   "mcp-gateway",
+		Use:   cnst.CommandName,
 		Short: "MCP Gateway service",
 		Long:  `MCP Gateway is a service that provides API gateway functionality for MCP ecosystem`,
 		Run: func(cmd *cobra.Command, args []string) {

@@ -288,3 +288,58 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 
 	return result
 }
+
+// mergeRequestInfo merges request information from both session and HTTP request
+func mergeRequestInfo(meta *session.RequestInfo, req *http.Request) *template.RequestWrapper {
+	wrapper := &template.RequestWrapper{
+		Headers: make(map[string]string),
+		Query:   make(map[string]string),
+		Cookies: make(map[string]string),
+		Path:    make(map[string]string),
+		Body:    make(map[string]any),
+	}
+
+	// Merge headers
+	if meta != nil {
+		for k, v := range meta.Headers {
+			wrapper.Headers[k] = v
+		}
+	}
+	if req != nil {
+		for k, v := range req.Header {
+			if len(v) > 0 {
+				wrapper.Headers[k] = v[0]
+			}
+		}
+	}
+
+	// Merge query parameters
+	if meta != nil {
+		for k, v := range meta.Query {
+			wrapper.Query[k] = v
+		}
+	}
+	if req != nil {
+		for k, v := range req.URL.Query() {
+			if len(v) > 0 {
+				wrapper.Query[k] = v[0]
+			}
+		}
+	}
+
+	// Merge cookies
+	if meta != nil {
+		for k, v := range meta.Cookies {
+			wrapper.Cookies[k] = v
+		}
+	}
+	if req != nil {
+		for _, cookie := range req.Cookies() {
+			if cookie.Name != "" {
+				wrapper.Cookies[cookie.Name] = cookie.Value
+			}
+		}
+	}
+
+	return wrapper
+}

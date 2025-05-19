@@ -186,7 +186,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	for prefix, transport := range s.state.prefixToTransport {
-		if transport.IsStarted() {
+		if transport.IsRunning() {
 			wg.Add(1)
 			go func(p string, t mcpproxy.Transport) {
 				defer wg.Done()
@@ -306,7 +306,7 @@ func (s *Server) initState(ctx context.Context, cfgs []*config.MCPConfig, oldSta
 			}
 			if mcpServer.Policy == cnst.PolicyOnStart {
 				go func(prefix string, mcpServer config.MCPServerConfig, transport mcpproxy.Transport) {
-					if transport.IsStarted() {
+					if transport.IsRunning() {
 						s.logger.Info("server already started",
 							zap.String("prefix", prefix),
 							zap.String("command", mcpServer.Command),

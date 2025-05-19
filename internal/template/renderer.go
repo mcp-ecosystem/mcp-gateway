@@ -62,67 +62,100 @@ func RenderTemplate(tmpl string, ctx *Context) (string, error) {
 	return renderer.Render(tmpl, ctx)
 }
 
+func AssembleTemplateContext(req *RequestWrapper, args map[string]any, serverCfg map[string]string) (*Context, error) {
+	tmplCtx := NewContext()
+	tmplCtx.Args = preprocessArgs(args)
+
+	if req != nil {
+		tmplCtx.Request = *req
+	}
+
+	if serverCfg != nil {
+		renderedCfg, err := renderServerConfigTemplates(serverCfg, tmplCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render config template: %w", err)
+		}
+		tmplCtx.Config = renderedCfg
+	}
+
+	return tmplCtx, nil
+}
+
 // PrepareTemplateContext prepares the template context with request and config data
 func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]any, request *http.Request, serverCfg map[string]string) (*Context, error) {
 	tmplCtx := NewContext()
 	tmplCtx.Args = preprocessArgs(args)
 
-	// Process request headers. We use current request to override the first request.
-	if requestMeta != nil && requestMeta.Headers != nil {
-		for k, v := range requestMeta.Headers {
-			tmplCtx.Request.Headers[k] = v
-		}
-	}
-	if request != nil {
-		for k, v := range request.Header {
-			if len(v) > 0 {
-				tmplCtx.Request.Headers[k] = v[0]
-			}
-		}
-	}
+	mergeHeaders(tmplCtx, requestMeta, request)
+	mergeQuery(tmplCtx, requestMeta, request)
+	mergeCookies(tmplCtx, requestMeta, request)
 
-	// Process request querystring. We use current request to override the first request.
-	if requestMeta != nil && requestMeta.Query != nil {
-		for k, v := range requestMeta.Query {
-			tmplCtx.Request.Query[k] = v
-		}
-	}
-	if request != nil {
-		for k, v := range request.URL.Query() {
-			if len(v) > 0 {
-				tmplCtx.Request.Query[k] = v[0]
-			}
-		}
-	}
-
-	// Process request cookies. We use current request to override the first request.
-	if requestMeta != nil && requestMeta.Cookies != nil {
-		for k, v := range requestMeta.Cookies {
-			tmplCtx.Request.Cookies[k] = v
-		}
-	}
-	if request != nil {
-		for _, cookie := range request.Cookies() {
-			if cookie.Name != "" {
-				tmplCtx.Request.Cookies[cookie.Name] = cookie.Value
-			}
-		}
-	}
-
-	// Only process server config templates if serverCfg is provided
 	if serverCfg != nil {
-		// Process server config templates
-		for k, v := range serverCfg {
-			rendered, err := RenderTemplate(v, tmplCtx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to render config template: %w", err)
-			}
-			serverCfg[k] = rendered
+		renderedCfg, err := renderServerConfigTemplates(serverCfg, tmplCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render config template: %w", err)
 		}
-		tmplCtx.Config = serverCfg
+		tmplCtx.Config = renderedCfg
 	}
 
 	return tmplCtx, nil
+}
+
+func mergeHeaders(ctx *Context, meta *session.RequestInfo, req *http.Request) {
+	if meta != nil {
+		for k, v := range meta.Headers {
+			ctx.Request.Headers[k] = v
+		}
+	}
+	if req != nil {
+		for k, v := range req.Header {
+			if len(v) > 0 {
+				ctx.Request.Headers[k] = v[0]
+			}
+		}
+	}
+}
+
+func mergeQuery(ctx *Context, meta *session.RequestInfo, req *http.Request) {
+	if meta != nil {
+		for k, v := range meta.Query {
+			ctx.Request.Query[k] = v
+		}
+	}
+	if req != nil {
+		for k, v := range req.URL.Query() {
+			if len(v) > 0 {
+				ctx.Request.Query[k] = v[0]
+			}
+		}
+	}
+}
+
+func mergeCookies(ctx *Context, meta *session.RequestInfo, req *http.Request) {
+	if meta != nil {
+		for k, v := range meta.Cookies {
+			ctx.Request.Cookies[k] = v
+		}
+	}
+	if req != nil {
+		for _, cookie := range req.Cookies() {
+			if cookie.Name != "" {
+				ctx.Request.Cookies[cookie.Name] = cookie.Value
+			}
+		}
+	}
+}
+
+func renderServerConfigTemplates(cfg map[string]string, ctx *Context) (map[string]string, error) {
+	rendered := make(map[string]string, len(cfg))
+	for k, v := range cfg {
+		out, err := RenderTemplate(v, ctx)
+		if err != nil {
+			return nil, err
+		}
+		rendered[k] = out
+	}
+	return rendered, nil
 }
 
 func preprocessArgs(args map[string]any) map[string]any {

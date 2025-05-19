@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
@@ -25,7 +25,7 @@ type StreamableTransport struct {
 var _ Transport = (*StreamableTransport)(nil)
 
 func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Context) error {
-	if t.IsStarted() {
+	if t.IsRunning() {
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 	initRequest := mcpgo.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
 	initRequest.Params.ClientInfo = mcpgo.Implementation{
-		Name:    "mcp-gateway",
+		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
 
@@ -62,7 +62,7 @@ func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Conte
 }
 
 func (t *StreamableTransport) Stop(_ context.Context) error {
-	if !t.IsStarted() {
+	if !t.IsRunning() {
 		return nil
 	}
 
@@ -73,13 +73,12 @@ func (t *StreamableTransport) Stop(_ context.Context) error {
 	return nil
 }
 
-func (t *StreamableTransport) IsStarted() bool {
+func (t *StreamableTransport) IsRunning() bool {
 	return t.client != nil
 }
 
-// FetchToolList implements Transport.FetchToolList
-func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Connection) ([]mcp.ToolSchema, error) {
-	if !t.IsStarted() {
+func (t *StreamableTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error) {
+	if !t.IsRunning() {
 		if err := t.Start(ctx, nil); err != nil {
 			return nil, err
 		}
@@ -134,35 +133,26 @@ func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Conne
 	return tools, nil
 }
 
-// InvokeTool implements Transport.InvokeTool
-func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
-	if !t.IsStarted() {
-		if err := t.Start(ctx.Request.Context(), nil); err != nil {
+func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
+	if !t.IsRunning() {
+		var args map[string]any
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return nil, fmt.Errorf("invalid tool arguments: %w", err)
+		}
+		tmplCtx, err := template.AssembleTemplateContext(req, args, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := t.Start(ctx, tmplCtx); err != nil {
 			return nil, err
 		}
 	}
-
-	// Convert arguments to map[string]any
-	var args map[string]any
-	if err := json.Unmarshal(params.Arguments, &args); err != nil {
-		return nil, fmt.Errorf("invalid tool arguments: %w", err)
-	}
-
-	// Prepare template context for environment variables
-	tmplCtx, err := template.PrepareTemplateContext(conn.Meta().Request, args, ctx.Request, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare template context: %w", err)
-	}
-
-	// Process environment variables with templates
-	renderedClientEnv := make(map[string]string)
-	for k, v := range t.cfg.Env {
-		rendered, err := template.RenderTemplate(v, tmplCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render env template: %w", err)
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
 		}
-		renderedClientEnv[k] = rendered
-	}
+	}()
 
 	// Prepare tool call request parameters
 	toolCallRequestParams := make(map[string]interface{})
@@ -175,11 +165,10 @@ func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connecti
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	res, err := t.client.CallTool(ctx.Request.Context(), callRequest)
+	res, err := t.client.CallTool(ctx, callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
-	// Convert mcp-go result to local mcp format
 	return convertMCPGoResult(res), nil
 }

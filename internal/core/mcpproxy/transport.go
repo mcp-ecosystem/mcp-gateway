@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gin-gonic/gin"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
@@ -25,11 +23,11 @@ const (
 
 // Transport defines the interface for MCP transport implementations
 type Transport interface {
-	// FetchToolList fetches the list of available tools
-	FetchToolList(ctx context.Context, conn session.Connection) ([]mcp.ToolSchema, error)
+	// FetchTools fetches the list of available tools
+	FetchTools(ctx context.Context) ([]mcp.ToolSchema, error)
 
-	// InvokeTool handles tool invocation
-	InvokeTool(c *gin.Context, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error)
+	// CallTool invokes a tool
+	CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error)
 
 	// Start starts the transport
 	Start(ctx context.Context, tmplCtx *template.Context) error
@@ -37,8 +35,8 @@ type Transport interface {
 	// Stop stops the transport
 	Stop(ctx context.Context) error
 
-	// IsStarted returns true if the transport is started
-	IsStarted() bool
+	// IsRunning returns true if the transport is running
+	IsRunning() bool
 }
 
 // NewTransport creates transport based on the configuration

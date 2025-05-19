@@ -7,13 +7,11 @@ import (
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 
-	"github.com/gin-gonic/gin"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/utils"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
@@ -28,7 +26,7 @@ type StdioTransport struct {
 var _ Transport = (*StdioTransport)(nil)
 
 func (t *StdioTransport) Start(ctx context.Context, tmplCtx *template.Context) error {
-	if t.IsStarted() {
+	if t.IsRunning() {
 		return nil
 	}
 
@@ -61,7 +59,7 @@ func (t *StdioTransport) Start(ctx context.Context, tmplCtx *template.Context) e
 	initRequest := mcpgo.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
 	initRequest.Params.ClientInfo = mcpgo.Implementation{
-		Name:    "mcp-gateway",
+		Name:    cnst.AppName,
 		Version: version.Get(),
 	}
 
@@ -76,7 +74,7 @@ func (t *StdioTransport) Start(ctx context.Context, tmplCtx *template.Context) e
 }
 
 func (t *StdioTransport) Stop(_ context.Context) error {
-	if !t.IsStarted() {
+	if !t.IsRunning() {
 		return nil
 	}
 
@@ -87,13 +85,12 @@ func (t *StdioTransport) Stop(_ context.Context) error {
 	return nil
 }
 
-func (t *StdioTransport) IsStarted() bool {
+func (t *StdioTransport) IsRunning() bool {
 	return t.client != nil
 }
 
-// FetchToolList implements Transport.FetchToolList
-func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection) ([]mcp.ToolSchema, error) {
-	if !t.IsStarted() {
+func (t *StdioTransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error) {
+	if !t.IsRunning() {
 		if err := t.Start(ctx, template.NewContext()); err != nil {
 			return nil, err
 		}
@@ -153,18 +150,18 @@ func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection
 	return tools, nil
 }
 
-// InvokeTool implements Transport.InvokeTool
-func (t *StdioTransport) InvokeTool(ctx *gin.Context, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
-	if !t.IsStarted() {
+func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams, req *template.RequestWrapper) (*mcp.CallToolResult, error) {
+	if !t.IsRunning() {
 		var args map[string]any
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return nil, fmt.Errorf("invalid tool arguments: %w", err)
 		}
-		tmplCtx, err := template.PrepareTemplateContext(conn.Meta().Request, args, ctx.Request, nil)
+		tmplCtx, err := template.AssembleTemplateContext(req, args, nil)
 		if err != nil {
 			return nil, err
 		}
-		if err := t.Start(ctx.Request.Context(), tmplCtx); err != nil {
+
+		if err := t.Start(ctx, tmplCtx); err != nil {
 			return nil, err
 		}
 	}
@@ -174,13 +171,7 @@ func (t *StdioTransport) InvokeTool(ctx *gin.Context, conn session.Connection, p
 		}
 	}()
 
-	// Convert arguments to map[string]any
-	var args map[string]any
-	if err := json.Unmarshal(params.Arguments, &args); err != nil {
-		return nil, fmt.Errorf("invalid tool arguments: %w", err)
-	}
-
-	toolCallRequestParams := make(map[string]interface{})
+	toolCallRequestParams := make(map[string]any)
 	if err := json.Unmarshal(params.Arguments, &toolCallRequestParams); err != nil {
 		return nil, err
 	}
@@ -190,21 +181,21 @@ func (t *StdioTransport) InvokeTool(ctx *gin.Context, conn session.Connection, p
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	mcpgoResult, err := t.client.CallTool(ctx.Request.Context(), callRequest)
+	mcpResult, err := t.client.CallTool(ctx, callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
 	// Convert mcp-go result to local mcp format
 	result := &mcp.CallToolResult{
-		IsError: mcpgoResult.IsError,
+		IsError: mcpResult.IsError,
 	}
 
 	// Process content items
-	if len(mcpgoResult.Content) > 0 {
+	if len(mcpResult.Content) > 0 {
 		var validContents []mcp.Content
 
-		for _, content := range mcpgoResult.Content {
+		for _, content := range mcpResult.Content {
 			// Skip null content
 			if content == nil {
 				continue
