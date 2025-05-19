@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpproxy"
@@ -313,7 +314,7 @@ func (s *Server) initState(ctx context.Context, cfgs []*config.MCPConfig, oldSta
 						return
 					}
 
-					if err := transport.Start(context.Background(), mcpServer); err != nil {
+					if err := transport.Start(ctx, template.NewContext()); err != nil {
 						s.logger.Error("failed to start server",
 							zap.String("prefix", prefix),
 							zap.String("command", mcpServer.Command),

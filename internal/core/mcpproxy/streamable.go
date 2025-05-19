@@ -19,17 +19,18 @@ import (
 // StreamableTransport implements Transport using Streamable HTTP
 type StreamableTransport struct {
 	client *client.Client
+	cfg    config.MCPServerConfig
 }
 
 var _ Transport = (*StreamableTransport)(nil)
 
-func (t *StreamableTransport) Start(ctx context.Context, cfg config.MCPServerConfig) error {
+func (t *StreamableTransport) Start(ctx context.Context, tmplCtx *template.Context) error {
 	if t.IsStarted() {
 		return nil
 	}
 
 	// Create streamable transport
-	streamableTransport, err := transport.NewStreamableHTTP(cfg.URL)
+	streamableTransport, err := transport.NewStreamableHTTP(t.cfg.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
 	}
@@ -77,9 +78,9 @@ func (t *StreamableTransport) IsStarted() bool {
 }
 
 // FetchToolList implements Transport.FetchToolList
-func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Connection) ([]mcp.ToolSchema, error) {
 	if !t.IsStarted() {
-		if err := t.Start(ctx, mcpProxyCfg); err != nil {
+		if err := t.Start(ctx, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -134,9 +135,9 @@ func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Conne
 }
 
 // InvokeTool implements Transport.InvokeTool
-func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	if !t.IsStarted() {
-		if err := t.Start(ctx.Request.Context(), mcpProxyCfg); err != nil {
+		if err := t.Start(ctx.Request.Context(), nil); err != nil {
 			return nil, err
 		}
 	}
@@ -155,7 +156,7 @@ func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connecti
 
 	// Process environment variables with templates
 	renderedClientEnv := make(map[string]string)
-	for k, v := range mcpProxyCfg.Env {
+	for k, v := range t.cfg.Env {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render env template: %w", err)

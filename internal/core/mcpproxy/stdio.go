@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
@@ -21,23 +22,18 @@ import (
 // StdioTransport implements Transport using standard input/output
 type StdioTransport struct {
 	client *client.Client
+	cfg    config.MCPServerConfig
 }
 
 var _ Transport = (*StdioTransport)(nil)
 
-func (t *StdioTransport) Start(ctx context.Context, cfg config.MCPServerConfig) error {
+func (t *StdioTransport) Start(ctx context.Context, tmplCtx *template.Context) error {
 	if t.IsStarted() {
 		return nil
 	}
 
-	// Prepare template context
-	tmplCtx, err := template.PrepareTemplateContext(nil, nil, nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to prepare template context: %w", err)
-	}
-
 	renderedClientEnv := make(map[string]string)
-	for k, v := range cfg.Env {
+	for k, v := range t.cfg.Env {
 		rendered, err := template.RenderTemplate(v, tmplCtx)
 		if err != nil {
 			return fmt.Errorf("failed to render env template: %w", err)
@@ -47,11 +43,11 @@ func (t *StdioTransport) Start(ctx context.Context, cfg config.MCPServerConfig) 
 
 	// Create stdio transport
 	stdioTransport := transport.NewStdio(
-		cfg.Command,
+		t.cfg.Command,
 		utils.MapToEnvList(renderedClientEnv),
-		cfg.Args...,
+		t.cfg.Args...,
 	)
-	fmt.Println("debug:", utils.MapToEnvList(renderedClientEnv), cfg.Command, cfg.Args)
+	fmt.Println("debug:", utils.MapToEnvList(renderedClientEnv), t.cfg.Command, t.cfg.Args)
 
 	// Start the transport
 	if err := stdioTransport.Start(ctx); err != nil {
@@ -69,7 +65,7 @@ func (t *StdioTransport) Start(ctx context.Context, cfg config.MCPServerConfig) 
 		Version: version.Get(),
 	}
 
-	_, err = c.Initialize(ctx, initRequest)
+	_, err := c.Initialize(ctx, initRequest)
 	if err != nil {
 		_ = stdioTransport.Close()
 		return fmt.Errorf("failed to initialize stdio client: %w", err)
@@ -96,12 +92,17 @@ func (t *StdioTransport) IsStarted() bool {
 }
 
 // FetchToolList implements Transport.FetchToolList
-func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection) ([]mcp.ToolSchema, error) {
 	if !t.IsStarted() {
-		if err := t.Start(ctx, mcpProxyCfg); err != nil {
+		if err := t.Start(ctx, template.NewContext()); err != nil {
 			return nil, err
 		}
 	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
 
 	// List available tools
 	toolsResult, err := t.client.ListTools(ctx, mcpgo.ListToolsRequest{})
@@ -153,12 +154,25 @@ func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection
 }
 
 // InvokeTool implements Transport.InvokeTool
-func (t *StdioTransport) InvokeTool(c *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+func (t *StdioTransport) InvokeTool(ctx *gin.Context, conn session.Connection, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	if !t.IsStarted() {
-		if err := t.Start(c.Request.Context(), mcpProxyCfg); err != nil {
+		var args map[string]any
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return nil, fmt.Errorf("invalid tool arguments: %w", err)
+		}
+		tmplCtx, err := template.PrepareTemplateContext(conn.Meta().Request, args, ctx.Request, nil)
+		if err != nil {
+			return nil, err
+		}
+		if err := t.Start(ctx.Request.Context(), tmplCtx); err != nil {
 			return nil, err
 		}
 	}
+	defer func() {
+		if t.cfg.Policy == cnst.PolicyOnDemand {
+			_ = t.Stop(ctx)
+		}
+	}()
 
 	// Convert arguments to map[string]any
 	var args map[string]any
@@ -176,7 +190,7 @@ func (t *StdioTransport) InvokeTool(c *gin.Context, conn session.Connection, mcp
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	mcpgoResult, err := t.client.CallTool(c.Request.Context(), callRequest)
+	mcpgoResult, err := t.client.CallTool(ctx.Request.Context(), callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
