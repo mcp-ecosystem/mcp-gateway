@@ -13,78 +13,78 @@ type (
 	MCPServer struct {
 		Name      string    `json:"name" yaml:"name" gorm:"primaryKey"`
 		Content   MCPConfig `json:"content" yaml:"content" gorm:"type:json"`
-		CreatedAt time.Time `json:"createdAt" yaml:"created_at"`
-		UpdatedAt time.Time `json:"updatedAt" yaml:"updated_at"`
+		CreatedAt time.Time `json:"createdAt" yaml:"createdAt"`
+		UpdatedAt time.Time `json:"updatedAt" yaml:"updatedAt"`
 	}
 
 	MCPConfig struct {
-		Name       string            `yaml:"name" gorm:"primaryKey"`
-		Tenant     string            `yaml:"tenant" gorm:"index"`
-		CreatedAt  time.Time         `yaml:"created_at"`
-		UpdatedAt  time.Time         `yaml:"updated_at"`
-		DeletedAt  time.Time         `yaml:"deleted_at"` // non-zero indicates that all information has been deleted
-		Routers    []RouterConfig    `yaml:"routers" gorm:"type:json"`
-		Servers    []ServerConfig    `yaml:"servers" gorm:"type:json"`
-		Tools      []ToolConfig      `yaml:"tools" gorm:"type:json"`
-		McpServers []MCPServerConfig `yaml:"mcpServers" gorm:"type:json"` // proxy mcp servers
+		Name       string            `json:"name" yaml:"name" gorm:"primaryKey"`
+		Tenant     string            `json:"tenant"  yaml:"tenant" gorm:"index"`
+		CreatedAt  time.Time         `json:"createdAt" yaml:"createdAt"`
+		UpdatedAt  time.Time         `json:"updatedAt" yaml:"updatedAt"`
+		DeletedAt  time.Time         `json:"deletedAt" yaml:"deletedAt"` // non-zero indicates that all information has been deleted
+		Routers    []RouterConfig    `json:"routers" yaml:"routers" gorm:"type:json"`
+		Servers    []ServerConfig    `json:"servers" yaml:"servers" gorm:"type:json"`
+		Tools      []ToolConfig      `json:"tools" yaml:"tools" gorm:"type:json"`
+		McpServers []MCPServerConfig `json:"mcpServers" yaml:"mcpServers" gorm:"type:json"` // proxy mcp servers
 	}
 
 	RouterConfig struct {
-		Server string      `yaml:"server"`
-		Prefix string      `yaml:"prefix"`
-		CORS   *CORSConfig `yaml:"cors,omitempty"`
+		Server string      `json:"server" yaml:"server"`
+		Prefix string      `json:"prefix" yaml:"prefix"`
+		CORS   *CORSConfig `json:"cors,omitempty" yaml:"cors,omitempty"`
 	}
 
 	CORSConfig struct {
-		AllowOrigins     []string `yaml:"allowOrigins"`
-		AllowMethods     []string `yaml:"allowMethods"`
-		AllowHeaders     []string `yaml:"allowHeaders"`
-		ExposeHeaders    []string `yaml:"exposeHeaders"`
-		AllowCredentials bool     `yaml:"allowCredentials"`
+		AllowOrigins     []string `json:"allowOrigins" yaml:"allowOrigins"`
+		AllowMethods     []string `json:"allowMethods" yaml:"allowMethods"`
+		AllowHeaders     []string `json:"allowHeaders" yaml:"allowHeaders"`
+		ExposeHeaders    []string `json:"exposeHeaders" yaml:"exposeHeaders"`
+		AllowCredentials bool     `json:"allowCredentials" yaml:"allowCredentials"`
 	}
 
 	ServerConfig struct {
-		Name         string            `yaml:"name"`
-		Namespace    string            `yaml:"namespace"`
-		Description  string            `yaml:"description"`
-		AllowedTools []string          `yaml:"allowedTools"`
-		Config       map[string]string `yaml:"config,omitempty"`
+		Name         string            `json:"name" yaml:"name"`
+		Namespace    string            `json:"namespace" yaml:"namespace"`
+		Description  string            `json:"description" yaml:"description"`
+		AllowedTools []string          `json:"allowedTools" yaml:"allowedTools"`
+		Config       map[string]string `json:"config,omitempty" yaml:"config,omitempty"`
 	}
 
 	ToolConfig struct {
-		Name         string            `yaml:"name"`
-		Description  string            `yaml:"description,omitempty"`
-		Method       string            `yaml:"method"`
-		Endpoint     string            `yaml:"endpoint"`
-		Headers      map[string]string `yaml:"headers"`
-		Args         []ArgConfig       `yaml:"args"`
-		RequestBody  string            `yaml:"requestBody"`
-		ResponseBody string            `yaml:"responseBody"`
-		InputSchema  map[string]any    `yaml:"inputSchema,omitempty"`
+		Name         string            `json:"name" yaml:"name"`
+		Description  string            `json:"description,omitempty" yaml:"description,omitempty"`
+		Method       string            `json:"method" yaml:"method"`
+		Endpoint     string            `json:"endpoint" yaml:"endpoint"`
+		Headers      map[string]string `json:"headers" yaml:"headers"`
+		Args         []ArgConfig       `json:"args" yaml:"args"`
+		RequestBody  string            `json:"requestBody"  yaml:"requestBody"`
+		ResponseBody string            `json:"responseBody" yaml:"responseBody"`
+		InputSchema  map[string]any    `json:"inputSchema,omitempty" yaml:"inputSchema,omitempty"`
 	}
 
 	MCPServerConfig struct {
-		Type    string            `yaml:"type"`              // sse, stdio and streamable-http
-		Name    string            `yaml:"name"`              // server name
-		Command string            `yaml:"command,omitempty"` // for stdio
-		Args    []string          `yaml:"args,omitempty"`    // for stdio
-		Env     map[string]string `yaml:"env,omitempty"`     // for stdio
-		URL     string            `yaml:"url,omitempty"`     // for sse and streamable-http
+		Type    string            `json:"type" yaml:"type"`                           // sse, stdio and streamable-http
+		Name    string            `json:"name" yaml:"name"`                           // server name
+		Command string            `json:"command,omitempty" yaml:"command,omitempty"` // for stdio
+		Args    []string          `json:"args,omitempty" yaml:"args,omitempty"`       // for stdio
+		Env     map[string]string `json:"env,omitempty" yaml:"env,omitempty"`         // for stdio
+		URL     string            `json:"url,omitempty" yaml:"url,omitempty"`         // for sse and streamable-http
 	}
 
 	ArgConfig struct {
-		Name        string      `yaml:"name" json:"name"`
-		Position    string      `yaml:"position" json:"position"` // header, query, path, body
-		Required    bool        `yaml:"required" json:"required"`
-		Type        string      `yaml:"type" json:"type"`
-		Description string      `yaml:"description" json:"description"`
-		Default     string      `yaml:"default" json:"default"`
-		Items       ItemsConfig `yaml:"items,omitempty" json:"items,omitempty"`
+		Name        string      `json:"name" yaml:"name"`
+		Position    string      `json:"position" yaml:"position"` // header, query, path, body
+		Required    bool        `json:"required" yaml:"required"`
+		Type        string      `json:"type" yaml:"type"`
+		Description string      `json:"description" yaml:"description"`
+		Default     string      `json:"default" yaml:"default"`
+		Items       ItemsConfig `json:"items,omitempty" yaml:"items,omitempty"`
 	}
 
 	ItemsConfig struct {
-		Type string   `yaml:"type" json:"type"`
-		Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+		Type string   `json:"type" yaml:"type"`
+		Enum []string `json:"enum,omitempty" yaml:"enum,omitempty"`
 	}
 )
 
