@@ -10,7 +10,70 @@ data:
     VITE_MCP_GATEWAY_BASE_URL=http://127.0.0.1:30235
     VITE_BASE_URL=/
     VITE_DEV_API_BASE_URL=http://localhost:30234
-    
+    # Logger configuration for apiserver
+    APISERVER_LOGGER_LEVEL=info
+    APISERVER_LOGGER_FORMAT=json
+    APISERVER_LOGGER_OUTPUT=stdout
+    APISERVER_LOGGER_FILE_PATH=/var/log/mcp-gateway/apiserver.log
+    APISERVER_LOGGER_MAX_SIZE=100
+    APISERVER_LOGGER_MAX_BACKUPS=3
+    APISERVER_LOGGER_MAX_AGE=7
+    APISERVER_LOGGER_COMPRESS=true
+    APISERVER_LOGGER_COLOR=false
+    APISERVER_LOGGER_STACKTRACE=true
+    # Database Configuration
+    APISERVER_DB_TYPE=postgres
+    APISERVER_DB_HOST=localhost
+    APISERVER_DB_PORT=30432
+    APISERVER_DB_USER=postgres
+    APISERVER_DB_PASSWORD=postgres
+    APISERVER_DB_NAME=mcp-gateway
+    APISERVER_DB_SSL_MODE=disable
+    # Notifier Configuration
+    APISERVER_NOTIFIER_ROLE=sender
+    APISERVER_NOTIFIER_TYPE=signal
+    ## Signal Notifier Settings
+    APISERVER_NOTIFIER_SIGNAL=SIGHUP
+    APISERVER_NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
+    ## API Notifier Settings
+    APISERVER_NOTIFIER_API_PORT=5235
+    APISERVER_NOTIFIER_API_TARGET_URL=http://localhost:5235/_reload
+    ## Redis Notifier Settings
+    APISERVER_NOTIFIER_REDIS_ADDR=localhost:6379
+    APISERVER_NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
+    APISERVER_NOTIFIER_REDIS_DB=0
+    APISERVER_NOTIFIER_REDIS_TOPIC=mcp-gateway:reload
+    # Notifier Configuration
+    NOTIFIER_ROLE=receiver
+    NOTIFIER_TYPE=signal
+    ## Signal Notifier Settings
+    NOTIFIER_SIGNAL=SIGHUP
+    NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
+    ## API Notifier Settings
+    NOTIFIER_API_PORT=5235
+    NOTIFIER_API_TARGET_URL=http://localhost:5235/_reload
+    ## Redis Notifier Settings
+    NOTIFIER_REDIS_ADDR=localhost:6379
+    NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
+    NOTIFIER_REDIS_DB=0
+    NOTIFIER_REDIS_TOPIC=mcp-gateway:reload
+    # Session storage type: memory or redis
+    SESSION_STORAGE_TYPE=memory
+    SESSION_REDIS_ADDR=localhost:6379
+    SESSION_REDIS_PASSWORD=
+    SESSION_REDIS_DB=0
+    SESSION_REDIS_TOPIC=mcp-gateway:session
+    OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
+    OPENAI_API_KEY=sk-22a3e2c494d3499c9675c492494e783b
+    OPENAI_MODEL=qwen-turbo
+    MCP_GATEWAY_PID=/data/mcp-gateway.pid
+    MCP_GATEWAY_PORT=5235
+    VITE_API_BASE_URL=/api
+    VITE_WS_BASE_URL=/ws
+    VITE_MCP_GATEWAY_BASE_URL=/mcp
+    VITE_BASE_URL=/
+    APISERVER_JWT_SECRET_KEY=
+    APISERVER_JWT_DURATION=24h
     
     
     

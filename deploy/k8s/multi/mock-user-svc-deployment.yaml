@@ -15,6 +15,7 @@ spec:
     spec:
       containers:
       - name: mock-user-svc
+        imagePullPolicy: IfNotPresent  # 优先使用本地镜像
         image: ghcr.io/mcp-ecosystem/mcp-gateway/mock-user-svc:latest
         env:
         - name: ENV

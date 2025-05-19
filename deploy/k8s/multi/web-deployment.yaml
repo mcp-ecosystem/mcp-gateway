@@ -15,6 +15,7 @@ spec:
     spec:
       containers:
         - name: web
+          imagePullPolicy: IfNotPresent  # 优先使用本地镜像
           image: ghcr.io/mcp-ecosystem/mcp-gateway/web:latest
           env:
             - name: TZ
@@ -25,22 +26,22 @@ spec:
             - containerPort: 80
             - containerPort: 5234
           volumeMounts:
-            - name: web-env
-              mountPath: /app/.env
-              subPath: .env
             - name: configs
               mountPath: /app/configs
             - name: data
               mountPath: /app/data
+            - name: web-env
+              mountPath: /app/.env
+              subPath: .env
       volumes:
-        - name: web-env
-          configMap:
-            name: web-env
         - name: configs
           configMap:
             name: app-configs
         - name: data
           emptyDir: {}
+        - name: web-env
+          configMap:
+            name: web-env
 ---
 apiVersion: v1
 kind: Service
@@ -53,8 +54,10 @@ spec:
     - port: 80
       targetPort: 80
       nodePort: 30080
+      name: my-web
     - port: 5234
       targetPort: 5234
-      nodePort: 30081
+      nodePort: 30234
+      name: my-web-api
   selector:
     app: web

@@ -30,22 +30,22 @@ data:
     LOGGER_STACKTRACE=true
 
     # Database Configuration
-    APISERVER_DB_TYPE=sqlite
-    APISERVER_DB_HOST=localhost
+    APISERVER_DB_TYPE=postgres
+    APISERVER_DB_HOST=postgres.mcp-gateway.svc.cluster.local
     APISERVER_DB_PORT=5432
-    APISERVER_DB_USER=
-    APISERVER_DB_PASSWORD=
-    APISERVER_DB_NAME=./data/mcp-gateway.db
+    APISERVER_DB_USER=postgres
+    APISERVER_DB_PASSWORD=postgres
+    APISERVER_DB_NAME=mcp-gateway
     APISERVER_DB_SSL_MODE=disable
 
     # Gateway Configurations Storage Configuration
     GATEWAY_STORAGE_TYPE=db
-    GATEWAY_DB_TYPE=sqlite
-    GATEWAY_DB_HOST=localhost
+    GATEWAY_DB_TYPE=postgres
+    GATEWAY_DB_HOST=postgres.mcp-gateway.svc.cluster.local
     GATEWAY_DB_PORT=5432
-    GATEWAY_DB_USER=
-    GATEWAY_DB_PASSWORD=
-    GATEWAY_DB_NAME=./data/mcp-gateway.db
+    GATEWAY_DB_USER=postgres
+    GATEWAY_DB_PASSWORD=postgres
+    GATEWAY_DB_NAME=mcp-gateway
     GATEWAY_DB_SSL_MODE=disable
     GATEWAY_STORAGE_DISK_PATH=
 
