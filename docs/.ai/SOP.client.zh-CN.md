@@ -31,3 +31,11 @@
 - 到服务端的路由都配置在了vite里，部分是通过.env注入的
 - 主要的后端是 `apiserver`
 
+### 5. 国际化 (i18n) 规范
+- 所有显示给用户的文本内容必须使用i18n国际化处理
+- 翻译文件位于 `web/src/i18n/locales` 目录下
+  - 英文翻译: `web/src/i18n/locales/en/translation.json`
+  - 中文翻译: `web/src/i18n/locales/zh/translation.json`
+- 添加新文本时必须同时更新中英文两种语言的翻译文件
+- 使用时通过 `t()` 函数引用翻译键值，例如: `t('common.save')`
+

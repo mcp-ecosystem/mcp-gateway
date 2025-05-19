@@ -129,12 +129,19 @@ tools:
           enum: ["developer", "designer", "manager", "tester"]
         description: "User role tags"
         default: "[]"
+      - name: "settings"
+        position: "body"
+        required: false
+        type: "object"
+        description: "User custom settings as key-value pairs"
+        default: "{}"
     requestBody: |-
       {
         "isPublic": {{.Args.isPublic}},
         "showEmail": {{.Args.showEmail}},
         "theme": "{{.Args.theme}}",
-        "tags": {{.Args.tags}}
+        "tags": {{.Args.tags}},
+        "settings": {{ toJSON .Args.settings }}
       }
     responseBody: |-
       {
@@ -146,7 +153,8 @@ tools:
           "isPublic": {{.Response.Data.preferences.isPublic}},
           "showEmail": {{.Response.Data.preferences.showEmail}},
           "theme": "{{.Response.Data.preferences.theme}}",
-          "tags": {{.Response.Data.preferences.tags}}
+          "tags": {{.Response.Data.preferences.tags}},
+          "settings": {{ toJSON .Response.Data.preferences.settings }}
         }
       }
 

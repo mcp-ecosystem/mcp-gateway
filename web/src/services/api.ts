@@ -4,6 +4,8 @@ import { t } from 'i18next';
 import i18n from '../i18n';
 import { handleApiError } from '../utils/error-handler';
 import { toast } from '../utils/toast';
+import type { Gateway } from '../types/gateway';
+
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -107,6 +109,26 @@ export const deleteMCPServer = async (name: string) => {
     return response.data;
   } catch (error) {
     handleApiError(error, 'errors.delete_mcp_server');
+    throw error;
+  }
+};
+
+export const exportMCPServer = async (server: Gateway) => {
+  try {
+    const name = server.name
+    const config = server.config
+
+    const blob = new Blob([config], { type: 'application/yaml' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    toast.info(t(url))
+    a.href = url;
+    a.download = `${name}.yaml`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, 'errors.export_mcp_server');
     throw error;
   }
 };

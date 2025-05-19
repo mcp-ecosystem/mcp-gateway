@@ -20,10 +20,11 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// Add new fields for testing
 	Preferences struct {
-		IsPublic  bool     `json:"isPublic"`
-		ShowEmail bool     `json:"showEmail"`
-		Theme     string   `json:"theme"`
-		Tags      []string `json:"tags"`
+		IsPublic  bool           `json:"isPublic"`
+		ShowEmail bool           `json:"showEmail"`
+		Theme     string         `json:"theme"`
+		Tags      []string       `json:"tags"`
+		Settings  map[string]any `json:"settings"`
 	} `json:"preferences"`
 }
 
@@ -63,6 +64,7 @@ func NewHTTPServer() *HTTPServer {
 		user.Preferences.ShowEmail = true
 		user.Preferences.Theme = "light"
 		user.Preferences.Tags = []string{}
+		user.Preferences.Settings = make(map[string]any)
 
 		// Store user
 		users[user.Email] = &user
@@ -91,10 +93,11 @@ func NewHTTPServer() *HTTPServer {
 		}
 
 		var preferences struct {
-			IsPublic  bool     `json:"isPublic"`
-			ShowEmail bool     `json:"showEmail"`
-			Theme     string   `json:"theme"`
-			Tags      []string `json:"tags"`
+			IsPublic  bool           `json:"isPublic"`
+			ShowEmail bool           `json:"showEmail"`
+			Theme     string         `json:"theme"`
+			Tags      []string       `json:"tags"`
+			Settings  map[string]any `json:"settings"`
 		}
 
 		if err := c.ShouldBindJSON(&preferences); err != nil {

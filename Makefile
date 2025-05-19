@@ -14,7 +14,7 @@ PROJECT_NAME ?= mcp-gateway
 IMAGE_TAG ?= $(shell cat pkg/version/VERSION)
 
 # Service configurations
-SERVICES = apiserver mcp-gateway mock-user-svc web
+SERVICES = mcp-gateway mock-user-svc web
 
 # Build flags
 LDFLAGS = -X main.version=$(VERSION)
@@ -53,7 +53,6 @@ build-allinone:
 # Run multi-container version
 .PHONY: run-multi
 run-multi:
-	APISERVER_IMAGE=$(APISERVER_IMAGE) \
 	MCP_GATEWAY_IMAGE=$(MCP_GATEWAY_IMAGE) \
 	MOCK_USER_SVC_IMAGE=$(MOCK_USER_SVC_IMAGE) \
 	WEB_IMAGE=$(WEB_IMAGE) \

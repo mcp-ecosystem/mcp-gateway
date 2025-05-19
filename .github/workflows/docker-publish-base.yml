@@ -1,29 +1,12 @@
-name: Docker Build and Publish Apiserver
+name: Docker Build and Publish Base Image
 
 on:
-  push:
-    tags:
-      - 'v*'
-    paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'pkg/**'
-      - 'deploy/docker/**'
-      - 'go.mod'
-      - 'go.sum'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag for the image'
-        required: true
-        default: 'dev'
 
 env:
   DOCKER_HUB_USERNAME: ifuryst
   ALIYUN_REGISTRY: registry.ap-southeast-1.aliyuncs.com/mcp-ecosystem
   BUILDX_NO_DEFAULT_ATTESTATIONS: 1
-  PUSH_LATEST: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-  SHOULD_LOGIN: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
 jobs:
   build-and-push:
@@ -42,14 +25,12 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: Login to Docker Hub
-        if: env.SHOULD_LOGIN == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        if: env.SHOULD_LOGIN == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -57,26 +38,26 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Aliyun Container Registry
-        if: env.SHOULD_LOGIN == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.ALIYUN_REGISTRY }}
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Build and push apiserver image
+      - name: Build and push base image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: deploy/docker/multi/apiserver/Dockerfile
+          file: deploy/docker/base/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+            UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/
+            npm_config_registry=https://registry.npmmirror.com
           tags: |
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-apiserver:latest', env.DOCKER_HUB_USERNAME) || '' }}
-            ${{ format('{0}/mcp-gateway-apiserver:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('ghcr.io/{0}/apiserver:latest', github.repository) || '' }}
-            ${{ format('ghcr.io/{0}/apiserver:{1}', github.repository, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-apiserver:latest', env.ALIYUN_REGISTRY) || '' }}
-            ${{ format('{0}/mcp-gateway-apiserver:{1}', env.ALIYUN_REGISTRY, github.ref_name) }} 
+            ${{ env.DOCKER_HUB_USERNAME }}/mcp-gateway-base:latest
+            ghcr.io/${{ github.repository }}/base:latest
+            ${{ env.ALIYUN_REGISTRY }}/mcp-gateway-base:latest 

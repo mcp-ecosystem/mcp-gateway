@@ -1,0 +1,67 @@
+name: "test-server"
+tenant: "default"
+
+routers:
+  - server: "mock-user-svc"
+    prefix: "/mcp/user"
+    cors:
+      allowOrigins:
+        - "*"
+      allowMethods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "OPTIONS"
+      allowHeaders:
+        - "Content-Type"
+        - "Authorization"
+        - "Mcp-Session-Id"
+      exposeHeaders:
+        - "Mcp-Session-Id"
+      allowCredentials: true
+
+servers:
+  - name: "mock-user-svc"
+    namespace: "user-service"
+    description: "Mock User Service"
+    allowedTools:
+      - "register_user"
+      - "get_user_by_email"
+    config:
+      Cookie: 123
+      Authorization: 'Bearer {{ env "AUTH_TOKEN" }}'
+
+tools:
+  - name: "register_user"
+    description: "Register a new user"
+    method: "POST"
+    endpoint: "http://localhost:5236/users"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "{{.Config.Authorization}}"
+      Cookie: "{{.Config.Cookie}}"
+    args:
+      - name: "username"
+        position: "body"
+        required: true
+        type: "string"
+        description: "Username"
+        default: ""
+      - name: "email"
+        position: "body"
+        required: true
+        type: "string"
+        description: "Email"
+        default: ""
+
+  - name: "get_user_by_email"
+    description: "Get user by email"
+    method: "GET"
+    endpoint: "http://localhost:5236/users/email/{{.Args.email}}"
+    args:
+      - name: "email"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Email"
+        default: "" 

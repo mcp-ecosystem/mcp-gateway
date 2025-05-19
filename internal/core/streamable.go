@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpproxy"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
 
 	"github.com/google/uuid"
@@ -231,7 +230,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			tools, err = mcpproxy.FetchStdioToolList(c.Request.Context(), mcpProxyCfg)
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			tools, err = transport.FetchToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -243,7 +248,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			tools, err = mcpproxy.FetchSSEToolList(c.Request.Context(), mcpProxyCfg)
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			tools, err = transport.FetchToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -255,7 +266,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				return
 			}
 
-			tools, err = mcpproxy.FetchStreamableToolList(c.Request.Context(), mcpProxyCfg)
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			tools, err = transport.FetchToolList(c.Request.Context(), conn, mcpProxyCfg)
 			if err != nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
@@ -312,7 +329,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			}
 
 			// Execute the tool
-			result, err = s.executeHTTPTool(tool, args, c.Request, serverCfg.Config)
+			result, err = s.executeHTTPTool(conn, tool, args, c.Request, serverCfg.Config)
 			if err != nil {
 				s.logger.Error("failed to execute tool", zap.Error(err))
 				s.sendToolExecutionError(c, conn, req, err, false)
@@ -325,7 +342,15 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeStdioTool(c, mcpProxyCfg, params)
+
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				errMsg := "Server configuration not found"
+				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+				return
+			}
+
+			result, err = transport.InvokeTool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
@@ -337,7 +362,15 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeSSETool(c, mcpProxyCfg, params)
+
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				errMsg := "Server configuration not found"
+				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+				return
+			}
+
+			result, err = transport.InvokeTool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
@@ -349,9 +382,17 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
-			result, err = mcpproxy.InvokeStreamableTool(c, mcpProxyCfg, params)
+
+			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
+			if !ok {
+				errMsg := "Server configuration not found"
+				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+				return
+			}
+
+			result, err = transport.InvokeTool(c, conn, mcpProxyCfg, params)
 			if err != nil {
-				s.sendToolExecutionError(c, conn, req, err, false)
+				s.sendToolExecutionError(c, conn, req, err, true)
 				return
 			}
 

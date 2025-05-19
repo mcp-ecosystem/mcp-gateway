@@ -1,0 +1,193 @@
+import {Button, Input, Select, SelectItem, Tab, Tabs} from "@heroui/react";
+import Editor from '@monaco-editor/react';
+import yaml from 'js-yaml';
+import {useCallback, useEffect, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+
+import {getTenants} from '../../../services/api';
+import {defaultConfig} from '../constants/defaultConfig';
+import {ConfigEditorProps, GatewayConfig, Tenant} from '../types';
+
+import {MCPServersConfig} from './MCPServersConfig';
+import {RouterConfig} from './RouterConfig';
+import {ServersConfig} from './ServersConfig';
+import {ToolsConfig} from './ToolsConfig';
+
+export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditing }: ConfigEditorProps) {
+  const { t } = useTranslation();
+  const [isYamlMode, setIsYamlMode] = useState<boolean>(false);
+  const [parsedConfig, setParsedConfig] = useState<GatewayConfig | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [isLoadingTenants, setIsLoadingTenants] = useState<boolean>(false);
+
+  // 表单状态
+  const [generalFormState, setGeneralFormState] = useState<{name?: string; tenant?: string}>({});
+
+  // 使用useCallback包装updateConfig函数
+  const updateConfig = useCallback((newData: Partial<GatewayConfig>) => {
+    const baseConfig = parsedConfig || defaultConfig;
+
+    const updated: GatewayConfig = {
+      ...baseConfig,
+      ...newData,
+    };
+
+    // 在 YAML 模式 + 编辑中，name 锁定为原始 name
+    if (isYamlMode && isEditing && parsedConfig?.name?.trim()) {
+      updated.name = parsedConfig.name;
+    }
+
+    try {
+      const yamlString = yaml.dump(updated);
+      setParsedConfig(updated);
+      onChange(yamlString);
+    } catch (e) {
+      console.error("Failed to generate YAML:", e);
+    }
+  }, [parsedConfig, isYamlMode, isEditing, onChange]);
+
+  // 加载租户列表
+  useEffect(() => {
+    const fetchTenants = async () => {
+      setIsLoadingTenants(true);
+      try {
+        const tenantsData = await getTenants();
+        setTenants(tenantsData);
+      } catch (error) {
+        console.error("Failed to fetch tenants:", error);
+      } finally {
+        setIsLoadingTenants(false);
+      }
+    };
+
+    fetchTenants();
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (!config || config.trim() === '') {
+        setParsedConfig(defaultConfig);
+        return;
+      }
+
+      const parsed = yaml.load(config) as GatewayConfig;
+      setParsedConfig(parsed);
+    } catch (e) {
+      console.error("Failed to parse config:", e);
+      setParsedConfig(defaultConfig);
+    }
+  }, [config]);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex justify-end mb-4">
+        <Button
+          color={isYamlMode ? "primary" : "default"}
+          variant={isYamlMode ? "solid" : "flat"}
+          onPress={() => setIsYamlMode(true)}
+          className="mr-2"
+          size="sm"
+        >
+          {t('gateway.yaml_mode')}
+        </Button>
+        <Button
+          color={!isYamlMode ? "primary" : "default"}
+          variant={!isYamlMode ? "solid" : "flat"}
+          onPress={() => setIsYamlMode(false)}
+          size="sm"
+        >
+          {t('gateway.form_mode')}
+        </Button>
+      </div>
+
+      {isYamlMode ? (
+        <Editor
+          height="100%"
+          defaultLanguage="yaml"
+          value={config}
+          onChange={(value) => {
+            if (value !== undefined) {
+              onChange(value);
+            }
+          }}
+          theme={isDark ? "vs-dark" : "light"}
+          options={editorOptions}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Input
+              label={t('gateway.name')}
+              value={generalFormState.name !== undefined ? generalFormState.name : (parsedConfig?.name || "")}
+              onChange={(e) => {
+                setGeneralFormState(prev => ({
+                  ...prev,
+                  name: e.target.value
+                }));
+              }}
+              isDisabled={Boolean(isEditing && parsedConfig?.name && parsedConfig.name.trim() !== '')}
+              description={(isEditing && parsedConfig?.name && parsedConfig.name.trim() !== '') ? t('gateway.name_locked') : undefined}
+            />
+
+            <Select
+              label={t('gateway.tenant')}
+              selectedKeys={generalFormState.tenant !== undefined ? [generalFormState.tenant] : (parsedConfig?.tenant ? [parsedConfig.tenant] : ['default'])}
+              onChange={(e) => {
+                setGeneralFormState(prev => ({
+                  ...prev,
+                  tenant: e.target.value
+                }));
+              }}
+              aria-label={t('gateway.tenant')}
+              isLoading={isLoadingTenants}
+            >
+              {tenants.length > 0 ? (
+                tenants.filter(tenant => tenant.isActive).map(tenant => (
+                  <SelectItem key={tenant.name} textValue={tenant.name}>
+                    {tenant.name}
+                    {tenant.prefix && <span className="text-tiny text-default-400"> ({tenant.prefix})</span>}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem key="default">default</SelectItem>
+              )}
+            </Select>
+
+            <div className="mt-2">
+              <h3 className="text-sm font-medium mb-2">{t('gateway.created_at')}: {new Date().toLocaleString()}</h3>
+              <h3 className="text-sm font-medium mb-2">{t('gateway.updated_at')}: {new Date().toLocaleString()}</h3>
+            </div>
+          </div>
+
+          <Tabs aria-label="Configuration sections" className="w-full" disableAnimation>
+            <Tab key="tools" title={t('gateway.tools')}>
+              <ToolsConfig
+                parsedConfig={parsedConfig || defaultConfig}
+                updateConfig={updateConfig}
+              />
+            </Tab>
+            <Tab key="http-servers" title={t('gateway.http_servers')}>
+              <ServersConfig
+                parsedConfig={parsedConfig || defaultConfig}
+                updateConfig={updateConfig}
+              />
+            </Tab>
+            <Tab key="mcp-servers" title={t('gateway.mcp_servers')}>
+              <MCPServersConfig
+                parsedConfig={parsedConfig || defaultConfig}
+                updateConfig={updateConfig}
+              />
+            </Tab>
+            <Tab key="routers" title={t('gateway.routers')}>
+              <RouterConfig
+                parsedConfig={parsedConfig || defaultConfig}
+                updateConfig={updateConfig}
+                tenants={tenants}
+              />
+            </Tab>
+          </Tabs>
+        </div>
+      )}
+    </div>
+  );
+}

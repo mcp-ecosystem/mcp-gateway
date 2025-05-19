@@ -2,12 +2,6 @@ FROM golang:1.24.1 AS builder
 
 WORKDIR /app
 
-# Install SQLite dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libc6-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY go.mod go.sum ./
 
 RUN go mod download
@@ -40,27 +34,27 @@ COPY web/ .
 
 RUN npm run build
 
-FROM ubuntu:22.04
+FROM ghcr.io/mcp-ecosystem/mcp-gateway/base:latest AS runtime
 
-# Set default timezone
-ENV TZ=UTC
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG UV_DEFAULT_INDEX=https://pypi.org/simple
+ARG npm_config_registry=https://registry.npmjs.org/
 
-RUN apt-get update && apt-get install -y \
-    supervisor \
-    nginx \
-    curl \
-    vim \
-    tzdata \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone \
-    && dpkg-reconfigure -f noninteractive tzdata
+ENV PIP_INDEX_URL=${PIP_INDEX_URL} \
+    UV_DEFAULT_INDEX=${UV_DEFAULT_INDEX} \
+    npm_config_registry=${npm_config_registry}
+
+# Configure pip and npm to use the specified repositories
+RUN mkdir -p /root/.config/pip && \
+    echo "[global]\nindex-url = \${PIP_INDEX_URL}" > /root/.config/pip/pip.conf && \
+    npm config set registry ${npm_config_registry} -g
 
 COPY deploy/docker/allinone/supervisord.conf /etc/supervisor/conf.d/
 COPY deploy/docker/allinone/nginx.conf /etc/nginx/nginx.conf
 RUN mkdir -p /app/data
 COPY configs/apiserver.yaml /etc/mcp-gateway/
 COPY configs/mcp-gateway.yaml /etc/mcp-gateway/
+COPY configs/i18n /app/configs/i18n/
 
 COPY --from=builder /app/bin/mcp-gateway /usr/local/bin/
 COPY --from=builder /app/bin/mock-user-svc /usr/local/bin/

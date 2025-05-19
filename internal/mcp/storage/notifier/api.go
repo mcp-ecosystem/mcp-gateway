@@ -1,10 +1,14 @@
 package notifier
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
@@ -38,8 +42,45 @@ func NewAPINotifier(logger *zap.Logger, port int, role config.NotifierRole, targ
 	// Setup API routes if can receive
 	if n.CanReceive() {
 		n.router.POST("/_reload", func(c *gin.Context) {
-			_ = n.NotifyUpdate(c.Request.Context(), nil)
-			c.JSON(http.StatusOK, gin.H{"status": "reload triggered"})
+			var mcpConfig *config.MCPConfig
+
+			if c.Request.ContentLength > 0 {
+				var cfg config.MCPConfig
+				if err := c.ShouldBindJSON(&cfg); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": fmt.Sprintf("Invalid request body: %v", err)})
+					return
+				}
+				mcpConfig = &cfg
+				n.logger.Info("Received configuration update with reload", zap.String("config_name", cfg.Name))
+			} else {
+				n.logger.Info("Received reload signal without configuration")
+			}
+
+			if mcpConfig != nil {
+				n.mu.RLock()
+				for ch := range n.watchers {
+					select {
+					case ch <- mcpConfig:
+						// Successfully sent
+					default:
+						n.logger.Warn("Watcher channel is full, skipping notification")
+					}
+				}
+				n.mu.RUnlock()
+			} else {
+				n.mu.RLock()
+				for ch := range n.watchers {
+					select {
+					case ch <- nil:
+						// Successfully sent
+					default:
+						n.logger.Warn("Watcher channel is full, skipping notification")
+					}
+				}
+				n.mu.RUnlock()
+			}
+
+			c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Reload triggered"})
 		})
 
 		// Start HTTP server
@@ -92,8 +133,34 @@ func (n *APINotifier) NotifyUpdate(ctx context.Context, server *config.MCPConfig
 		return fmt.Errorf("target URL is not configured")
 	}
 
-	// Send HTTP POST request to target URL
-	req, err := http.NewRequestWithContext(ctx, "POST", n.targetURL, nil)
+	var req *http.Request
+	var err error
+
+	// 确保 URL 以 /_reload 结尾
+	reloadURL := n.targetURL
+	if !strings.HasSuffix(reloadURL, "/_reload") {
+		if !strings.HasSuffix(reloadURL, "/") {
+			reloadURL += "/"
+		}
+		reloadURL += "_reload"
+	}
+
+	if server == nil {
+		req, err = http.NewRequestWithContext(ctx, "POST", reloadURL, nil)
+	} else {
+		var body []byte
+		body, err = json.Marshal(server)
+		if err != nil {
+			return fmt.Errorf("failed to marshal config: %w", err)
+		}
+
+		req, err = http.NewRequestWithContext(ctx, "POST", reloadURL, bytes.NewReader(body))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -106,7 +173,11 @@ func (n *APINotifier) NotifyUpdate(ctx context.Context, server *config.MCPConfig
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unexpected status code: %d, failed to read body: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return nil

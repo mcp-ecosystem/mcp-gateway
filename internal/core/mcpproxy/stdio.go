@@ -4,19 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/utils"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
-	"net/http"
 )
 
-func FetchStdioToolList(ctx context.Context, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+// StdioTransport implements Transport using standard input/output
+type StdioTransport struct{}
+
+var _ Transport = (*StdioTransport)(nil)
+
+// FetchToolList implements Transport.FetchToolList
+func (t *StdioTransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
 	// Create stdio transport with the command and arguments
 	stdioTransport := transport.NewStdio(
 		mcpProxyCfg.Command,
@@ -95,26 +103,27 @@ func FetchStdioToolList(ctx context.Context, mcpProxyCfg config.MCPServerConfig)
 	return tools, nil
 }
 
-func InvokeStdioTool(c *gin.Context, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+// InvokeTool implements Transport.InvokeTool
+func (t *StdioTransport) InvokeTool(c *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
-		// TODO: we can wrapper error into a struct to contain code
 		return nil, fmt.Errorf("invalid tool arguments: %w", err)
 	}
 
-	return executeStdioTool(c, &mcpProxyCfg, args, c.Request, params)
+	return t.executeStdioTool(c, conn.Meta().Request, &mcpProxyCfg, args, c.Request, params)
 }
 
-func executeStdioTool(
+func (t *StdioTransport) executeStdioTool(
 	c *gin.Context,
+	requestMeta *session.RequestInfo,
 	tool *config.MCPServerConfig,
 	args map[string]any,
 	request *http.Request,
 	params mcp.CallToolParams,
 ) (*mcp.CallToolResult, error) {
 	// Prepare template context
-	tmplCtx, err := template.PrepareTemplateContext(args, request, nil)
+	tmplCtx, err := template.PrepareTemplateContext(requestMeta, args, request, nil)
 	if err != nil {
 		return nil, err
 	}

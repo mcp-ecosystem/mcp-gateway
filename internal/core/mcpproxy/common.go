@@ -7,7 +7,7 @@ import (
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
-// convertMCPGoResult converts a result from mcp-go format to local mcp format
+// convertMCPGoResult converts mcp-go result to local mcp format
 func convertMCPGoResult(mcpgoResult *mcpgo.CallToolResult) *mcp.CallToolResult {
 	result := &mcp.CallToolResult{
 		IsError: mcpgoResult.IsError,

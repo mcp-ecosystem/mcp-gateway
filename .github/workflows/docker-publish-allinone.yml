@@ -73,6 +73,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+            UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/
+            npm_config_registry=https://registry.npmmirror.com
           tags: |
             ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-allinone:latest', env.DOCKER_HUB_USERNAME) || '' }}
             ${{ format('{0}/mcp-gateway-allinone:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}

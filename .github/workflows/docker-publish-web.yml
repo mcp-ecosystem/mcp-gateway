@@ -6,7 +6,12 @@ on:
       - 'v*'
     paths:
       - 'web/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'pkg/**'
       - 'deploy/docker/**'
+      - 'go.mod'
+      - 'go.sum'
   workflow_dispatch:
     inputs:
       version:
@@ -60,7 +65,7 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Build and push web image
+      - name: Build and push web image (with apiserver)
         uses: docker/build-push-action@v5
         with:
           context: .
