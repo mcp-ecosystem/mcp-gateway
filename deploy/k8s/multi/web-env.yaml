@@ -10,6 +10,7 @@ data:
     VITE_MCP_GATEWAY_BASE_URL=http://127.0.0.1:30235
     VITE_BASE_URL=/
     VITE_DEV_API_BASE_URL=http://localhost:30234
+    
     # Logger configuration for apiserver
     APISERVER_LOGGER_LEVEL=info
     APISERVER_LOGGER_FORMAT=json
@@ -21,10 +22,11 @@ data:
     APISERVER_LOGGER_COMPRESS=true
     APISERVER_LOGGER_COLOR=false
     APISERVER_LOGGER_STACKTRACE=true
+    
     # Database Configuration
     APISERVER_DB_TYPE=postgres
-    APISERVER_DB_HOST=localhost
-    APISERVER_DB_PORT=30432
+    APISERVER_DB_HOST=postgres.mcp-gateway.svc.cluster.local
+    APISERVER_DB_PORT=5432
     APISERVER_DB_USER=postgres
     APISERVER_DB_PASSWORD=postgres
     APISERVER_DB_NAME=mcp-gateway
