@@ -1,7 +1,7 @@
 FROM golang:1.24.1 AS builder
 WORKDIR /app
 COPY . .
-RUN GOOS=linux go build -o mock-user-svc ./cmd/mock-user-svc
+RUN GOOS=linux go build -o mock-server ./cmd/mock-server
 
 FROM ubuntu:22.04
 WORKDIR /app
@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
     && echo ${TZ} > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata
 
-COPY --from=builder /app/mock-user-svc .
+COPY --from=builder /app/mock-server .
 
 EXPOSE 5236
 
-CMD ["./mock-user-svc"]
+CMD ["./mock-server"]

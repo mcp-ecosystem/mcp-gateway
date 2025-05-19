@@ -1,8 +1,7 @@
-package main
+package backend
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
@@ -23,45 +20,29 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// Add new fields for testing
 	Preferences struct {
-		IsPublic  bool     `json:"isPublic"`
-		ShowEmail bool     `json:"showEmail"`
-		Theme     string   `json:"theme"`
-		Tags      []string `json:"tags"`
+		IsPublic  bool           `json:"isPublic"`
+		ShowEmail bool           `json:"showEmail"`
+		Theme     string         `json:"theme"`
+		Tags      []string       `json:"tags"`
+		Settings  map[string]any `json:"settings"`
 	} `json:"preferences"`
 }
 
 var users = make(map[string]*User)
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of mock-user-svc",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("mock-user-svc version %s\n", version.Get())
-	},
+// HTTPServer implements the Server interface
+type HTTPServer struct {
+	server *http.Server
+	router *gin.Engine
+	logger *zap.Logger
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "mock-user-svc",
-	Short: "Mock User Service",
-	Long:  `Mock User Service provides mock user management functionality`,
-	Run: func(cmd *cobra.Command, args []string) {
-		run()
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
-}
-
-func run() {
+func NewHTTPServer() *HTTPServer {
 	// Initialize logger
 	logger, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
-
-	logger.Info("Starting mock-user-svc", zap.String("version", version.Get()))
 
 	// Initialize router
 	router := gin.Default()
@@ -83,6 +64,7 @@ func run() {
 		user.Preferences.ShowEmail = true
 		user.Preferences.Theme = "light"
 		user.Preferences.Tags = []string{}
+		user.Preferences.Settings = make(map[string]any)
 
 		// Store user
 		users[user.Email] = &user
@@ -111,10 +93,11 @@ func run() {
 		}
 
 		var preferences struct {
-			IsPublic  bool     `json:"isPublic"`
-			ShowEmail bool     `json:"showEmail"`
-			Theme     string   `json:"theme"`
-			Tags      []string `json:"tags"`
+			IsPublic  bool           `json:"isPublic"`
+			ShowEmail bool           `json:"showEmail"`
+			Theme     string         `json:"theme"`
+			Tags      []string       `json:"tags"`
+			Settings  map[string]any `json:"settings"`
 		}
 
 		if err := c.ShouldBindJSON(&preferences); err != nil {
@@ -146,16 +129,24 @@ func run() {
 		})
 	})
 
-	// Start server
-	srv := &http.Server{
-		Addr:    ":5236",
-		Handler: router,
+	return &HTTPServer{
+		router: router,
+		logger: logger,
 	}
+}
+
+func (s *HTTPServer) Start(addr string) error {
+	// Create server instance
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: s.router,
+	}
+	s.server = srv
 
 	go func() {
-		logger.Info("Server is running on :5236")
+		s.logger.Info("Server is running on " + addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("failed to start server", zap.Error(err))
+			s.logger.Fatal("failed to start server", zap.Error(err))
 		}
 	}()
 
@@ -164,18 +155,23 @@ func run() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("Shutting down server...")
-
-	// Shutdown server
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("failed to shutdown server", zap.Error(err))
-	}
+	s.logger.Info("Shutting down server...")
+	return nil
 }
 
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+func (s *HTTPServer) Stop() error {
+	if s.server == nil {
+		return nil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	defer s.logger.Sync()
+
+	if err := s.server.Shutdown(ctx); err != nil {
+		s.logger.Error("failed to shutdown server", zap.Error(err))
+		return err
+	}
+
+	return nil
 }

@@ -1,9 +1,11 @@
 import axios from 'axios';
-import { t } from 'i18next';
+import {t} from 'i18next';
 
 import i18n from '../i18n';
-import { handleApiError } from '../utils/error-handler';
-import { toast } from '../utils/toast';
+import type {Gateway} from '../types/gateway';
+import {handleApiError} from '../utils/error-handler';
+import {toast} from '../utils/toast';
+
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -19,7 +21,7 @@ api.interceptors.request.use(
   (config) => {
     // Add current language from i18n to X-Lang header
     config.headers['X-Lang'] = i18n.language || 'zh';
-    
+
     // Add authorization token if available
     const token = window.localStorage.getItem('token');
     if (token) {
@@ -107,6 +109,26 @@ export const deleteMCPServer = async (name: string) => {
     return response.data;
   } catch (error) {
     handleApiError(error, 'errors.delete_mcp_server');
+    throw error;
+  }
+};
+
+export const exportMCPServer = async (server: Gateway) => {
+  try {
+    const name = server.name
+    const config = server.config
+
+    const blob = new Blob([config], { type: 'application/yaml' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    toast.info(t(url))
+    a.href = url;
+    a.download = `${name}.yaml`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, 'errors.export_mcp_server');
     throw error;
   }
 };
@@ -199,7 +221,7 @@ interface Tenant {
 export const createTenant = async (data: { name: string; prefix: string; description: string }) => {
   try {
     const { name, prefix, description } = data;
-    
+
     // Check if prefix conflicts with existing ones
     const tenants = await getTenants();
     if (checkPrefixConflict(prefix, tenants.map((t: Tenant) => t.prefix))) {
@@ -208,7 +230,7 @@ export const createTenant = async (data: { name: string; prefix: string; descrip
       });
       throw new Error('Prefix conflict');
     }
-    
+
     // Ensure prefix starts with /
     let prefixed = prefix;
     if (prefixed && !prefixed.startsWith('/')) {
@@ -278,11 +300,11 @@ const checkPrefixConflict = (prefix: string, existingPrefixes: string[], exclude
 export const updateTenant = async (data: { name: string; prefix?: string; description?: string; isActive?: boolean }) => {
   try {
     const { name, prefix } = data;
-    
+
     if (prefix) {
       // Get current tenant information
       const currentTenant = await getTenant(name);
-      
+
       // Check for conflicts if prefix has changed
       if (currentTenant.prefix !== prefix) {
         const tenants = await getTenants();
@@ -313,8 +335,8 @@ export const updateTenant = async (data: { name: string; prefix?: string; descri
           duration: 3000,
         });
       }
-    } else if (!(error instanceof Error && 
-               (error.message === 'Root prefix not allowed' || 
+    } else if (!(error instanceof Error &&
+               (error.message === 'Root prefix not allowed' ||
                 error.message === 'Prefix path conflict'))) {
       toast.error(t('errors.update_tenant'), {
         duration: 3000,
@@ -372,9 +394,9 @@ export const getUser = async (username: string) => {
   }
 };
 
-export const createUser = async (data: { 
-  username: string; 
-  password: string; 
+export const createUser = async (data: {
+  username: string;
+  password: string;
   role: 'admin' | 'normal';
   tenantIds?: number[];
 }) => {
@@ -392,10 +414,10 @@ export const createUser = async (data: {
   }
 };
 
-export const updateUser = async (data: { 
-  username: string; 
-  password?: string; 
-  role?: 'admin' | 'normal'; 
+export const updateUser = async (data: {
+  username: string;
+  password?: string;
+  role?: 'admin' | 'normal';
   isActive?: boolean;
   tenantIds?: number[];
 }) => {

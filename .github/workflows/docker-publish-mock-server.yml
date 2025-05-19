@@ -64,19 +64,19 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Build and push mock-user-svc image
+      - name: Build and push mock-server image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: deploy/docker/multi/mock-user-svc/Dockerfile
+          file: deploy/docker/multi/mock-server/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-mock-user-svc:latest', env.DOCKER_HUB_USERNAME) || '' }}
-            ${{ format('{0}/mcp-gateway-mock-user-svc:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('ghcr.io/{0}/mock-user-svc:latest', github.repository) || '' }}
-            ${{ format('ghcr.io/{0}/mock-user-svc:{1}', github.repository, github.ref_name) }}
-            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-mock-user-svc:latest', env.ALIYUN_REGISTRY) || '' }}
-            ${{ format('{0}/mcp-gateway-mock-user-svc:{1}', env.ALIYUN_REGISTRY, github.ref_name) }} 
+            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-mock-server:latest', env.DOCKER_HUB_USERNAME) || '' }}
+            ${{ format('{0}/mcp-gateway-mock-server:{1}', env.DOCKER_HUB_USERNAME, github.ref_name) }}
+            ${{ env.PUSH_LATEST == 'true' && format('ghcr.io/{0}/mock-server:latest', github.repository) || '' }}
+            ${{ format('ghcr.io/{0}/mock-server:{1}', github.repository, github.ref_name) }}
+            ${{ env.PUSH_LATEST == 'true' && format('{0}/mcp-gateway-mock-server:latest', env.ALIYUN_REGISTRY) || '' }}
+            ${{ format('{0}/mcp-gateway-mock-server:{1}', env.ALIYUN_REGISTRY, github.ref_name) }}

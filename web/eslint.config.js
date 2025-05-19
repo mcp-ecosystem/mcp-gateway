@@ -43,7 +43,8 @@ export default [
         __dirname: 'readonly',
         URL: 'readonly',
         File: 'readonly',
-        FileReader: 'readonly'
+        FileReader: 'readonly',
+        Blob: 'readonly',
       }
     },
     plugins: {

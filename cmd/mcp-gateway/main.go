@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
@@ -113,7 +114,7 @@ var (
 		},
 	}
 	rootCmd = &cobra.Command{
-		Use:   "mcp-gateway",
+		Use:   cnst.CommandName,
 		Short: "MCP Gateway service",
 		Long:  `MCP Gateway is a service that provides API gateway functionality for MCP ecosystem`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -132,7 +133,7 @@ func init() {
 
 func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, srv *core.Server, cfg *config.MCPGatewayConfig) {
 	logger.Info("Reloading MCP configuration")
-
+	//todo we can use hash or version to check if the configuration is changed
 	mcpConfigs, err := store.List(ctx)
 	if err != nil {
 		logger.Error("Failed to load MCP configurations",
@@ -161,7 +162,7 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 	}
 
 	// Update server configuration in place
-	if err := srv.UpdateConfig(newMCPCfgs); err != nil {
+	if err := srv.UpdateConfig(ctx, newMCPCfgs); err != nil {
 		logger.Error("failed to update server configuration",
 			zap.Error(err))
 		return
@@ -170,6 +171,30 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 	logger.Info("Configuration reloaded successfully")
 }
 
+func handleMerge(ctx context.Context, logger *zap.Logger, srv *core.Server, mcpConfig *config.MCPConfig) {
+	logger.Info("Merging MCP configuration")
+	// Validate configurations before merging
+	if err := config.ValidateMCPConfig(mcpConfig); err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			logger.Error("Configuration validation failed",
+				zap.String("error", validationErr.Error()))
+		} else {
+			logger.Error("failed to validate configurations",
+				zap.Error(err))
+		}
+		return
+	}
+
+	// Update server configuration in place
+	if err := srv.MergeConfig(ctx, mcpConfig); err != nil {
+		logger.Error("failed to merge server configuration",
+			zap.Error(err))
+		return
+	}
+
+	logger.Info("Configuration merged successfully", zap.Int("servers", len(mcpConfig.Servers)))
+}
 func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -249,7 +274,7 @@ func run() {
 			"message": "Health check passed.",
 		})
 	})
-	if err := srv.RegisterRoutes(router, mcpCfgs); err != nil {
+	if err := srv.RegisterRoutes(ctx, router, mcpCfgs); err != nil {
 		logger.Fatal("failed to register routes",
 			zap.Error(err))
 	}
@@ -276,6 +301,10 @@ func run() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+	// periodically reload the configuration as a fallback mechanism for the notifier
+	ticker := time.NewTicker(cfg.ReloadInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-quit:
@@ -294,10 +323,22 @@ func run() {
 			}
 
 			return
-		case <-updateCh:
-			logger.Info("Received reload signal")
-			handleReload(ctx, logger, store, srv, cfg)
+		case updateMCPConfig := <-updateCh:
+			logger.Info("Received update signal")
+
+			if updateMCPConfig == nil {
+				logger.Warn("Updated configuration is nil, falling back to full reload")
+				handleReload(ctx, logger, store, srv, cfg)
+			} else {
+				handleMerge(ctx, logger, srv, updateMCPConfig)
+			}
+		case <-ticker.C:
+			logger.Info("Received ticker signal", zap.Bool("reload_switch", cfg.ReloadSwitch))
+			if cfg.ReloadSwitch {
+				handleReload(ctx, logger, store, srv, cfg)
+			}
 		}
+
 	}
 }
 

@@ -1,0 +1,63 @@
+name: Docker Build and Publish Base Image
+
+on:
+  workflow_dispatch:
+
+env:
+  DOCKER_HUB_USERNAME: ifuryst
+  ALIYUN_REGISTRY: registry.ap-southeast-1.aliyuncs.com/mcp-ecosystem
+  BUILDX_NO_DEFAULT_ATTESTATIONS: 1
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deploy/docker/base/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+            UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/
+            npm_config_registry=https://registry.npmmirror.com
+          tags: |
+            ${{ env.DOCKER_HUB_USERNAME }}/mcp-gateway-base:latest
+            ghcr.io/${{ github.repository }}/base:latest
+            ${{ env.ALIYUN_REGISTRY }}/mcp-gateway-base:latest 

@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpproxy"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage/helper"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +37,7 @@ type (
 
 	// serverState contains all the read-only shared state
 	serverState struct {
+		rawConfigs              []*config.MCPConfig
 		tools                   []mcp.ToolSchema
 		toolMap                 map[string]*config.ToolConfig
 		prefixToTools           map[string][]mcp.ToolSchema
@@ -39,6 +45,7 @@ type (
 		prefixToRouterConfig    map[string]*config.RouterConfig
 		prefixToMCPServerConfig map[string]config.MCPServerConfig
 		prefixToProtoType       map[string]cnst.ProtoType
+		prefixToTransport       map[string]mcpproxy.Transport
 	}
 )
 
@@ -53,6 +60,7 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	return &Server{
 		logger: logger,
 		state: &serverState{
+			rawConfigs:              make([]*config.MCPConfig, 0),
 			tools:                   make([]mcp.ToolSchema, 0),
 			toolMap:                 make(map[string]*config.ToolConfig),
 			prefixToTools:           make(map[string][]mcp.ToolSchema),
@@ -60,6 +68,7 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 			prefixToRouterConfig:    make(map[string]*config.RouterConfig),
 			prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
 			prefixToProtoType:       make(map[string]cnst.ProtoType),
+			prefixToTransport:       make(map[string]mcpproxy.Transport),
 		},
 		sessions:        sessionStore,
 		shutdownCh:      make(chan struct{}),
@@ -68,25 +77,38 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 }
 
 // RegisterRoutes registers routes with the given router for MCP servers
-func (s *Server) RegisterRoutes(router *gin.Engine, cfgs []*config.MCPConfig) error {
+func (s *Server) RegisterRoutes(ctx context.Context, router *gin.Engine, cfgs []*config.MCPConfig) error {
 	// Validate configuration before registering routes
 	if err := config.ValidateMCPConfigs(cfgs); err != nil {
+		s.logger.Error("invalid configuration during route registration",
+			zap.Error(err))
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	s.logger.Info("registering middleware")
 	router.Use(s.loggerMiddleware())
 	router.Use(s.recoveryMiddleware())
 
 	// Create new state and load configuration
-	newState, err := initState(cfgs)
+	s.logger.Debug("initializing server state")
+	newState, err := s.initState(ctx, cfgs, s.state)
 	if err != nil {
+		s.logger.Error("failed to initialize server state",
+			zap.Error(err))
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
+
+	// 记录配置信息
+	s.logger.Info("server configuration loaded",
+		zap.Int("server_count", len(newState.prefixToServerConfig)),
+		zap.Int("tool_count", len(newState.toolMap)),
+		zap.Int("router_count", len(newState.prefixToRouterConfig)))
 
 	// Atomically replace the state
 	s.state = newState
 
 	// Register all routes under root path
+	s.logger.Debug("registering root handler")
 	router.NoRoute(s.handleRoot)
 
 	return nil
@@ -97,22 +119,39 @@ func (s *Server) handleRoot(c *gin.Context) {
 	path := c.Request.URL.Path
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) < 2 {
+		s.logger.Debug("invalid path format",
+			zap.String("path", path),
+			zap.String("remote_addr", c.Request.RemoteAddr))
 		s.sendProtocolError(c, nil, "Invalid path", http.StatusBadRequest, mcp.ErrorCodeInvalidRequest)
 		return
 	}
 	endpoint := parts[len(parts)-1]
 	prefix := "/" + strings.Join(parts[:len(parts)-1], "/")
 
+	s.logger.Debug("routing request",
+		zap.String("path", path),
+		zap.String("prefix", prefix),
+		zap.String("endpoint", endpoint),
+		zap.String("remote_addr", c.Request.RemoteAddr))
+
 	// Dynamically set CORS
 	if routerCfg, ok := s.state.prefixToRouterConfig[prefix]; ok && routerCfg.CORS != nil {
+		s.logger.Debug("applying CORS middleware",
+			zap.String("prefix", prefix))
 		s.corsMiddleware(routerCfg.CORS)(c)
 		if c.IsAborted() {
+			s.logger.Debug("request aborted by CORS middleware",
+				zap.String("prefix", prefix),
+				zap.String("remote_addr", c.Request.RemoteAddr))
 			return
 		}
 	}
 
 	state := s.state
 	if _, ok := state.prefixToProtoType[prefix]; !ok {
+		s.logger.Warn("invalid prefix",
+			zap.String("prefix", prefix),
+			zap.String("remote_addr", c.Request.RemoteAddr))
 		s.sendProtocolError(c, nil, "Invalid prefix", http.StatusNotFound, mcp.ErrorCodeInvalidRequest)
 		return
 	}
@@ -120,26 +159,61 @@ func (s *Server) handleRoot(c *gin.Context) {
 	c.Status(http.StatusOK)
 	switch endpoint {
 	case "sse":
+		s.logger.Debug("handling SSE endpoint",
+			zap.String("prefix", prefix))
 		s.handleSSE(c)
 	case "message":
+		s.logger.Debug("handling message endpoint",
+			zap.String("prefix", prefix))
 		s.handleMessage(c)
 	case "mcp":
+		s.logger.Debug("handling MCP endpoint",
+			zap.String("prefix", prefix))
 		s.handleMCP(c)
 	default:
+		s.logger.Warn("invalid endpoint",
+			zap.String("endpoint", endpoint),
+			zap.String("prefix", prefix),
+			zap.String("remote_addr", c.Request.RemoteAddr))
 		s.sendProtocolError(c, nil, "Invalid endpoint", http.StatusNotFound, mcp.ErrorCodeInvalidRequest)
 	}
 }
 
 // Shutdown gracefully shuts down the server
-func (s *Server) Shutdown(_ context.Context) error {
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.logger.Info("shutting down server")
 	close(s.shutdownCh)
+
+	var wg sync.WaitGroup
+	for prefix, transport := range s.state.prefixToTransport {
+		if transport.IsRunning() {
+			wg.Add(1)
+			go func(p string, t mcpproxy.Transport) {
+				defer wg.Done()
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := t.Stop(ctx); err != nil {
+					if err.Error() == "signal: interrupt" {
+						s.logger.Info("transport stopped", zap.String("prefix", p))
+						return
+					}
+					s.logger.Error("failed to stop transport",
+						zap.String("prefix", p),
+						zap.Error(err))
+				}
+			}(prefix, transport)
+		}
+	}
+	wg.Wait()
+
 	return nil
 }
 
 // initState creates a new serverState from the given configuration
-func initState(cfgs []*config.MCPConfig) (*serverState, error) {
+func (s *Server) initState(ctx context.Context, cfgs []*config.MCPConfig, oldState *serverState) (*serverState, error) {
 	// Create new state
 	newState := &serverState{
+		rawConfigs:              cfgs,
 		tools:                   make([]mcp.ToolSchema, 0),
 		toolMap:                 make(map[string]*config.ToolConfig),
 		prefixToTools:           make(map[string][]mcp.ToolSchema),
@@ -147,6 +221,7 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 		prefixToRouterConfig:    make(map[string]*config.RouterConfig),
 		prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
 		prefixToProtoType:       make(map[string]cnst.ProtoType),
+		prefixToTransport:       make(map[string]mcpproxy.Transport),
 	}
 
 	for idx := range cfgs {
@@ -195,6 +270,66 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 			// Map prefix to MCP server config
 			newState.prefixToMCPServerConfig[prefix] = mcpServer
 
+			// Check if we already have transport with the same configuration
+			var transport mcpproxy.Transport
+			if oldState != nil {
+				if oldTransport, exists := oldState.prefixToTransport[prefix]; exists {
+					// Compare configurations to see if we need to create a new transport
+					oldConfig := oldState.prefixToMCPServerConfig[prefix]
+					if oldConfig.Type == mcpServer.Type &&
+						oldConfig.Command == mcpServer.Command &&
+						oldConfig.URL == mcpServer.URL &&
+						len(oldConfig.Args) == len(mcpServer.Args) {
+						// Compare args
+						argsMatch := true
+						for i, arg := range oldConfig.Args {
+							if arg != mcpServer.Args[i] {
+								argsMatch = false
+								break
+							}
+						}
+						if argsMatch {
+							// Reuse existing transport
+							transport = oldTransport
+						}
+					}
+				}
+			}
+
+			// Create new transport if needed
+			if transport == nil {
+				var err error
+				transport, err = mcpproxy.NewTransport(mcpServer)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create transport for server %s: %w", mcpServer.Name, err)
+				}
+			}
+			if mcpServer.Policy == cnst.PolicyOnStart {
+				go func(prefix string, mcpServer config.MCPServerConfig, transport mcpproxy.Transport) {
+					if transport.IsRunning() {
+						s.logger.Info("server already started",
+							zap.String("prefix", prefix),
+							zap.String("command", mcpServer.Command),
+							zap.Strings("args", mcpServer.Args))
+						return
+					}
+
+					if err := transport.Start(ctx, template.NewContext()); err != nil {
+						s.logger.Error("failed to start server",
+							zap.String("prefix", prefix),
+							zap.String("command", mcpServer.Command),
+							zap.Strings("args", mcpServer.Args),
+							zap.Error(err))
+					} else {
+						s.logger.Info("server started",
+							zap.String("prefix", prefix),
+							zap.String("command", mcpServer.Command),
+							zap.Strings("args", mcpServer.Args))
+					}
+				}(prefix, mcpServer, transport)
+			}
+			newState.prefixToTransport[prefix] = transport
+
 			// Map protocol type based on server type
 			switch mcpServer.Type {
 			case "stdio":
@@ -207,21 +342,89 @@ func initState(cfgs []*config.MCPConfig) (*serverState, error) {
 		}
 	}
 
+	if oldState != nil {
+		for prefix, oldTransport := range oldState.prefixToTransport {
+			if _, stillExists := newState.prefixToTransport[prefix]; !stillExists {
+				mcpSvrCfg := oldState.prefixToMCPServerConfig[prefix]
+				if oldTransport == nil {
+					s.logger.Info("transport already stopped", zap.String("prefix", prefix), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
+					continue
+				}
+				s.logger.Info("shutting down unused transport", zap.String("prefix", prefix), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
+				if err := oldTransport.Stop(ctx); err != nil {
+					s.logger.Warn("failed to close old transport", zap.String("prefix", prefix), zap.Error(err), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
+				}
+			}
+		}
+	}
+
 	return newState, nil
 }
 
 // UpdateConfig updates the server configuration
-func (s *Server) UpdateConfig(cfgs []*config.MCPConfig) error {
+func (s *Server) UpdateConfig(ctx context.Context, cfgs []*config.MCPConfig) error {
 	// Validate configuration before updating
+	s.logger.Debug("validating updated configuration")
 	if err := config.ValidateMCPConfigs(cfgs); err != nil {
+		s.logger.Error("invalid configuration during update",
+			zap.Error(err))
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Create new state and load configuration
-	newState, err := initState(cfgs)
+	s.logger.Info("updating server configuration")
+	newState, err := s.initState(ctx, cfgs, s.state)
 	if err != nil {
+		s.logger.Error("failed to initialize state during update",
+			zap.Error(err))
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
+
+	// 记录配置更新信息
+	s.logger.Info("server configuration updated",
+		zap.Int("server_count", len(newState.prefixToServerConfig)),
+		zap.Int("tool_count", len(newState.toolMap)),
+		zap.Int("router_count", len(newState.prefixToRouterConfig)))
+
+	// Atomically replace the state
+	s.state = newState
+
+	return nil
+}
+
+// MergeConfig updates the server configuration incrementally
+func (s *Server) MergeConfig(ctx context.Context, cfg *config.MCPConfig) error {
+	s.logger.Info("merging configuration")
+
+	newConfig, err := helper.MergeConfigs(s.state.rawConfigs, cfg)
+	if err != nil {
+		s.logger.Error("failed to merge configuration",
+			zap.Error(err))
+		return fmt.Errorf("failed to merge configuration: %w", err)
+	}
+
+	// Validate configuration after merge
+	s.logger.Debug("validating merged configuration")
+	if err := config.ValidateMCPConfig(cfg); err != nil {
+		s.logger.Error("invalid configuration after merge",
+			zap.Error(err))
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Create new state and load configuration
+	s.logger.Debug("initializing state with merged configuration")
+	newState, err := s.initState(ctx, newConfig, s.state)
+	if err != nil {
+		s.logger.Error("failed to initialize state with merged configuration",
+			zap.Error(err))
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Record configuration merge information
+	s.logger.Info("configuration merged successfully",
+		zap.Int("server_count", len(newState.prefixToServerConfig)),
+		zap.Int("tool_count", len(newState.toolMap)),
+		zap.Int("router_count", len(newState.prefixToRouterConfig)))
 
 	// Atomically replace the state
 	s.state = newState

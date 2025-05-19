@@ -12,6 +12,7 @@ import (
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/dto"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,14 +21,16 @@ type Handler struct {
 	db         database.Database
 	jwtService *jwt.Service
 	cfg        *config.MCPGatewayConfig
+	logger     *zap.Logger
 }
 
 // NewHandler creates a new authentication handler
-func NewHandler(db database.Database, jwtService *jwt.Service, cfg *config.MCPGatewayConfig) *Handler {
+func NewHandler(db database.Database, jwtService *jwt.Service, cfg *config.MCPGatewayConfig, logger *zap.Logger) *Handler {
 	return &Handler{
 		db:         db,
 		jwtService: jwtService,
 		cfg:        cfg,
+		logger:     logger.Named("apiserver.handler.auth"),
 	}
 }
 
@@ -35,37 +38,63 @@ func NewHandler(db database.Database, jwtService *jwt.Service, cfg *config.MCPGa
 func (h *Handler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("invalid login request format",
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
-	// Get user from database
+	h.logger.Info("processing login request",
+		zap.String("username", req.Username),
+		zap.String("remote_addr", c.ClientIP()))
+
 	user, err := h.db.GetUserByUsername(c.Request.Context(), req.Username)
 	if err != nil {
+		h.logger.Warn("login failed: user not found",
+			zap.String("username", req.Username),
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrorInvalidCredentials)
 		return
 	}
 
-	// Check if user is active
 	if !user.IsActive {
+		h.logger.Warn("login attempt for disabled user",
+			zap.String("username", req.Username),
+			zap.Uint("user_id", user.ID),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrorUserDisabled)
 		return
 	}
 
-	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		h.logger.Warn("login failed: invalid password",
+			zap.String("username", req.Username),
+			zap.Uint("user_id", user.ID),
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrorInvalidCredentials)
 		return
 	}
 
-	// Generate JWT token
 	token, err := h.jwtService.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
+		h.logger.Error("failed to generate JWT token",
+			zap.Error(err),
+			zap.String("username", req.Username),
+			zap.Uint("user_id", user.ID),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	// Store user info in context for future requests
+	h.logger.Info("user logged in successfully",
+		zap.String("username", req.Username),
+		zap.Uint("user_id", user.ID),
+		zap.String("role", string(user.Role)),
+		zap.String("remote_addr", c.ClientIP()))
+
 	userInfo := &dto.UserInfo{
 		ID:       user.ID,
 		Username: user.Username,
@@ -83,45 +112,73 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) ChangePassword(c *gin.Context) {
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("invalid change password request format",
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
-	// Get the user from the context
 	claims, exists := c.Get("claims")
 	if !exists {
+		h.logger.Warn("unauthorized change password attempt",
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrUnauthorized)
 		return
 	}
 	jwtClaims := claims.(*jwt.Claims)
 
-	// Get the user from the database
+	h.logger.Info("processing change password request",
+		zap.String("username", jwtClaims.Username),
+		zap.String("remote_addr", c.ClientIP()))
+
 	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
 	if err != nil {
+		h.logger.Error("failed to get user for password change",
+			zap.Error(err),
+			zap.String("username", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	// Compare the old password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		h.logger.Warn("invalid old password in change password request",
+			zap.String("username", jwtClaims.Username),
+			zap.Uint("user_id", user.ID),
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrorInvalidOldPassword)
 		return
 	}
 
-	// Hash the new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
+		h.logger.Error("failed to hash new password",
+			zap.Error(err),
+			zap.String("username", jwtClaims.Username),
+			zap.Uint("user_id", user.ID),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	// Update the user's password
 	user.Password = string(hashedPassword)
 	user.UpdatedAt = time.Now()
 	if err := h.db.UpdateUser(c.Request.Context(), user); err != nil {
+		h.logger.Error("failed to update user password in database",
+			zap.Error(err),
+			zap.String("username", jwtClaims.Username),
+			zap.Uint("user_id", user.ID),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
+
+	h.logger.Info("password changed successfully",
+		zap.String("username", jwtClaims.Username),
+		zap.Uint("user_id", user.ID),
+		zap.String("remote_addr", c.ClientIP()))
 
 	i18n.Success(i18n.SuccessPasswordChanged).With("success", true).Send(c)
 }
@@ -148,40 +205,101 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 
 // ListUsers handles listing all users
 func (h *Handler) ListUsers(c *gin.Context) {
+	claims, exists := c.Get("claims")
+	if !exists || claims == nil {
+		h.logger.Warn("unauthorized list users attempt",
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
+		return
+	}
+	jwtClaims := claims.(*jwt.Claims)
+
+	h.logger.Info("listing all users",
+		zap.String("username", jwtClaims.Username),
+		zap.String("remote_addr", c.ClientIP()))
+
 	users, err := h.db.ListUsers(c.Request.Context())
 	if err != nil {
+		h.logger.Error("failed to list users from database",
+			zap.Error(err),
+			zap.String("username", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
+
+	h.logger.Debug("users list retrieved successfully",
+		zap.Int("user_count", len(users)),
+		zap.String("username", jwtClaims.Username),
+		zap.String("remote_addr", c.ClientIP()))
 
 	c.JSON(http.StatusOK, users)
 }
 
 // CreateUser handles user creation
 func (h *Handler) CreateUser(c *gin.Context) {
+	claims, exists := c.Get("claims")
+	if !exists || claims == nil {
+		h.logger.Warn("unauthorized create user attempt",
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrUnauthorized)
+		return
+	}
+	jwtClaims := claims.(*jwt.Claims)
+
 	var req dto.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("invalid create user request format",
+			zap.Error(err),
+			zap.String("admin", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", err.Error()))
 		return
 	}
 
-	// Validate request
+	h.logger.Info("processing user creation request",
+		zap.String("new_username", req.Username),
+		zap.String("role", req.Role),
+		zap.Any("tenant_ids", req.TenantIDs),
+		zap.String("admin", jwtClaims.Username),
+		zap.String("remote_addr", c.ClientIP()))
+
 	if req.Username == "" || req.Password == "" {
+		h.logger.Warn("create user missing required fields",
+			zap.String("username", req.Username),
+			zap.String("admin", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrorUserNamePasswordRequired)
 		return
 	}
 
-	// Hash the password
+	existingUser, err := h.db.GetUserByUsername(c.Request.Context(), req.Username)
+	if err == nil && existingUser != nil {
+		h.logger.Warn("attempt to create user with existing username",
+			zap.String("username", req.Username),
+			zap.String("admin", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "User already exists"))
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		h.logger.Error("failed to hash password for new user",
+			zap.Error(err),
+			zap.String("username", req.Username),
+			zap.String("admin", jwtClaims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
 		return
 	}
 
-	// Create user with transaction to handle tenant associations
+	h.logger.Debug("password hashed successfully for new user",
+		zap.String("username", req.Username),
+		zap.String("admin", jwtClaims.Username))
+
 	var userID uint
 	err = h.db.Transaction(c.Request.Context(), func(ctx context.Context) error {
-		// Create user
 		newUser := &database.User{
 			Username:  req.Username,
 			Password:  string(hashedPassword),
@@ -192,17 +310,35 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		}
 
 		if err := h.db.CreateUser(ctx, newUser); err != nil {
+			h.logger.Error("failed to create user in database",
+				zap.Error(err),
+				zap.String("username", req.Username),
+				zap.String("admin", jwtClaims.Username))
 			return err
 		}
 
 		userID = newUser.ID
+		h.logger.Debug("user created successfully",
+			zap.String("username", req.Username),
+			zap.Uint("user_id", userID),
+			zap.String("admin", jwtClaims.Username))
 
-		// Associate user with tenants if provided
 		if len(req.TenantIDs) > 0 {
 			for _, tenantID := range req.TenantIDs {
 				if err := h.db.AddUserToTenant(ctx, newUser.ID, tenantID); err != nil {
+					h.logger.Error("failed to add user to tenant",
+						zap.Error(err),
+						zap.String("username", req.Username),
+						zap.Uint("user_id", userID),
+						zap.Uint("tenant_id", tenantID),
+						zap.String("admin", jwtClaims.Username))
 					return err
 				}
+				h.logger.Debug("user added to tenant",
+					zap.String("username", req.Username),
+					zap.Uint("user_id", userID),
+					zap.Uint("tenant_id", tenantID),
+					zap.String("admin", jwtClaims.Username))
 			}
 		}
 
@@ -225,16 +361,13 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Get the user from the database
 	existingUser, err := h.db.GetUserByUsername(c.Request.Context(), req.Username)
 	if err != nil {
 		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", req.Username))
 		return
 	}
 
-	// Update user with transaction to handle tenant associations
 	err = h.db.Transaction(c.Request.Context(), func(ctx context.Context) error {
-		// Update user fields
 		if req.Role != "" {
 			existingUser.Role = database.UserRole(req.Role)
 		}
@@ -254,27 +387,22 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 			return err
 		}
 
-		// Update tenant associations if provided
 		if req.TenantIDs != nil {
-			// Get existing tenant IDs for the user
 			existingTenants, err := h.db.GetUserTenants(ctx, existingUser.ID)
 			if err != nil {
 				return err
 			}
 
-			// Create a map of existing tenant IDs for easy lookup
 			existingTenantIDs := make(map[uint]bool)
 			for _, tenant := range existingTenants {
 				existingTenantIDs[tenant.ID] = true
 			}
 
-			// Create a map of new tenant IDs for easy lookup
 			newTenantIDs := make(map[uint]bool)
 			for _, id := range req.TenantIDs {
 				newTenantIDs[id] = true
 			}
 
-			// Remove associations that no longer exist in the request
 			for _, tenant := range existingTenants {
 				if !newTenantIDs[tenant.ID] {
 					if err := h.db.RemoveUserFromTenant(ctx, existingUser.ID, tenant.ID); err != nil {
@@ -283,7 +411,6 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 				}
 			}
 
-			// Add new associations that don't exist yet
 			for _, id := range req.TenantIDs {
 				if !existingTenantIDs[id] {
 					if err := h.db.AddUserToTenant(ctx, existingUser.ID, id); err != nil {
@@ -312,21 +439,17 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	// Get the user from the database
 	existingUser, err := h.db.GetUserByUsername(c.Request.Context(), username)
 	if err != nil {
 		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", username))
 		return
 	}
 
-	// Delete user and related tenant associations in a transaction
 	err = h.db.Transaction(c.Request.Context(), func(ctx context.Context) error {
-		// First delete user-tenant associations
 		if err := h.db.DeleteUserTenants(ctx, existingUser.ID); err != nil {
 			return err
 		}
 
-		// Then delete the user itself
 		if err := h.db.DeleteUser(ctx, existingUser.ID); err != nil {
 			return err
 		}
@@ -344,7 +467,6 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 
 // GetUserInfo handles getting current user info
 func (h *Handler) GetUserInfo(c *gin.Context) {
-	// Get the user from the context
 	claims, exists := c.Get("claims")
 	if !exists {
 		i18n.RespondWithError(c, i18n.ErrUnauthorized)
@@ -352,7 +474,6 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 	}
 	jwtClaims := claims.(*jwt.Claims)
 
-	// Get the user from the database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), jwtClaims.Username)
 	if err != nil {
 		i18n.RespondWithError(c, i18n.ErrInternalServer)
@@ -362,11 +483,9 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 	var tenants []*database.Tenant
 	var err2 error
 
-	// If user is admin, get all tenants
 	if user.Role == database.RoleAdmin {
 		tenants, err2 = h.db.ListTenants(c.Request.Context())
 	} else {
-		// Non-admin users only get assigned tenants
 		tenants, err2 = h.db.GetUserTenants(c.Request.Context(), user.ID)
 	}
 
@@ -375,7 +494,6 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 		return
 	}
 
-	// Convert tenants to tenant responses
 	tenantResponses := make([]*dto.TenantResponse, len(tenants))
 	for i, tenant := range tenants {
 		tenantResponses[i] = &dto.TenantResponse{
@@ -398,7 +516,6 @@ func (h *Handler) GetUserInfo(c *gin.Context) {
 
 // GetUserWithTenants gets a user with their associated tenants
 func (h *Handler) GetUserWithTenants(c *gin.Context) {
-	// Get current logged-in user information for permission checking
 	claims, exists := c.Get("claims")
 	if !exists {
 		i18n.RespondWithError(c, i18n.ErrUnauthorized)
@@ -406,22 +523,18 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	}
 	currentUserClaims := claims.(*jwt.Claims)
 
-	// Check if path parameter exists, if not use the current logged-in user
 	username := c.Param("username")
 	useCurrentUser := username == ""
 
-	// If no username parameter is provided, use the current logged-in user
 	if useCurrentUser {
 		username = currentUserClaims.Username
 	} else {
-		// Only administrators can view information of other users
 		if currentUserClaims.Role != "admin" && username != currentUserClaims.Username {
 			i18n.RespondWithError(c, i18n.ErrForbidden.WithParam("Reason", "Only administrators can access other users' information"))
 			return
 		}
 	}
 
-	// Get user from database
 	user, err := h.db.GetUserByUsername(c.Request.Context(), username)
 	if err != nil {
 		i18n.RespondWithError(c, i18n.ErrorUserNotFound.WithParam("Username", username))
@@ -431,11 +544,9 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 	var tenants []*database.Tenant
 	var err2 error
 
-	// If user is admin, get all tenants
 	if user.Role == database.RoleAdmin {
 		tenants, err2 = h.db.ListTenants(c.Request.Context())
 	} else {
-		// Non-admin users only get assigned tenants
 		tenants, err2 = h.db.GetUserTenants(c.Request.Context(), user.ID)
 	}
 
@@ -444,7 +555,6 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 		return
 	}
 
-	// Convert tenants to tenant responses
 	tenantResponses := make([]*dto.TenantResponse, len(tenants))
 	for i, tenant := range tenants {
 		tenantResponses[i] = &dto.TenantResponse{
@@ -456,7 +566,6 @@ func (h *Handler) GetUserWithTenants(c *gin.Context) {
 		}
 	}
 
-	// Create user response with tenants
 	userResponse := &dto.UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
@@ -476,27 +585,22 @@ func (h *Handler) UpdateUserTenants(c *gin.Context) {
 		return
 	}
 
-	// Perform the update in a transaction
 	err := h.db.Transaction(c.Request.Context(), func(ctx context.Context) error {
-		// Get existing tenant IDs for the user
 		existingTenants, err := h.db.GetUserTenants(ctx, req.UserID)
 		if err != nil {
 			return err
 		}
 
-		// Create a map of existing tenant IDs for easy lookup
 		existingTenantIDs := make(map[uint]bool)
 		for _, tenant := range existingTenants {
 			existingTenantIDs[tenant.ID] = true
 		}
 
-		// Create a map of new tenant IDs for easy lookup
 		newTenantIDs := make(map[uint]bool)
 		for _, id := range req.TenantIDs {
 			newTenantIDs[id] = true
 		}
 
-		// Remove associations that no longer exist in the request
 		for _, tenant := range existingTenants {
 			if !newTenantIDs[tenant.ID] {
 				if err := h.db.RemoveUserFromTenant(ctx, req.UserID, tenant.ID); err != nil {
@@ -505,7 +609,6 @@ func (h *Handler) UpdateUserTenants(c *gin.Context) {
 			}
 		}
 
-		// Add new associations that don't exist yet
 		for _, id := range req.TenantIDs {
 			if !existingTenantIDs[id] {
 				if err := h.db.AddUserToTenant(ctx, req.UserID, id); err != nil {

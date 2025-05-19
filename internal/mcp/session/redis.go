@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -26,12 +27,13 @@ type RedisStore struct {
 var _ Store = (*RedisStore)(nil)
 
 // NewRedisStore creates a new Redis-based session store
-func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, topic string) (*RedisStore, error) {
+// func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, topic string) (*RedisStore, error) {
+func NewRedisStore(logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisStore, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Username: username,
-		Password: password,
-		DB:       db,
+		Addr:     cfg.Addr,
+		Username: cfg.Username,
+		Password: cfg.Password,
+		DB:       cfg.DB,
 	})
 
 	// Test connection
@@ -39,16 +41,23 @@ func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, 
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
+	prefix := cfg.Prefix
+	if prefix == "" {
+		// Adapt to historical versions
+		prefix = "session:"
+	} else {
+		prefix = prefix + ":"
+	}
 	store := &RedisStore{
 		logger:      logger.Named("session.store.redis"),
 		client:      client,
-		prefix:      "session:",
-		topic:       topic,
+		prefix:      cfg.Prefix,
+		topic:       cfg.Topic,
 		connections: make(map[string]*RedisConnection),
 	}
 
 	// Subscribe to session updates
-	store.pubsub = client.Subscribe(context.Background(), topic)
+	store.pubsub = client.Subscribe(context.Background(), cfg.Topic)
 	go store.handleUpdates()
 
 	return store, nil

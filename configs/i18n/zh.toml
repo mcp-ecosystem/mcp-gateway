@@ -139,16 +139,16 @@ other = "邮箱格式无效"
 
 # MCP related errors
 [ErrorMCPServerNotFound]
-other = "MCP服务器不存在"
+other = "MCP服务不存在"
 
 [ErrorMCPServerExists]
-other = "MCP服务器已存在"
+other = "MCP服务已存在"
 
 [ErrorMCPServerValidation]
-other = "MCP服务器验证失败: {{.Reason}}"
+other = "MCP服务验证失败: {{.Reason}}"
 
 [ErrorMCPServerNameRequired]
-other = "MCP服务器名称不能为空"
+other = "MCP服务名称不能为空"
 
 [ErrorMCPConfigInvalid]
 other = "MCP配置无效"
@@ -249,25 +249,25 @@ other = "用户租户更新成功"
 
 # MCP related success messages
 [SuccessMCPServerCreated]
-other = "MCP服务器创建成功"
+other = "MCP服务创建成功"
 
 [SuccessMCPServerUpdated]
-other = "MCP服务器更新成功"
+other = "MCP服务更新成功"
 
 [SuccessMCPServerDeleted]
-other = "MCP服务器删除成功"
+other = "MCP服务删除成功"
 
 [SuccessMCPServerSynced]
-other = "MCP服务器同步成功"
+other = "MCP服务同步成功"
 
 [SuccessMCPServerList]
-other = "MCP服务器列表获取成功"
+other = "MCP服务列表获取成功"
 
 [SuccessMCPServerInfo]
-other = "MCP服务器信息获取成功"
+other = "MCP服务信息获取成功"
 
 [SuccessMCPServerStatus]
-other = "MCP服务器状态更新成功"
+other = "MCP服务状态更新成功"
 
 # OpenAPI related success messages
 [SuccessOpenAPIImported]

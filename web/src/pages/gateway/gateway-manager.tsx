@@ -1,14 +1,15 @@
-import { Card, CardBody, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Autocomplete, AutocompleteItem } from "@heroui/react";
+import { Card, CardBody, Button, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Autocomplete, AutocompleteItem, Tabs, Tab, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal } from "@heroui/react";
 import { Icon } from '@iconify/react';
-import Editor from '@monaco-editor/react';
 import yaml from 'js-yaml';
 import { configureMonacoYaml } from 'monaco-yaml';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, syncMCPServers, getUserAuthorizedTenants, getTenant } from '../../services/api';
+import { getMCPServers, createMCPServer, updateMCPServer, deleteMCPServer, exportMCPServer, syncMCPServers, getUserAuthorizedTenants, getTenant } from '../../services/api';
+import type { Gateway } from '../../types/gateway';
 import { toast } from '../../utils/toast';
 
+import { ConfigEditor } from './components/ConfigEditor';
 import OpenAPIImport from './components/OpenAPIImport';
 
 declare global {
@@ -23,36 +24,6 @@ declare global {
       };
     };
   }
-}
-
-interface Gateway {
-  name: string;
-  config: string;
-  parsedConfig?: {
-    routers: Array<{
-      server: string;
-      prefix: string;
-    }>;
-    servers: Array<{
-      name: string;
-      namespace: string;
-      description: string;
-      allowedTools: string[];
-    }>;
-    tools: Array<{
-      name: string;
-      description: string;
-      method: string;
-    }>;
-    mcpServers?: Array<{
-      type: string;
-      name: string;
-      command?: string;
-      args?: string[];
-      env?: Record<string, string>;
-      url?: string;
-    }>;
-  };
 }
 
 interface ServerConfig {
@@ -95,9 +66,13 @@ export function GatewayManager() {
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
   const [tenantInputValue, setTenantInputValue] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<string>('card');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
   });
+  const [isRoutingModalOpen, setIsRoutingModalOpen] = React.useState(false);
+  const [isToolsModalOpen, setIsToolsModalOpen] = React.useState(false);
+  const [currentModalServer, setCurrentModalServer] = React.useState<Gateway | null>(null);
 
   // Listen for theme changes
   React.useEffect(() => {
@@ -176,24 +151,24 @@ export function GatewayManager() {
   const validateRouterPrefixes = async (config: string): Promise<boolean> => {
     try {
       const parsedConfig = yaml.load(config) as { tenant: string, routers: Array<{ prefix: string }> };
-      
+
       if (!parsedConfig.tenant || !parsedConfig.routers) {
         return true; // Skip validation if tenant or routers are missing
       }
-      
+
       // Get tenant information
       const tenant = await getTenant(parsedConfig.tenant);
       if (!tenant) {
         return true; // Skip validation if tenant not found
       }
-      
+
       // Normalize tenant prefix
       let tenantPrefix = tenant.prefix;
       if (!tenantPrefix.startsWith('/')) {
         tenantPrefix = '/' + tenantPrefix;
       }
       tenantPrefix = tenantPrefix.endsWith('/') ? tenantPrefix.slice(0, -1) : tenantPrefix;
-      
+
       // Check if all router prefixes start with the tenant prefix
       for (const router of parsedConfig.routers) {
         // Normalize router prefix
@@ -202,21 +177,24 @@ export function GatewayManager() {
           routerPrefix = '/' + routerPrefix;
         }
         routerPrefix = routerPrefix.endsWith('/') ? routerPrefix.slice(0, -1) : routerPrefix;
-        
-        // Allow exact match
-        if (routerPrefix === tenantPrefix) {
-          continue;
-        }
-        
-        // Router prefix must start with tenant prefix followed by a slash
+        // Router prefix must start with tenant prefix followed by a slash and not be empty
         if (!routerPrefix.startsWith(tenantPrefix + '/')) {
           toast.error(t('errors.router_prefix_error'), {
             duration: 3000,
           });
           return false;
         }
+
+        // Check if there is content after tenant prefix
+        const remainingPath = routerPrefix.slice(tenantPrefix.length + 1);
+        if (!remainingPath) {
+          toast.error(t('errors.router_prefix_error'), {
+            duration: 3000,
+          });
+          return false;
+        }
       }
-      
+
       return true;
     } catch {
       toast.error(t('errors.validate_router_prefix_failed'), {
@@ -230,7 +208,7 @@ export function GatewayManager() {
     try {
       // Validate YAML
       yaml.load(editConfig);
-      
+
       // Validate router prefix
       const isValidPrefix = await validateRouterPrefixes(editConfig);
       if (!isValidPrefix) {
@@ -259,6 +237,16 @@ export function GatewayManager() {
       toast.success(t('gateway.delete_success'));
     } catch {
       toast.error(t('gateway.delete_failed'));
+    }
+  };
+
+   const handleExport = async (server: Gateway) => {
+    try {
+      toast.success(t('gateway.exporting'));
+      await exportMCPServer(server);
+      toast.success(t('gateway.export_success'));
+    } catch {
+      toast.error(t('gateway.export_failed'));
     }
   };
 
@@ -295,7 +283,7 @@ export function GatewayManager() {
         toast.error(t('errors.invalid_yaml'));
         return;
       }
-      
+
       // Validate router prefix
       const isValidPrefix = await validateRouterPrefixes(newConfig);
       if (!isValidPrefix) {
@@ -375,35 +363,35 @@ export function GatewayManager() {
   // Define custom filter function for tenants
   const customTenantFilter = (inputValue: string, items: Tenant[]) => {
     const lowerCaseInput = inputValue.toLowerCase();
-    return items.filter(item => 
-      item.name.toLowerCase().includes(lowerCaseInput) || 
+    return items.filter(item =>
+      item.name.toLowerCase().includes(lowerCaseInput) ||
       item.prefix.toLowerCase().includes(lowerCaseInput)
     );
   };
 
   const handleTenantSelect = (key: React.Key | null) => {
     if (key === null) return;
-    
+
     const tenant = tenants.find(t => t.id === parseInt(key.toString(), 10));
     if (tenant && !selectedTenants.some(t => t.id === tenant.id)) {
       setSelectedTenants(prev => [...prev, tenant]);
     }
     setTenantInputValue('');
   };
-  
+
   const handleRemoveTenant = (tenantId: number) => {
     setSelectedTenants(prev => prev.filter(t => t.id !== tenantId));
   };
-  
+
   // Filter out already selected tenants for selection
   const availableTenants = React.useMemo(() => {
-    return tenants.filter(tenant => 
+    return tenants.filter(tenant =>
       !selectedTenants.some(selected => selected.id === tenant.id)
     );
   }, [tenants, selectedTenants]);
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 pb-10 h-[calc(100vh-5rem)] flex flex-col overflow-y-scroll scrollbar-hide">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{t('gateway.title')}</h1>
         <div className="flex gap-2">
@@ -411,6 +399,7 @@ export function GatewayManager() {
             color="primary"
             onPress={onCreateOpen}
             startContent={<Icon icon="material-symbols:add" />}
+            aria-label={t('gateway.add')}
           >
             {t('gateway.add')}
           </Button>
@@ -420,6 +409,7 @@ export function GatewayManager() {
             onPress={onImportOpen}
             startContent={<Icon icon="material-symbols:upload" />}
             className="bg-purple-500 hover:bg-purple-600 text-white"
+            aria-label={t('gateway.import_openapi')}
           >
             {t('gateway.import_openapi')}
           </Button>
@@ -428,28 +418,31 @@ export function GatewayManager() {
             onPress={handleSync}
             isLoading={isLoading}
             startContent={<Icon icon="material-symbols:sync" />}
+            aria-label={t('gateway.sync')}
           >
             {t('gateway.sync')}
           </Button>
         </div>
       </div>
 
-      <div className="mb-4 max-w-md">
+      <div className="flex justify-between items-center mb-4">
+        <div className="max-w-md">
         <label className="block text-sm font-medium mb-1">{t('gateway.select_tenant')}</label>
-        
+
         {/* Display selected tenants */}
         <div className="flex flex-wrap gap-1 mb-2">
           {selectedTenants.map(tenant => (
-            <Chip 
-              key={tenant.id} 
+            <Chip
+              key={tenant.id}
               onClose={() => handleRemoveTenant(tenant.id)}
               variant="flat"
+              aria-label={`${tenant.name} (${tenant.prefix})`}
             >
               {`${tenant.name}(${tenant.prefix})`}
             </Chip>
           ))}
         </div>
-        
+
         <Autocomplete
           placeholder={t('gateway.search_tenant')}
           defaultItems={availableTenants}
@@ -463,10 +456,11 @@ export function GatewayManager() {
             emptyContent: t('common.no_results')
           }}
           items={customTenantFilter(tenantInputValue, availableTenants)}
+          aria-label={t('gateway.search_tenant')}
         >
           {(tenant) => (
-            <AutocompleteItem 
-              key={tenant.id.toString()} 
+            <AutocompleteItem
+              key={tenant.id.toString()}
               textValue={`${tenant.name}(${tenant.prefix})`}
             >
               <div className="flex flex-col">
@@ -478,11 +472,42 @@ export function GatewayManager() {
         </Autocomplete>
       </div>
 
+        <Tabs
+          aria-label={t('gateway.view_mode')}
+          selectedKey={viewMode}
+          onSelectionChange={(key) => setViewMode(key as string)}
+          size="sm"
+          classNames={{
+            tabList: "bg-default-100 p-1 rounded-lg"
+          }}
+        >
+          <Tab
+            key="card"
+            title={
+              <div className="flex items-center gap-1">
+                <Icon icon="material-symbols:grid-view" className="text-lg" />
+                <span>{t('gateway.card_view')}</span>
+              </div>
+            }
+          />
+          <Tab
+            key="table"
+            title={
+              <div className="flex items-center gap-1">
+                <Icon icon="material-symbols:table-rows" className="text-lg" />
+                <span>{t('gateway.table_view')}</span>
+              </div>
+            }
+          />
+        </Tabs>
+      </div>
+
+      <div className="flex-1">
       {isLoading ? (
         <div className="flex justify-center items-center h-32">
           <Icon icon="lucide:loader-2" className="animate-spin text-2xl" />
         </div>
-      ) : (
+        ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {(parsedMCPServers || []).map((server) => (
             <Card key={server.name} className="w-full hover:shadow-lg transition-shadow bg-card">
@@ -522,6 +547,15 @@ export function GatewayManager() {
                         >
                           {t('gateway.delete')}
                         </DropdownItem>
+                        <DropdownItem
+                          key="export"
+                          className="text-green-500"
+                          color="primary"
+                          startContent={<Icon icon="lucide:download" />}
+                          onPress={() => handleExport(server)}
+                        >
+                          {t('gateway.export')}
+                        </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>
                   </div>
@@ -548,6 +582,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(router.prefix)}
+                                    aria-label={`${t('common.copy')} ${router.prefix}`}
                                   >
                                     {router.prefix}
                                   </Chip>
@@ -557,6 +592,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(router.server)}
+                                    aria-label={`${t('common.copy')} ${router.server}`}
                                   >
                                     {router.server}
                                   </Chip>
@@ -574,7 +610,9 @@ export function GatewayManager() {
                                   <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium">{mcpServer.name}</span>
-                                      <Chip size="sm" variant="flat" color="warning">{mcpServer.type}</Chip>
+                                      <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
+                                        {mcpServer.type}
+                                      </Chip>
                                     </div>
                                     {mcpServer.type === 'stdio' && (
                                       <div className="text-xs">
@@ -622,6 +660,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="truncate cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(tool)}
+                                    aria-label={`${t('common.copy')} ${tool}`}
                                   >
                                     {tool}
                                   </Chip>
@@ -640,6 +679,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="truncate cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(tool.name)}
+                                    aria-label={`${t('common.copy')} ${tool.name}`}
                                   >
                                     {tool.name}
                                   </Chip>
@@ -666,6 +706,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(router.prefix)}
+                                    aria-label={`${t('common.copy')} ${router.prefix}`}
                                   >
                                     {router.prefix}
                                   </Chip>
@@ -675,6 +716,7 @@ export function GatewayManager() {
                                     size="sm"
                                     className="cursor-pointer hover:opacity-80 select-none"
                                     onClick={() => handleCopyToClipboard(router.server)}
+                                    aria-label={`${t('common.copy')} ${router.server}`}
                                   >
                                     {router.server}
                                   </Chip>
@@ -692,7 +734,9 @@ export function GatewayManager() {
                                 <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm font-medium">{mcpServer.name}</span>
-                                    <Chip size="sm" variant="flat" color="warning">{mcpServer.type}</Chip>
+                                    <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
+                                      {mcpServer.type}
+                                    </Chip>
                                   </div>
                                   {mcpServer.type === 'stdio' && (
                                     <div className="text-xs">
@@ -735,26 +779,107 @@ export function GatewayManager() {
             </Card>
           ))}
         </div>
-      )}
+        ) : (
+          <Table aria-label={t('gateway.table_view')}>
+            <TableHeader>
+              <TableColumn width="25%">{t('gateway.name')}</TableColumn>
+              <TableColumn width="15%">{t('gateway.description')}</TableColumn>
+              <TableColumn width="25%">{t('gateway.routing')}</TableColumn>
+              <TableColumn width="25%">{t('gateway.tools')}</TableColumn>
+              <TableColumn width="10%">{t('common.actions')}</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {(parsedMCPServers || []).map((server) => (
+                <TableRow key={server.name}>
+                  <TableCell className="font-medium truncate max-w-[15%]">{server.name}</TableCell>
+                  <TableCell className="max-w-[25%]">
+                    {server.parsedConfig && server.parsedConfig.servers && server.parsedConfig.servers.length > 0 ? (
+                      <div className="line-clamp-2 overflow-hidden overflow-ellipsis">
+                        {server.parsedConfig.servers[0].description}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">{t('gateway.no_description')}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-[25%] overflow-hidden">
+                    <Button
+                      variant="light"
+                      size="sm"
+                      className="w-full text-left justify-start"
+                      endContent={<Icon icon="lucide:external-link" className="text-sm" />}
+                      onPress={() => {
+                        setCurrentModalServer(server);
+                        setIsRoutingModalOpen(true);
+                      }}
+                    >
+                      {`${server.parsedConfig?.routers?.length || 0} ${t('gateway.routes')}`}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="max-w-[25%] overflow-hidden">
+                    <Button
+                      variant="light"
+                      size="sm"
+                      className="w-full text-left justify-start"
+                      endContent={<Icon icon="lucide:external-link" className="text-sm" />}
+                      onPress={() => {
+                        setCurrentModalServer(server);
+                        setIsToolsModalOpen(true);
+                      }}
+                    >
+                      {server.parsedConfig?.servers && server.parsedConfig.servers.length > 0
+                        ? `${server.parsedConfig.servers[0].allowedTools.length} ${t('gateway.enabled')} / ${server.parsedConfig.tools?.length || 0} ${t('gateway.total')}`
+                        : `${server.parsedConfig?.tools?.length || 0} ${t('gateway.total')}`}
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        isIconOnly
+                        color="primary"
+                        variant="light"
+                        size="sm"
+                        onPress={() => handleEdit(server)}
+                        aria-label={t('gateway.edit')}
+                      >
+                        <Icon icon="lucide:edit" className="text-lg" />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        variant="light"
+                        size="sm"
+                        onPress={() => handleDelete(server)}
+                        aria-label={t('gateway.delete')}
+                      >
+                        <Icon icon="lucide:trash-2" className="text-lg" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       <Modal
         isOpen={isOpen}
         onOpenChange={onOpenChange}
         size="3xl"
-        className="w-[70%] h-[70%]"
+        className="w-[70%] h-[80%]"
+        scrollBehavior="inside"
       >
-        <ModalContent className="h-[70%]">
+        <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader>{t('gateway.edit_config')}</ModalHeader>
-              <ModalBody className="flex-1">
-                <Editor
-                  height="100%"
-                  defaultLanguage="yaml"
-                  value={editConfig}
-                  onChange={(value) => setEditConfig(value || '')}
-                  theme={isDark ? "vs-dark" : "vs"}
-                  options={editorOptions}
+              <ModalBody>
+                <ConfigEditor 
+                  config={editConfig}
+                  onChange={(value) => setEditConfig(value)}
+                  isDark={isDark} 
+                  editorOptions={editorOptions}
+                  isEditing={true}
                 />
               </ModalBody>
               <ModalFooter>
@@ -774,20 +899,20 @@ export function GatewayManager() {
         isOpen={isCreateOpen}
         onOpenChange={onCreateOpenChange}
         size="3xl"
-        className="w-[70%] h-[70%]"
+        className="w-[70%] h-[80%]"
+        scrollBehavior="inside"
       >
-        <ModalContent className="h-[70%]">
+        <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader>{t('gateway.add_config')}</ModalHeader>
-              <ModalBody className="flex-1">
-                <Editor
-                  height="100%"
-                  defaultLanguage="yaml"
-                  value={newConfig}
-                  onChange={(value) => setNewConfig(value || '')}
-                  theme={isDark ? "vs-dark" : "vs"}
-                  options={editorOptions}
+              <ModalBody className="overflow-y-auto">
+                <ConfigEditor 
+                  config={newConfig}
+                  onChange={(value) => setNewConfig(value)}
+                  isDark={isDark} 
+                  editorOptions={editorOptions}
+                  isEditing={false}
                 />
               </ModalBody>
               <ModalFooter>
@@ -814,6 +939,172 @@ export function GatewayManager() {
               {t('common.cancel')}
             </Button>
           </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isRoutingModalOpen}
+        onClose={() => setIsRoutingModalOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                {currentModalServer?.name} - {t('gateway.routing_config')}
+              </ModalHeader>
+              <ModalBody>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">{t('gateway.routing_config')}</h4>
+                    <div className="space-y-2 w-full">
+                      {(currentModalServer?.parsedConfig?.routers || []).map((router: RouterConfig, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2 flex-wrap">
+                          <Chip
+                            color="primary"
+                            variant="flat"
+                            size="sm"
+                            className="cursor-pointer hover:opacity-80 select-none"
+                            onClick={() => handleCopyToClipboard(router.prefix)}
+                            aria-label={`${t('common.copy')} ${router.prefix}`}
+                          >
+                            {router.prefix}
+                          </Chip>
+                          <Icon icon="lucide:arrow-right" className="text-sm" />
+                          <Chip
+                            variant="flat"
+                            size="sm"
+                            className="cursor-pointer hover:opacity-80 select-none"
+                            onClick={() => handleCopyToClipboard(router.server)}
+                            aria-label={`${t('common.copy')} ${router.server}`}
+                          >
+                            {router.server}
+                          </Chip>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {currentModalServer?.parsedConfig?.mcpServers && currentModalServer.parsedConfig.mcpServers.length > 0 && (
+                    <div className="space-y-2 mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
+                      <div className="space-y-2">
+                        {currentModalServer.parsedConfig.mcpServers.map((mcpServer, idx) => (
+                          <div key={idx} className="flex flex-col gap-1 p-2 border border-default-200 rounded-md">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium">{mcpServer.name}</span>
+                              <Chip size="sm" variant="flat" color="warning" aria-label={`Type: ${mcpServer.type}`}>
+                                {mcpServer.type}
+                              </Chip>
+                            </div>
+                            {mcpServer.type === 'stdio' && (
+                              <div className="text-xs">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className="font-medium">Command:</span>
+                                  <code className="bg-default-100 px-1 rounded break-all">{mcpServer.command} {mcpServer.args?.join(' ')}</code>
+                                </div>
+                                {mcpServer.env && Object.keys(mcpServer.env).length > 0 && (
+                                  <div className="mt-1">
+                                    <span className="font-medium">Env:</span>
+                                    <div className="mt-1 pl-2">
+                                      {Object.entries(mcpServer.env).map(([key, value]) => (
+                                        <div key={key} className="text-xs truncate">
+                                          <span className="text-default-500">{key}:</span> {value}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {(mcpServer.type === 'sse' || mcpServer.type === 'streamable-http') && mcpServer.url && (
+                              <div className="text-xs">
+                                <div className="flex items-start gap-1">
+                                  <span className="font-medium mt-1">URL:</span>
+                                  <code className="bg-default-100 px-1 py-1 rounded break-all">{mcpServer.url}</code>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="primary" size="sm" onPress={() => setIsRoutingModalOpen(false)}>
+                  {t('common.close')}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isToolsModalOpen}
+        onClose={() => setIsToolsModalOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                {currentModalServer?.name} - {t('gateway.tools')}
+              </ModalHeader>
+              <ModalBody>
+                {currentModalServer?.parsedConfig?.servers && currentModalServer.parsedConfig.servers.length > 0 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">{t('gateway.enabled_tools')}</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {currentModalServer.parsedConfig.servers[0].allowedTools.map((tool: string) => (
+                          <Chip
+                            key={tool}
+                            variant="flat"
+                            color="success"
+                            size="sm"
+                            className="truncate cursor-pointer hover:opacity-80 select-none"
+                            onClick={() => handleCopyToClipboard(tool)}
+                            aria-label={`${t('common.copy')} ${tool}`}
+                          >
+                            {tool}
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-semibold mb-2">{t('gateway.all_tools')}</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {(currentModalServer.parsedConfig?.tools ?? []).map((tool: ToolConfig) => (
+                          <Chip
+                            key={tool.name}
+                            variant="flat"
+                            color="default"
+                            size="sm"
+                            className="truncate cursor-pointer hover:opacity-80 select-none"
+                            onClick={() => handleCopyToClipboard(tool.name)}
+                            aria-label={`${t('common.copy')} ${tool.name}`}
+                          >
+                            {tool.name}
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button color="primary" size="sm" onPress={() => setIsToolsModalOpen(false)}>
+                  {t('common.close')}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
     </div>

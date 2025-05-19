@@ -11,18 +11,20 @@ import (
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
 	Name       string `gorm:"primaryKey; column:name"`
+	Tenant     string `gorm:"column:tenant; default:''"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
-	Routers    string `gorm:"type:text; column:routers; default:''"`
-	Servers    string `gorm:"type:text; column:servers; default:''"`
-	Tools      string `gorm:"type:text; column:tools; default:''"`
-	McpServers string `gorm:"type:text; column:mcp_servers; default:''"`
+	Routers    string `gorm:"type:text; column:routers"`
+	Servers    string `gorm:"type:text; column:servers"`
+	Tools      string `gorm:"type:text; column:tools"`
+	McpServers string `gorm:"type:text; column:mcp_servers"`
 }
 
 // ToMCPConfig converts the database model to MCPConfig
 func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 	cfg := &config.MCPConfig{
 		Name:      m.Name,
+		Tenant:    m.Tenant,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -75,6 +77,7 @@ func FromMCPConfig(cfg *config.MCPConfig) (*MCPConfig, error) {
 
 	return &MCPConfig{
 		Name:       cfg.Name,
+		Tenant:     cfg.Tenant,
 		CreatedAt:  cfg.CreatedAt,
 		UpdatedAt:  cfg.UpdatedAt,
 		Routers:    string(routers),

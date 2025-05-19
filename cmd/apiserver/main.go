@@ -141,7 +141,7 @@ func initSuperAdmin(ctx context.Context, db database.Database, cfg *config.APISe
 }
 
 // initRouter initializes the HTTP router and handlers
-func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier, openaiClient *openai.Client, cfg *config.APIServerConfig) *gin.Engine {
+func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier, openaiClient *openai.Client, cfg *config.APIServerConfig, logger *zap.Logger) *gin.Engine {
 	r := gin.Default()
 
 	// Convert APIServerConfig to MCPGatewayConfig
@@ -157,7 +157,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		SecretKey: cfg.JWT.SecretKey,
 		Duration:  cfg.JWT.Duration,
 	})
-	authH := apiserverHandler.NewHandler(db, jwtService, mcpCfg)
+	authH := apiserverHandler.NewHandler(db, jwtService, mcpCfg, logger)
 
 	authG := r.Group("/api/auth")
 	authG.POST("/login", authH.Login)
@@ -166,9 +166,9 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 	protected := r.Group("/api")
 	protected.Use(middleware.JWTAuthMiddleware(jwtService))
 	{
-		chatHandler := apiserverHandler.NewChat(db)
-		mcpHandler := apiserverHandler.NewMCP(db, store, ntf)
-		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf)
+		chatHandler := apiserverHandler.NewChat(db, logger)
+		mcpHandler := apiserverHandler.NewMCP(db, store, ntf, logger)
+		openapiHandler := apiserverHandler.NewOpenAPI(db, store, ntf, logger)
 
 		// Auth routes
 		protected.POST("/auth/change-password", authH.ChangePassword)
@@ -212,7 +212,7 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		protected.GET("/chat/sessions/:sessionId/messages", chatHandler.HandleGetChatMessages)
 	}
 
-	wsHandler := apiserverHandler.NewWebSocket(db, openaiClient, jwtService)
+	wsHandler := apiserverHandler.NewWebSocket(db, openaiClient, jwtService, logger)
 	r.GET("/api/ws/chat", wsHandler.HandleWebSocket)
 
 	r.Static("/web", "./web")
@@ -274,7 +274,7 @@ func run() {
 	store := initStore(logger, &cfg.Storage)
 
 	// Initialize router and start server
-	router := initRouter(db, store, ntf, openaiClient, cfg)
+	router := initRouter(db, store, ntf, openaiClient, cfg, logger)
 	startServer(logger, router)
 }
 

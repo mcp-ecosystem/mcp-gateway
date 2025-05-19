@@ -1,9 +1,12 @@
 package core
 
 import (
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"net/http"
+	"runtime"
 	"strings"
+	"time"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth"
@@ -13,18 +16,73 @@ import (
 // loggerMiddleware logs incoming requests and outgoing responses
 func (s *Server) loggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		s.logger.Info("incoming request",
+		// Record basic information at request start time using Info level
+		startTime := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		// Record basic information for all requests
+		logger := s.logger.With(
 			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
+			zap.String("path", path),
 			zap.String("remote_addr", c.Request.RemoteAddr),
+			zap.String("user_agent", c.Request.UserAgent()),
 		)
+
+		// Use Debug level to record more detailed request information
+		if s.logger.Core().Enabled(zap.DebugLevel) {
+			headers := make(map[string]string)
+			for k, v := range c.Request.Header {
+				// Filter out sensitive header information
+				if k != "Authorization" && k != "Cookie" {
+					headers[k] = strings.Join(v, ", ")
+				}
+			}
+
+			logger.Debug("request details",
+				zap.String("query", query),
+				zap.Any("headers", headers),
+			)
+		}
+
+		// Record request start
+		logger.Info("request started")
+
+		// Save logger in context for later use
+		c.Set("logger", logger)
 
 		c.Next()
 
-		s.logger.Info("outgoing response",
-			zap.Int("status", c.Writer.Status()),
-			zap.Int("size", c.Writer.Size()),
-		)
+		// Calculate request processing time
+		latency := time.Since(startTime)
+		statusCode := c.Writer.Status()
+
+		// Choose log level based on status code
+		if statusCode >= 500 {
+			// Use Error level for server errors
+			logger.Error("request completed with server error",
+				zap.Int("status", statusCode),
+				zap.Int("size", c.Writer.Size()),
+				zap.Duration("latency", latency),
+				zap.String("client_ip", c.ClientIP()),
+			)
+		} else if statusCode >= 400 {
+			// Use Warn level for client errors
+			logger.Warn("request completed with client error",
+				zap.Int("status", statusCode),
+				zap.Int("size", c.Writer.Size()),
+				zap.Duration("latency", latency),
+				zap.String("client_ip", c.ClientIP()),
+			)
+		} else {
+			// Use Info level for normal status
+			logger.Info("request completed successfully",
+				zap.Int("status", statusCode),
+				zap.Int("size", c.Writer.Size()),
+				zap.Duration("latency", latency),
+				zap.String("client_ip", c.ClientIP()),
+			)
+		}
 	}
 }
 
@@ -33,13 +91,35 @@ func (s *Server) recoveryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				// Get stack information
+				stack := make([]byte, 4096)
+				length := runtime.Stack(stack, false)
+
+				// Get request related information
+				httpRequest := c.Request
+				headers := make(map[string]string)
+				for k, v := range httpRequest.Header {
+					if k != "Authorization" && k != "Cookie" {
+						headers[k] = strings.Join(v, ", ")
+					}
+				}
+
+				// Record panic information with Error level
 				s.logger.Error("panic recovered",
 					zap.Any("error", err),
 					zap.String("path", c.Request.URL.Path),
+					zap.String("method", c.Request.Method),
+					zap.String("remote_addr", c.Request.RemoteAddr),
+					zap.String("client_ip", c.ClientIP()),
+					zap.Any("request_headers", headers),
+					zap.ByteString("stack", stack[:length]),
 				)
+
+				// Return 500 error
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
+				c.Abort()
 			}
 		}()
 		c.Next()

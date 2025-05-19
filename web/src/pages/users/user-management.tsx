@@ -6,7 +6,6 @@ import {
   TableRow,
   TableCell,
   Button,
-  Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
@@ -24,6 +23,7 @@ import { Icon } from '@iconify/react';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AccessibleModal } from "../../components/AccessibleModal";
 import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
 
 interface User {
@@ -325,7 +325,7 @@ export function UserManagement() {
       </Table>
 
       {/* Create User Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
+      <AccessibleModal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent>
           <ModalHeader>{t('users.add')}</ModalHeader>
           <ModalBody>
@@ -372,11 +372,15 @@ export function UserManagement() {
                     onInputChange={setCreateTenantInputValue}
                     value={createTenantInputValue}
                     className="mb-4"
+                    aria-label={t('users.select_tenant')}
                   >
                     {tenants
                       .filter(tenant => tenant.isActive) // Only show active tenants
                       .map(tenant => (
-                        <AutocompleteItem key={tenant.id}>
+                        <AutocompleteItem 
+                          key={tenant.id}
+                          textValue={`${tenant.name}(${tenant.prefix})`}
+                        >
                           {tenant.name}({tenant.prefix})
                         </AutocompleteItem>
                       ))}
@@ -412,10 +416,10 @@ export function UserManagement() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </AccessibleModal>
 
       {/* Update User Modal */}
-      <Modal isOpen={isUpdateOpen} onClose={onUpdateClose} size="lg">
+      <AccessibleModal isOpen={isUpdateOpen} onClose={onUpdateClose} size="lg">
         <ModalContent>
           <ModalHeader>{t('users.edit')}</ModalHeader>
           <ModalBody>
@@ -473,11 +477,15 @@ export function UserManagement() {
                     onInputChange={setUpdateTenantInputValue}
                     value={updateTenantInputValue}
                     className="mb-4"
+                    aria-label={t('users.select_tenant')}
                   >
                     {tenants
                       .filter(tenant => tenant.isActive) // Only show active tenants
                       .map(tenant => (
-                        <AutocompleteItem key={tenant.id}>
+                        <AutocompleteItem 
+                          key={tenant.id}
+                          textValue={`${tenant.name}(${tenant.prefix})`}
+                        >
                           {tenant.name}({tenant.prefix})
                         </AutocompleteItem>
                       ))}
@@ -509,10 +517,10 @@ export function UserManagement() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </AccessibleModal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <AccessibleModal isOpen={isDeleteOpen} onClose={onDeleteClose}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">{t('users.delete_title')}</ModalHeader>
           <ModalBody>
@@ -528,7 +536,7 @@ export function UserManagement() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </AccessibleModal>
     </div>
   );
 }

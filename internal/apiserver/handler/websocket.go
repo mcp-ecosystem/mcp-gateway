@@ -18,19 +18,22 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	openaiGo "github.com/openai/openai-go"
+	"go.uber.org/zap"
 )
 
 type WebSocket struct {
 	db         database.Database
 	openaiCli  *openai.Client
 	jwtService *jwt.Service
+	logger     *zap.Logger
 }
 
-func NewWebSocket(db database.Database, openaiCli *openai.Client, jwtService *jwt.Service) *WebSocket {
+func NewWebSocket(db database.Database, openaiCli *openai.Client, jwtService *jwt.Service, logger *zap.Logger) *WebSocket {
 	return &WebSocket{
 		db:         db,
 		openaiCli:  openaiCli,
 		jwtService: jwtService,
+		logger:     logger.Named("apiserver.handler.websocket"),
 	}
 }
 
@@ -41,21 +44,32 @@ var upgrader = websocket.Upgrader{
 }
 
 func (h *WebSocket) HandleWebSocket(c *gin.Context) {
-	// Token auth from query
 	token := c.Query("token")
 	if token == "" {
+		h.logger.Warn("websocket connection attempt without token",
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrUnauthorized.WithParam("Reason", "Token is required"))
 		return
 	}
-	_, err := h.jwtService.ValidateToken(token)
+
+	claims, err := h.jwtService.ValidateToken(token)
 	if err != nil {
+		h.logger.Warn("invalid token for websocket connection",
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrUnauthorized.WithParam("Reason", "Invalid token"))
 		return
 	}
 
-	// Get sessionId from query parameter
+	h.logger.Debug("token validated successfully for websocket connection",
+		zap.String("username", claims.Username),
+		zap.String("remote_addr", c.ClientIP()))
+
 	sessionId := c.Query("sessionId")
 	if sessionId == "" {
+		h.logger.Warn("websocket connection attempt without sessionId",
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "SessionId is required"))
 		return
 	}
@@ -66,44 +80,84 @@ func (h *WebSocket) HandleWebSocket(c *gin.Context) {
 	}
 	c.Set(cnst.XLang, lang)
 
-	// Check if session exists, if not create it
 	exists, err := h.db.SessionExists(c.Request.Context(), sessionId)
 	if err != nil {
+		h.logger.Error("failed to check if session exists",
+			zap.Error(err),
+			zap.String("session_id", sessionId),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to check session"))
 		return
 	}
+
 	if !exists {
-		// Create new session with the provided sessionId
+		h.logger.Info("creating new chat session",
+			zap.String("session_id", sessionId),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
+
 		if err := h.db.CreateSession(c.Request.Context(), sessionId); err != nil {
+			h.logger.Error("failed to create new chat session",
+				zap.Error(err),
+				zap.String("session_id", sessionId),
+				zap.String("username", claims.Username),
+				zap.String("remote_addr", c.ClientIP()))
 			i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to create session"))
 			return
 		}
+
+		h.logger.Debug("new chat session created successfully",
+			zap.String("session_id", sessionId),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
+	} else {
+		h.logger.Debug("using existing chat session",
+			zap.String("session_id", sessionId),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 	}
 
-	// Log connection attempt
-	log.Printf("[WS] New connection attempt - SessionID: %s, RemoteAddr: %s", sessionId, c.Request.RemoteAddr)
+	h.logger.Info("new websocket connection attempt",
+		zap.String("session_id", sessionId),
+		zap.String("username", claims.Username),
+		zap.String("remote_addr", c.ClientIP()))
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("[WS] Failed to upgrade connection - SessionID: %s, Error: %v", sessionId, err)
+		h.logger.Error("failed to upgrade websocket connection",
+			zap.Error(err),
+			zap.String("session_id", sessionId),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 		return
 	}
 	defer conn.Close()
 
-	// Log successful connection
-	log.Printf("[WS] Connection established - SessionID: %s, RemoteAddr: %s", sessionId, c.Request.RemoteAddr)
+	h.logger.Info("websocket connection established",
+		zap.String("session_id", sessionId),
+		zap.String("username", claims.Username),
+		zap.String("remote_addr", c.ClientIP()))
 
 	for {
 		var message dto.WebSocketMessage
 		err := conn.ReadJSON(&message)
 		if err != nil {
-			log.Printf("[WS] Error reading message - SessionID: %s, Error: %v", sessionId, err)
+			h.logger.Warn("error reading websocket message",
+				zap.Error(err),
+				zap.String("session_id", sessionId),
+				zap.String("username", claims.Username),
+				zap.String("remote_addr", c.ClientIP()))
 			break
 		}
 
 		// Log received message
-		log.Printf("[WS] Message received - SessionID: %s, Type: %s, Config: %s",
-			sessionId, message.Type, message.Content)
+		h.logger.Debug("websocket message received",
+			zap.String("session_id", sessionId),
+			zap.String("message_type", message.Type),
+			zap.String("sender", message.Sender),
+			zap.String("username", claims.Username),
+			zap.String("remote_addr", c.ClientIP()))
 
 		// Process message based on type
 		switch message.Type {
@@ -118,13 +172,27 @@ func (h *WebSocket) HandleWebSocket(c *gin.Context) {
 				Timestamp: time.Now(),
 			}
 			if err := h.db.SaveMessage(c.Request.Context(), msg); err != nil {
-				log.Printf("[WS] Failed to save message - SessionID: %s, Error: %v", sessionId, err)
+				h.logger.Error("failed to save chat message",
+					zap.Error(err),
+					zap.String("session_id", sessionId),
+					zap.String("message_id", msg.ID),
+					zap.String("username", claims.Username),
+					zap.String("remote_addr", c.ClientIP()))
+			} else {
+				h.logger.Debug("chat message saved successfully",
+					zap.String("session_id", sessionId),
+					zap.String("message_id", msg.ID),
+					zap.String("username", claims.Username))
 			}
 
 			// Get conversation history from database
 			messages, err := h.db.GetMessages(c.Request.Context(), sessionId)
 			if err != nil {
-				log.Printf("[WS] Failed to get conversation history - SessionID: %s, Error: %v", sessionId, err)
+				h.logger.Error("failed to get conversation history",
+					zap.Error(err),
+					zap.String("session_id", sessionId),
+					zap.String("username", claims.Username),
+					zap.String("remote_addr", c.ClientIP()))
 				continue
 			} else if len(messages) == 1 {
 				// Extract title from the first message (first 20 UTF-8 characters)
@@ -133,8 +201,19 @@ func (h *WebSocket) HandleWebSocket(c *gin.Context) {
 				if len(runes) > 20 {
 					title = string(runes[:20])
 				}
+
+				h.logger.Debug("updating session title for new conversation",
+					zap.String("session_id", sessionId),
+					zap.String("title", title),
+					zap.String("username", claims.Username))
+
 				if err := h.db.UpdateSessionTitle(c.Request.Context(), sessionId, title); err != nil {
-					log.Printf("[WS] Failed to update session title - SessionID: %s, Error: %v", sessionId, err)
+					h.logger.Error("failed to update session title",
+						zap.Error(err),
+						zap.String("session_id", sessionId),
+						zap.String("title", title),
+						zap.String("username", claims.Username),
+						zap.String("remote_addr", c.ClientIP()))
 				}
 			}
 
