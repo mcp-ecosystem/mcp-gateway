@@ -163,7 +163,10 @@
     "env_variables": "Environment Variables",
     "url": "URL",
     "http_method": "HTTP Method",
-    "add_server": "Add Server"
+    "add_server": "Add Server",
+    "startup_policy": "Startup Policy",
+    "policy_on_demand": "Connect on Demand",
+    "policy_on_start": "Connect on Start"
   },
   "chat": {
     "title": "Chat",

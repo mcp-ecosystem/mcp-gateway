@@ -73,9 +73,11 @@ func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]an
 			tmplCtx.Request.Headers[k] = v
 		}
 	}
-	for k, v := range request.Header {
-		if len(v) > 0 {
-			tmplCtx.Request.Headers[k] = v[0]
+	if request != nil {
+		for k, v := range request.Header {
+			if len(v) > 0 {
+				tmplCtx.Request.Headers[k] = v[0]
+			}
 		}
 	}
 
@@ -85,9 +87,11 @@ func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]an
 			tmplCtx.Request.Query[k] = v
 		}
 	}
-	for k, v := range request.URL.Query() {
-		if len(v) > 0 {
-			tmplCtx.Request.Query[k] = v[0]
+	if request != nil {
+		for k, v := range request.URL.Query() {
+			if len(v) > 0 {
+				tmplCtx.Request.Query[k] = v[0]
+			}
 		}
 	}
 
@@ -97,9 +101,11 @@ func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]an
 			tmplCtx.Request.Cookies[k] = v
 		}
 	}
-	for _, cookie := range request.Cookies() {
-		if cookie.Name != "" {
-			tmplCtx.Request.Cookies[cookie.Name] = cookie.Value
+	if request != nil {
+		for _, cookie := range request.Cookies() {
+			if cookie.Name != "" {
+				tmplCtx.Request.Cookies[cookie.Name] = cookie.Value
+			}
 		}
 	}
 
@@ -121,6 +127,10 @@ func PrepareTemplateContext(requestMeta *session.RequestInfo, args map[string]an
 
 func preprocessArgs(args map[string]any) map[string]any {
 	processed := make(map[string]any)
+
+	if args == nil {
+		return processed
+	}
 
 	for k, v := range args {
 		switch val := v.(type) {

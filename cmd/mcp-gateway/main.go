@@ -162,7 +162,7 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 	}
 
 	// Update server configuration in place
-	if err := srv.UpdateConfig(newMCPCfgs); err != nil {
+	if err := srv.UpdateConfig(ctx, newMCPCfgs); err != nil {
 		logger.Error("failed to update server configuration",
 			zap.Error(err))
 		return
@@ -171,7 +171,7 @@ func handleReload(ctx context.Context, logger *zap.Logger, store storage.Store, 
 	logger.Info("Configuration reloaded successfully")
 }
 
-func handleMerge(_ context.Context, logger *zap.Logger, srv *core.Server, mcpConfig *config.MCPConfig) {
+func handleMerge(ctx context.Context, logger *zap.Logger, srv *core.Server, mcpConfig *config.MCPConfig) {
 	logger.Info("Merging MCP configuration")
 	// Validate configurations before merging
 	if err := config.ValidateMCPConfig(mcpConfig); err != nil {
@@ -187,7 +187,7 @@ func handleMerge(_ context.Context, logger *zap.Logger, srv *core.Server, mcpCon
 	}
 
 	// Update server configuration in place
-	if err := srv.MergeConfig(mcpConfig); err != nil {
+	if err := srv.MergeConfig(ctx, mcpConfig); err != nil {
 		logger.Error("failed to merge server configuration",
 			zap.Error(err))
 		return
@@ -274,7 +274,7 @@ func run() {
 			"message": "Health check passed.",
 		})
 	})
-	if err := srv.RegisterRoutes(router, mcpCfgs); err != nil {
+	if err := srv.RegisterRoutes(ctx, router, mcpCfgs); err != nil {
 		logger.Fatal("failed to register routes",
 			zap.Error(err))
 	}

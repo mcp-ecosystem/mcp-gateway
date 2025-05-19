@@ -240,7 +240,10 @@
     "mcp_servers": "MCP 服务",
     "servers": "服务器",
     "routers": "路由",
-    "tools": "工具"
+    "tools": "工具",
+    "startup_policy": "启动策略",
+    "policy_on_demand": "按需连接",
+    "policy_on_start": "启动时连接"
   },
   "chat": {
     "title": "聊天",

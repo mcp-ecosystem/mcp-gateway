@@ -205,6 +205,16 @@ export function MCPServersConfig({
             <SelectItem key="streamable-http">streamable-http</SelectItem>
           </Select>
 
+          <Select
+            label={t('gateway.startup_policy')}
+            selectedKeys={[server.policy || "onDemand"]}
+            onChange={(e) => updateServer(index, 'policy', e.target.value)}
+            aria-label={t('gateway.startup_policy')}
+          >
+            <SelectItem key="onDemand">{t('gateway.policy_on_demand')}</SelectItem>
+            <SelectItem key="onStart">{t('gateway.policy_on_start')}</SelectItem>
+          </Select>
+
           {(server.type === 'stdio' || !server.type) && (
             <>
               <Input

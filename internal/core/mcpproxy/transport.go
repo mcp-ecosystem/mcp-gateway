@@ -29,6 +29,15 @@ type Transport interface {
 
 	// InvokeTool handles tool invocation
 	InvokeTool(c *gin.Context, conn session.Connection, cfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error)
+
+	// Start starts the transport
+	Start(ctx context.Context, cfg config.MCPServerConfig) error
+
+	// Stop stops the transport
+	Stop(ctx context.Context) error
+
+	// IsStarted returns true if the transport is started
+	IsStarted() bool
 }
 
 // NewTransport creates transport based on the configuration

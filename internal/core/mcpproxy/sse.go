@@ -17,26 +17,30 @@ import (
 )
 
 // SSETransport implements Transport using Server-Sent Events
-type SSETransport struct{}
+type SSETransport struct {
+	client *client.Client
+}
 
 var _ Transport = (*SSETransport)(nil)
 
-// FetchToolList implements Transport.FetchToolList
-func (t *SSETransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+func (t *SSETransport) Start(ctx context.Context, cfg config.MCPServerConfig) error {
+	if t.IsStarted() {
+		return nil
+	}
+
 	// Create SSE transport
-	sseTransport, err := transport.NewSSE(mcpProxyCfg.URL)
+	sseTransport, err := transport.NewSSE(cfg.URL)
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to create SSE transport: %w", err)
+		return fmt.Errorf("failed to create SSE transport: %w", err)
 	}
 
 	// Start the transport
 	if err := sseTransport.Start(ctx); err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to start SSE transport: %w", err)
+		return fmt.Errorf("failed to start SSE transport: %w", err)
 	}
 
 	// Create client with the transport
 	c := client.NewClient(sseTransport)
-	defer c.Close()
 
 	// Initialize the client
 	initRequest := mcpgo.InitializeRequest{}
@@ -48,13 +52,42 @@ func (t *SSETransport) FetchToolList(ctx context.Context, _ session.Connection, 
 
 	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to initialize SSE client: %w", err)
+		_ = sseTransport.Close()
+		return fmt.Errorf("failed to initialize SSE client: %w", err)
+	}
+
+	t.client = c
+	return nil
+}
+
+func (t *SSETransport) Stop(_ context.Context) error {
+	if !t.IsStarted() {
+		return nil
+	}
+
+	if t.client != nil {
+		return t.client.Close()
+	}
+
+	return nil
+}
+
+func (t *SSETransport) IsStarted() bool {
+	return t.client != nil
+}
+
+// FetchToolList implements Transport.FetchToolList
+func (t *SSETransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+	if !t.IsStarted() {
+		if err := t.Start(ctx, mcpProxyCfg); err != nil {
+			return nil, err
+		}
 	}
 
 	// List available tools
-	toolsResult, err := c.ListTools(ctx, mcpgo.ListToolsRequest{})
+	toolsResult, err := t.client.ListTools(ctx, mcpgo.ListToolsRequest{})
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to list tools: %w", err)
+		return nil, fmt.Errorf("failed to list tools: %w", err)
 	}
 
 	// Convert from mcpgo.Tool to mcp.ToolSchema
@@ -102,6 +135,12 @@ func (t *SSETransport) FetchToolList(ctx context.Context, _ session.Connection, 
 
 // InvokeTool implements Transport.InvokeTool
 func (t *SSETransport) InvokeTool(c *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+	if !t.IsStarted() {
+		if err := t.Start(c.Request.Context(), mcpProxyCfg); err != nil {
+			return nil, err
+		}
+	}
+
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -124,38 +163,10 @@ func (t *SSETransport) InvokeTool(c *gin.Context, conn session.Connection, mcpPr
 		renderedClientEnv[k] = rendered
 	}
 
-	// Create SSE transport to connect to the backend MCP server
-	sseTransport, err := transport.NewSSE(mcpProxyCfg.URL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SSE transport: %w", err)
-	}
-
-	// Start the transport
-	if err := sseTransport.Start(c.Request.Context()); err != nil {
-		return nil, fmt.Errorf("failed to start SSE transport: %w", err)
-	}
-
-	// Create client with the transport
-	mcpCli := client.NewClient(sseTransport)
-	defer mcpCli.Close()
-
-	// Initialize the client
-	initRequest := mcpgo.InitializeRequest{}
-	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
-	initRequest.Params.ClientInfo = mcpgo.Implementation{
-		Name:    "mcp-gateway",
-		Version: version.Get(),
-	}
-
-	_, err = mcpCli.Initialize(c.Request.Context(), initRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SSE client: %w", err)
-	}
-
 	// Prepare tool call request parameters
 	toolCallRequestParams := make(map[string]interface{})
 	if err := json.Unmarshal(params.Arguments, &toolCallRequestParams); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal tool arguments: %w", err)
 	}
 
 	// Call tool
@@ -163,11 +174,50 @@ func (t *SSETransport) InvokeTool(c *gin.Context, conn session.Connection, mcpPr
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	mcpgoResult, err := mcpCli.CallTool(c.Request.Context(), callRequest)
+	mcpgoResult, err := t.client.CallTool(c.Request.Context(), callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
 	// Convert mcp-go result to local mcp format
-	return convertMCPGoResult(mcpgoResult), nil
+	result := &mcp.CallToolResult{
+		IsError: mcpgoResult.IsError,
+	}
+
+	// Process content items
+	if len(mcpgoResult.Content) > 0 {
+		var validContents []mcp.Content
+
+		for _, content := range mcpgoResult.Content {
+			// Skip null content
+			if content == nil {
+				continue
+			}
+
+			// Convert content to local format
+			switch c := content.(type) {
+			case *mcpgo.TextContent:
+				validContents = append(validContents, &mcp.TextContent{
+					Type: "text",
+					Text: c.Text,
+				})
+			case *mcpgo.ImageContent:
+				validContents = append(validContents, &mcp.ImageContent{
+					Type:     "image",
+					Data:     c.Data,
+					MimeType: c.MIMEType,
+				})
+			case *mcpgo.AudioContent:
+				validContents = append(validContents, &mcp.AudioContent{
+					Type:     "audio",
+					Data:     c.Data,
+					MimeType: c.MIMEType,
+				})
+			}
+		}
+
+		result.Content = validContents
+	}
+
+	return result, nil
 }

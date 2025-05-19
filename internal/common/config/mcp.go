@@ -5,6 +5,7 @@ import (
 
 	"github.com/ifuryst/lol"
 
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 )
 
@@ -64,12 +65,13 @@ type (
 	}
 
 	MCPServerConfig struct {
-		Type    string            `json:"type" yaml:"type"`                           // sse, stdio and streamable-http
-		Name    string            `json:"name" yaml:"name"`                           // server name
-		Command string            `json:"command,omitempty" yaml:"command,omitempty"` // for stdio
-		Args    []string          `json:"args,omitempty" yaml:"args,omitempty"`       // for stdio
-		Env     map[string]string `json:"env,omitempty" yaml:"env,omitempty"`         // for stdio
-		URL     string            `json:"url,omitempty" yaml:"url,omitempty"`         // for sse and streamable-http
+		Type    string                `json:"type" yaml:"type"`                           // sse, stdio and streamable-http
+		Name    string                `json:"name" yaml:"name"`                           // server name
+		Command string                `json:"command,omitempty" yaml:"command,omitempty"` // for stdio
+		Args    []string              `json:"args,omitempty" yaml:"args,omitempty"`       // for stdio
+		Env     map[string]string     `json:"env,omitempty" yaml:"env,omitempty"`         // for stdio
+		URL     string                `json:"url,omitempty" yaml:"url,omitempty"`         // for sse and streamable-http
+		Policy  cnst.MCPStartupPolicy `json:"policy" yaml:"policy"`                       // onStart or onDemand
 	}
 
 	ArgConfig struct {

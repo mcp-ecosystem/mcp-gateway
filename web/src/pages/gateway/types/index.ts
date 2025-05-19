@@ -53,6 +53,7 @@ export interface GatewayConfig {
     args?: string[];
     env?: Record<string, string>;
     url?: string;
+    policy?: 'onStart' | 'onDemand';
   }>;
 }
 

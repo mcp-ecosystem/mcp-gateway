@@ -17,26 +17,30 @@ import (
 )
 
 // StreamableTransport implements Transport using Streamable HTTP
-type StreamableTransport struct{}
+type StreamableTransport struct {
+	client *client.Client
+}
 
 var _ Transport = (*StreamableTransport)(nil)
 
-// FetchToolList implements Transport.FetchToolList
-func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
-	// Create Streamable HTTP transport
-	streamableTransport, err := transport.NewStreamableHTTP(mcpProxyCfg.URL)
+func (t *StreamableTransport) Start(ctx context.Context, cfg config.MCPServerConfig) error {
+	if t.IsStarted() {
+		return nil
+	}
+
+	// Create streamable transport
+	streamableTransport, err := transport.NewStreamableHTTP(cfg.URL)
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
+		return fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
 	}
 
 	// Start the transport
 	if err := streamableTransport.Start(ctx); err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to start Streamable HTTP transport: %w", err)
+		return fmt.Errorf("failed to start Streamable HTTP transport: %w", err)
 	}
 
 	// Create client with the transport
-	cli := client.NewClient(streamableTransport)
-	defer cli.Close()
+	c := client.NewClient(streamableTransport)
 
 	// Initialize the client
 	initRequest := mcpgo.InitializeRequest{}
@@ -46,15 +50,44 @@ func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Conne
 		Version: version.Get(),
 	}
 
-	_, err = cli.Initialize(ctx, initRequest)
+	_, err = c.Initialize(ctx, initRequest)
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to initialize Streamable HTTP client: %w", err)
+		_ = streamableTransport.Close()
+		return fmt.Errorf("failed to initialize streamable client: %w", err)
+	}
+
+	t.client = c
+	return nil
+}
+
+func (t *StreamableTransport) Stop(_ context.Context) error {
+	if !t.IsStarted() {
+		return nil
+	}
+
+	if t.client != nil {
+		return t.client.Close()
+	}
+
+	return nil
+}
+
+func (t *StreamableTransport) IsStarted() bool {
+	return t.client != nil
+}
+
+// FetchToolList implements Transport.FetchToolList
+func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Connection, mcpProxyCfg config.MCPServerConfig) ([]mcp.ToolSchema, error) {
+	if !t.IsStarted() {
+		if err := t.Start(ctx, mcpProxyCfg); err != nil {
+			return nil, err
+		}
 	}
 
 	// List available tools
-	toolsResult, err := cli.ListTools(ctx, mcpgo.ListToolsRequest{})
+	toolsResult, err := t.client.ListTools(ctx, mcpgo.ListToolsRequest{})
 	if err != nil {
-		return []mcp.ToolSchema{}, fmt.Errorf("failed to list tools: %w", err)
+		return nil, fmt.Errorf("failed to list tools: %w", err)
 	}
 
 	// Convert from mcpgo.Tool to mcp.ToolSchema
@@ -102,6 +135,12 @@ func (t *StreamableTransport) FetchToolList(ctx context.Context, _ session.Conne
 
 // InvokeTool implements Transport.InvokeTool
 func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connection, mcpProxyCfg config.MCPServerConfig, params mcp.CallToolParams) (*mcp.CallToolResult, error) {
+	if !t.IsStarted() {
+		if err := t.Start(ctx.Request.Context(), mcpProxyCfg); err != nil {
+			return nil, err
+		}
+	}
+
 	// Convert arguments to map[string]any
 	var args map[string]any
 	if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -124,34 +163,6 @@ func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connecti
 		renderedClientEnv[k] = rendered
 	}
 
-	// Create Streamable HTTP transport
-	streamableTransport, err := transport.NewStreamableHTTP(mcpProxyCfg.URL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Streamable HTTP transport: %w", err)
-	}
-
-	// Start the transport
-	if err := streamableTransport.Start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start Streamable HTTP transport: %w", err)
-	}
-
-	// Create client with the transport
-	cli := client.NewClient(streamableTransport)
-	defer cli.Close()
-
-	// Initialize the client
-	initRequest := mcpgo.InitializeRequest{}
-	initRequest.Params.ProtocolVersion = mcpgo.LATEST_PROTOCOL_VERSION
-	initRequest.Params.ClientInfo = mcpgo.Implementation{
-		Name:    "mcp-gateway",
-		Version: version.Get(),
-	}
-
-	_, err = cli.Initialize(ctx, initRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Streamable HTTP client: %w", err)
-	}
-
 	// Prepare tool call request parameters
 	toolCallRequestParams := make(map[string]interface{})
 	if err := json.Unmarshal(params.Arguments, &toolCallRequestParams); err != nil {
@@ -163,7 +174,7 @@ func (t *StreamableTransport) InvokeTool(ctx *gin.Context, conn session.Connecti
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	res, err := cli.CallTool(ctx.Request.Context(), callRequest)
+	res, err := t.client.CallTool(ctx.Request.Context(), callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
