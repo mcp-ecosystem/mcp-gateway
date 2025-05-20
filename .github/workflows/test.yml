@@ -99,4 +99,5 @@ jobs:
         run: |
           go build -v ./cmd/apiserver
           go build -v ./cmd/mcp-gateway
-          go build -v ./cmd/mock-user-svc
+          go build -v ./cmd/mock-server
+

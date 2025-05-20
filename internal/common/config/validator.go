@@ -55,7 +55,7 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	for prefix, locations := range prefixMap {
 		if len(locations) > 1 {
 			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate prefix '%s' found in router configurations", prefix),
+				Message:   fmt.Sprintf("duplicate prefix %q found in router configurations", prefix),
 				Locations: locations,
 			})
 		}
@@ -75,7 +75,7 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	for name, locations := range serverNameMap {
 		if len(locations) > 1 {
 			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate server name '%s' found in server configurations", name),
+				Message:   fmt.Sprintf("duplicate server name %q found in server configurations", name),
 				Locations: locations,
 			})
 		}
@@ -95,7 +95,7 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	for name, locations := range toolNameMap {
 		if len(locations) > 1 {
 			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate tool name '%s' found in tool configurations", name),
+				Message:   fmt.Sprintf("duplicate tool name %q found in tool configurations", name),
 				Locations: locations,
 			})
 		}
@@ -118,7 +118,7 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 		for _, router := range cfg.Routers {
 			if !serverNames[router.Server] {
 				errors = append(errors, &ValidationError{
-					Message: fmt.Sprintf("server '%s' referenced in router configuration does not exist", router.Server),
+					Message: fmt.Sprintf("server %q referenced in router configuration does not exist", router.Server),
 					Locations: []Location{{
 						File: cfg.Name,
 					}},
@@ -135,7 +135,7 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 			}
 			sb.WriteString(err.Error())
 		}
-		return fmt.Errorf(sb.String())
+		return fmt.Errorf("%s", sb.String())
 	}
 
 	return nil
