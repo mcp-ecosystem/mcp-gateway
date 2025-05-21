@@ -20,6 +20,11 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type CustomClaims struct {
+	UserID uint `json:"id"`
+	jwt.RegisteredClaims
+}
+
 // Config represents the JWT configuration
 type Config struct {
 	SecretKey string        `yaml:"secret_key"`
@@ -69,6 +74,25 @@ func (s *Service) ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, ErrInvalidToken
+}
+
+func (s *Service) ValidateTokenWithCustomClaims(tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.config.SecretKey), nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
+	}
+
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
 		return claims, nil
 	}
 

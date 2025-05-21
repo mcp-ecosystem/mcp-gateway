@@ -3,6 +3,8 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/impl"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	"net/http"
 	"strings"
 	"time"
@@ -395,6 +397,20 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
+		// auth
+		bearerAuthenticator := impl.BearerAuthenticator{Header: "Authorization", ArgKey: "Authorization"}
+		if err := bearerAuthenticator.Authenticate(c.Request.Context(), c.Request); err != nil {
+			s.sendProtocolError(c, req.Id, err.Error(), http.StatusUnauthorized, mcp.ErrorCodeUnauthorized)
+			return
+		}
+		config := jwt.Config{SecretKey: "AAAAA"}
+		service := jwt.NewService(config)
+		_, err := service.ValidateTokenWithCustomClaims(c.Request.Context().Value("Authorization").(string))
+		if err != nil {
+			s.sendProtocolError(c, req.Id, err.Error(), http.StatusUnauthorized, mcp.ErrorCodeUnauthorized)
+			return
+		}
+
 		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
 		if !ok {
 			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
@@ -410,7 +426,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 
 		var (
 			result *mcp.CallToolResult
-			err    error
+			//err    error
 		)
 		switch protoType {
 		case cnst.BackendProtoHttp:

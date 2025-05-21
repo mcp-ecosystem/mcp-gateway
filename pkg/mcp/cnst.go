@@ -54,6 +54,7 @@ const (
 const (
 	ErrorCodeConnectionClosed = -32000
 	ErrorCodeRequestTimeout   = -32001
+	ErrorCodeUnauthorized     = -32002
 )
 
 const (
