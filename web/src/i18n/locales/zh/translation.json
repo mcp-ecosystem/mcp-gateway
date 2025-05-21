@@ -64,7 +64,8 @@
     "copied": "已复制: {{text}}",
     "add": "添加",
     "already": "已",
-    "available": "可用"
+    "available": "可用",
+    "changelog": "更新日志"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -407,6 +408,7 @@
     "server_error": "服务器错误，请稍后重试",
     "timeout": "请求超时",
     "unknown": "未知错误",
+    "load_changelog": "加载更新日志失败: {{error}}",
     "check_system_status": "检查系统状态失败",
     "fetch_mcp_servers": "获取 MCP 服务列表失败",
     "invalid_yaml": "无效的 YAML 格式",

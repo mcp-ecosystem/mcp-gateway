@@ -64,7 +64,8 @@
     "copied": "Copied: {{text}}",
     "add": "Add",
     "already": "Already",
-    "available": "Available"
+    "available": "Available",
+    "changelog": "Changelog"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -408,6 +409,7 @@
     "server_error": "Server error, please try again later",
     "timeout": "Request timeout",
     "unknown": "Unknown error",
+    "load_changelog": "Failed to load changelog: {{error}}",
     "check_system_status": "Failed to check system status",
     "fetch_mcp_servers": "Failed to fetch MCP servers",
     "invalid_yaml": "Invalid YAML format",

@@ -21,6 +21,7 @@ import { toast } from '../utils/toast';
 
 
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { ChangelogModal } from './ChangelogModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WechatQRCode } from './WechatQRCode';
 
@@ -42,6 +43,7 @@ export function Layout({ children }: LayoutProps) {
   });
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false);
   const [isWechatQRCodeOpen, setIsWechatQRCodeOpen] = React.useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = React.useState(false);
   const [userInfo, setUserInfo] = useState<{ username: string; role: string } | null>(null);
 
   // Initialize theme on mount
@@ -129,6 +131,17 @@ export function Layout({ children }: LayoutProps) {
           </NavbarItem>
         </NavbarContent>
         <NavbarContent justify="end" className="gap-4">
+          <NavbarItem>
+            <Button
+              variant="light"
+              size="sm"
+              className="text-sm font-medium"
+              onPress={() => setIsChangelogOpen(true)}
+            >
+              {/* eslint-disable-next-line no-undef */}
+              v{__APP_VERSION__}
+            </Button>
+          </NavbarItem>
           <NavbarItem>
             <LanguageSwitcher />
           </NavbarItem>
@@ -324,6 +337,13 @@ export function Layout({ children }: LayoutProps) {
         onOpenChange={() => setIsChangePasswordOpen(false)}
       />
 
+      <ChangelogModal
+        isOpen={isChangelogOpen}
+        onOpenChange={() => setIsChangelogOpen(false)}
+        // eslint-disable-next-line no-undef
+        version={__APP_VERSION__}
+      />
+      
       <WechatQRCode
         isOpen={isWechatQRCodeOpen}
         onOpenChange={() => setIsWechatQRCodeOpen(false)}
