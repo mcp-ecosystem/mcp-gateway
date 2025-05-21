@@ -22,6 +22,9 @@ spec:
           value: production
         - name: TZ
           value: UTC
+        envFrom:
+          - configMapRef:
+              name: app-env
         ports:
         - containerPort: 5235
         volumeMounts:
@@ -29,18 +32,12 @@ spec:
           mountPath: /app/configs
         - name: data
           mountPath: /app/data
-        - name: env-file
-          mountPath: /app/.env
-          subPath: .env
       volumes:
       - name: configs
         configMap:
           name: app-configs
       - name: data
         emptyDir: {}
-      - name: env-file
-        configMap:
-          name: app-env
 ---
 apiVersion: v1
 kind: Service

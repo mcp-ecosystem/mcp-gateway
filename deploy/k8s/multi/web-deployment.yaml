@@ -22,6 +22,9 @@ spec:
               value: UTC
             - name: ENV
               value: production
+          envFrom:
+            - configMapRef:
+                name: app-env
           ports:
             - containerPort: 80
             - containerPort: 5234
@@ -32,18 +35,18 @@ spec:
               mountPath: /app/configs/i18n
             - name: data
               mountPath: /app/data
-            - name: web-env
-              mountPath: /app/.env
-              subPath: .env
+#            - name: web-env
+#              mountPath: /app/.env
+#              subPath: .env
       volumes:
         - name: configs
           configMap:
             name: app-configs
         - name: data
           emptyDir: {}
-        - name: web-env
-          configMap:
-            name: web-env
+#        - name: web-env
+#          configMap:
+#            name: web-env
         - name: i18n-files
           configMap:
             name: i18n-config

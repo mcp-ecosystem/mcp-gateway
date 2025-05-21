@@ -4,99 +4,98 @@ metadata:
   name: app-env
   namespace: mcp-gateway
 data:
-  .env: |-
     # Logger configuration for apiserver
-    APISERVER_LOGGER_LEVEL=info
-    APISERVER_LOGGER_FORMAT=json
-    APISERVER_LOGGER_OUTPUT=stdout
-    APISERVER_LOGGER_FILE_PATH=/var/log/mcp-gateway/apiserver.log
-    APISERVER_LOGGER_MAX_SIZE=100
-    APISERVER_LOGGER_MAX_BACKUPS=3
-    APISERVER_LOGGER_MAX_AGE=7
-    APISERVER_LOGGER_COMPRESS=true
-    APISERVER_LOGGER_COLOR=false
-    APISERVER_LOGGER_STACKTRACE=true
+    APISERVER_LOGGER_LEVEL: "info"
+    APISERVER_LOGGER_FORMAT: "json"
+    APISERVER_LOGGER_OUTPUT: "stdout"
+    APISERVER_LOGGER_FILE_PATH: "/var/log/mcp-gateway/apiserver.log"
+    APISERVER_LOGGER_MAX_SIZE: "100"
+    APISERVER_LOGGER_MAX_BACKUPS: "3"
+    APISERVER_LOGGER_MAX_AGE: "7"
+    APISERVER_LOGGER_COMPRESS: "true"
+    APISERVER_LOGGER_COLOR: "false"
+    APISERVER_LOGGER_STACKTRACE: "true"
 
     # Logger configuration for mcp-gateway
-    LOGGER_LEVEL=info
-    LOGGER_FORMAT=json
-    LOGGER_OUTPUT=stdout
-    LOGGER_FILE_PATH=/var/log/mcp-gateway/mcp-gateway.log
-    LOGGER_MAX_SIZE=100
-    LOGGER_MAX_BACKUPS=3
-    LOGGER_MAX_AGE=7
-    LOGGER_COMPRESS=true
-    LOGGER_COLOR=false
-    LOGGER_STACKTRACE=true
+    LOGGER_LEVEL: "info"
+    LOGGER_FORMAT: "json"
+    LOGGER_OUTPUT: "stdout"
+    LOGGER_FILE_PATH: "/var/log/mcp-gateway/mcp-gateway.log"
+    LOGGER_MAX_SIZE: "100"
+    LOGGER_MAX_BACKUPS: "3"
+    LOGGER_MAX_AGE: "7"
+    LOGGER_COMPRESS: "true"
+    LOGGER_COLOR: "false"
+    LOGGER_STACKTRACE: "true"
 
     # Database Configuration
-    APISERVER_DB_TYPE=postgres
-    APISERVER_DB_HOST=postgres.mcp-gateway.svc.cluster.local
-    APISERVER_DB_PORT=5432
-    APISERVER_DB_USER=postgres
-    APISERVER_DB_PASSWORD=postgres
-    APISERVER_DB_NAME=mcp-gateway
-    APISERVER_DB_SSL_MODE=disable
+    APISERVER_DB_TYPE: "postgres"
+    APISERVER_DB_HOST: "postgres.mcp-gateway.svc.cluster.local"
+    APISERVER_DB_PORT: "5432"
+    APISERVER_DB_USER: "postgres"
+    APISERVER_DB_PASSWORD: "postgres"
+    APISERVER_DB_NAME: "mcp-gateway"
+    APISERVER_DB_SSL_MODE: "disable"
 
     # Gateway Configurations Storage Configuration
-    GATEWAY_STORAGE_TYPE=db
-    GATEWAY_DB_TYPE=postgres
-    GATEWAY_DB_HOST=postgres.mcp-gateway.svc.cluster.local
-    GATEWAY_DB_PORT=5432
-    GATEWAY_DB_USER=postgres
-    GATEWAY_DB_PASSWORD=postgres
-    GATEWAY_DB_NAME=mcp-gateway
-    GATEWAY_DB_SSL_MODE=disable
-    GATEWAY_STORAGE_DISK_PATH=
+    GATEWAY_STORAGE_TYPE: "db"
+    GATEWAY_DB_TYPE: "postgres"
+    GATEWAY_DB_HOST: "postgres.mcp-gateway.svc.cluster.local"
+    GATEWAY_DB_PORT: "5432"
+    GATEWAY_DB_USER: "postgres"
+    GATEWAY_DB_PASSWORD: "postgres"
+    GATEWAY_DB_NAME: "mcp-gateway"
+    GATEWAY_DB_SSL_MODE: "disable"
+    GATEWAY_STORAGE_DISK_PATH: ""
 
     # Notifier Configuration
-    APISERVER_NOTIFIER_ROLE=sender
-    APISERVER_NOTIFIER_TYPE=api
+    APISERVER_NOTIFIER_ROLE: "sender"
+    APISERVER_NOTIFIER_TYPE: "api"
     ## Signal Notifier Settings
-    APISERVER_NOTIFIER_SIGNAL=SIGHUP
-    APISERVER_NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
+    APISERVER_NOTIFIER_SIGNAL: "SIGHUP"
+    APISERVER_NOTIFIER_SIGNAL_PID: "/data/mcp-gateway.pid"
     ## API Notifier Settings
-    APISERVER_NOTIFIER_API_PORT=5245
-    APISERVER_NOTIFIER_API_TARGET_URL=http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload
+    APISERVER_NOTIFIER_API_PORT: "5245"
+    APISERVER_NOTIFIER_API_TARGET_URL: "http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload"
     ## Redis Notifier Settings
-    APISERVER_NOTIFIER_REDIS_ADDR=localhost:6379
-    APISERVER_NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
-    APISERVER_NOTIFIER_REDIS_DB=0
-    APISERVER_NOTIFIER_REDIS_TOPIC=mcp-gateway:reload
+    APISERVER_NOTIFIER_REDIS_ADDR: "localhost:6379"
+    APISERVER_NOTIFIER_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
+    APISERVER_NOTIFIER_REDIS_DB: "0"
+    APISERVER_NOTIFIER_REDIS_TOPIC: "mcp-gateway:reload"
 
     # Notifier Configuration
-    NOTIFIER_ROLE=receiver
-    NOTIFIER_TYPE=api
+    NOTIFIER_ROLE: "receiver"
+    NOTIFIER_TYPE: "api"
     ## Signal Notifier Settings
-    NOTIFIER_SIGNAL=SIGHUP
-    NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
+    NOTIFIER_SIGNAL: "SIGHUP"
+    NOTIFIER_SIGNAL_PID: "/data/mcp-gateway.pid"
     ## API Notifier Settings
-    NOTIFIER_API_PORT=5245
-    NOTIFIER_API_TARGET_URL=http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload
+    NOTIFIER_API_PORT: "5245"
+    NOTIFIER_API_TARGET_URL: "http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload"
     ## Redis Notifier Settings
-    NOTIFIER_REDIS_ADDR=localhost:6379
-    NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
-    NOTIFIER_REDIS_DB=0
-    NOTIFIER_REDIS_TOPIC=mcp-gateway:reload
+    NOTIFIER_REDIS_ADDR: "localhost:6379"
+    NOTIFIER_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
+    NOTIFIER_REDIS_DB: "0"
+    NOTIFIER_REDIS_TOPIC: "mcp-gateway:reload"
 
     # Session storage type: memory or redis
-    SESSION_STORAGE_TYPE=memory
-    SESSION_REDIS_ADDR=localhost:6379
-    SESSION_REDIS_PASSWORD=
-    SESSION_REDIS_DB=0
-    SESSION_REDIS_TOPIC=mcp-gateway:session
+    SESSION_STORAGE_TYPE: "memory"
+    SESSION_REDIS_ADDR: "localhost:6379"
+    SESSION_REDIS_PASSWORD: ""
+    SESSION_REDIS_DB: "0"
+    SESSION_REDIS_TOPIC: "mcp-gateway:session"
 
-    OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
-    OPENAI_API_KEY=sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe
-    OPENAI_MODEL=qwen-turbo
+    OPENAI_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1/"
+    OPENAI_API_KEY: "sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
+    OPENAI_MODEL: "qwen-turbo"
 
-    MCP_GATEWAY_PID=/data/mcp-gateway.pid
-    MCP_GATEWAY_PORT=5245
+    MCP_GATEWAY_PID: "/data/mcp-gateway.pid"
+    MCP_GATEWAY_PORT: "5245"
 
-    VITE_API_BASE_URL=/api
-    VITE_WS_BASE_URL=/ws
-    VITE_MCP_GATEWAY_BASE_URL=/mcp
-    VITE_BASE_URL=/
+    VITE_API_BASE_URL: "/api"
+    VITE_WS_BASE_URL: "/ws"
+    VITE_MCP_GATEWAY_BASE_URL: "/mcp"
+    VITE_BASE_URL: "/"
 
-    APISERVER_JWT_SECRET_KEY=
-    APISERVER_JWT_DURATION=24h
+    APISERVER_JWT_SECRET_KEY: ""
+    APISERVER_JWT_DURATION: "24h"
