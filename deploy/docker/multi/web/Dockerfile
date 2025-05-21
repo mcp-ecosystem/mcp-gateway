@@ -36,7 +36,7 @@ COPY web/ .
 
 RUN npm run build
 
-FROM nginx:1.27.5-bookworm
+FROM nginx:1.28.0-alpine3.21-slim
 
 WORKDIR /app
 
