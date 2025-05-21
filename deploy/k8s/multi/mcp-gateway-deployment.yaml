@@ -53,5 +53,10 @@ spec:
     - port: 5235
       targetPort: 5235
       nodePort: 30235
+      name: mcp-gateway
+    - port: 5245
+      targetPort: 5245
+      nodePort: 30245
+      name: mcp-gateway-notifier
   selector:
     app: mcp-gateway

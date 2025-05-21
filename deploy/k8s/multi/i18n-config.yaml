@@ -1,0 +1,724 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: i18n-config
+  namespace: mcp-gateway
+data:
+  "en.toml": |
+    # Common errors
+    [ErrorTenantRequired]
+    other = "Tenant name is required"
+
+    [ErrorTenantNotFound]
+    other = "Tenant with name '{{.Name}}' not found"
+
+    [ErrorRouterPrefixError]
+    other = "Router prefix must start with tenant prefix followed by a path separator"
+
+    [ErrorTenantPermissionError]
+    other = "You do not have permission to access this tenant"
+
+    # Tenant specific errors
+    [ErrorTenantRequiredFields]
+    other = "Tenant name and prefix are required"
+
+    [ErrorTenantNameExists]
+    other = "Tenant name already exists"
+
+    [ErrorTenantPrefixExists]
+    other = "Tenant prefix already exists"
+
+    [ErrorTenantNameRequired]
+    other = "Tenant name is required"
+
+    # Tenant success messages
+    [SuccessTenantCreated]
+    other = "Tenant created successfully"
+
+    [SuccessTenantUpdated]
+    other = "Tenant updated successfully"
+
+    [SuccessTenantDeleted]
+    other = "Tenant deleted successfully"
+
+    # Authentication errors
+    [ErrorUnauthorized]
+    other = "Unauthorized access"
+
+    [ErrorInvalidToken]
+    other = "Invalid or expired token"
+
+    # Resource errors
+    [ErrorResourceNotFound]
+    other = "Resource not found"
+
+    [ErrorPrefixConflict]
+    other = "Prefix conflicts with existing prefix"
+
+    [ErrorNamespacePermissionError]
+    other = "User does not have permission to configure namespace"
+
+    # Validation errors
+    [ErrorValidationFailed]
+    other = "Validation failed: {{.Reason}}"
+
+    [ErrorInvalidYaml]
+    other = "Invalid YAML format"
+
+    [ErrorInvalidJson]
+    other = "Invalid JSON format"
+
+    # Success messages
+    [SuccessResourceCreated]
+    other = "Resource created successfully"
+
+    [SuccessResourceUpdated]
+    other = "Resource updated successfully"
+
+    [SuccessResourceDeleted]
+    other = "Resource deleted successfully"
+
+    # Info messages
+    [InfoOperationInProgress]
+    other = "Operation in progress, please wait"
+
+    [InfoNoChangesDetected]
+    other = "No changes detected"
+
+    # Common errors
+    [ErrorNotFound]
+    other = "Resource not found"
+
+    [ErrorForbidden]
+    other = "Access forbidden"
+
+    [ErrorBadRequest]
+    other = "Bad request"
+
+    [ErrorInternalServer]
+    other = "Internal server error"
+
+    [ErrorMethodNotAllowed]
+    other = "Method not allowed"
+
+    [ErrorConflict]
+    other = "Resource conflict"
+
+    [ErrorTooManyRequests]
+    other = "Too many requests"
+
+    [ErrorServiceUnavailable]
+    other = "Service unavailable"
+
+    [ErrorGatewayTimeout]
+    other = "Gateway timeout"
+
+    [ErrorUnsupportedMedia]
+    other = "Unsupported media type"
+
+    # User related errors
+    [ErrorUserNotFound]
+    other = "User not found"
+
+    [ErrorInvalidCredentials]
+    other = "Invalid username or password"
+
+    [ErrorUserDisabled]
+    other = "User account is disabled"
+
+    [ErrorUserNamePasswordRequired]
+    other = "Username and password are required"
+
+    [ErrorInvalidOldPassword]
+    other = "Old password is incorrect"
+
+    [ErrorUsernameExists]
+    other = "Username already exists"
+
+    [ErrorInvalidUsername]
+    other = "Invalid username format"
+
+    [ErrorEmailExists]
+    other = "Email already exists"
+
+    [ErrorInvalidEmail]
+    other = "Invalid email format"
+
+    # MCP related errors
+    [ErrorMCPServerNotFound]
+    other = "MCP server not found"
+
+    [ErrorMCPServerExists]
+    other = "MCP server already exists"
+
+    [ErrorMCPServerValidation]
+    other = "MCP server validation failed: {{.Reason}}"
+
+    [ErrorMCPServerNameRequired]
+    other = "MCP server name is required"
+
+    [ErrorMCPConfigInvalid]
+    other = "MCP configuration is invalid"
+
+    [ErrorMCPRequestFailed]
+    other = "MCP request failed"
+
+    # API related errors
+    [ErrorAPINotFound]
+    other = "API not found"
+
+    [ErrorAPIMethodNotAllowed]
+    other = "API method not allowed"
+
+    [ErrorAPIRateLimitExceeded]
+    other = "API rate limit exceeded"
+
+    [ErrorAPIUnavailable]
+    other = "API unavailable"
+
+    [ErrorAPITimeout]
+    other = "API request timeout"
+
+    [ErrorAPIValidationFailed]
+    other = "API validation failed"
+
+    [ErrorAPIMalformedRequest]
+    other = "Malformed API request"
+
+    [ErrorAPIResponseInvalid]
+    other = "Invalid API response"
+
+    [ErrorAPIInvalidCredentials]
+    other = "Invalid API credentials"
+
+    [ErrorAPIPermissionDenied]
+    other = "API permission denied"
+
+    [ErrorAPIUnsupportedMediaType]
+    other = "Unsupported media type for API"
+
+    # General validation errors
+    [ErrorRequiredField]
+    other = "Required field is missing"
+
+    [ErrorInvalidFormat]
+    other = "Invalid format"
+
+    [ErrorInvalidValue]
+    other = "Invalid value"
+
+    [ErrorDuplicateEntity]
+    other = "Duplicate entity"
+
+    [ErrorDataIntegrityViolation]
+    other = "Data integrity violation"
+
+    # Tenant related success messages
+    [SuccessTenantInfo]
+    other = "Tenant information retrieved successfully"
+
+    [SuccessTenantList]
+    other = "Tenant list retrieved successfully"
+
+    [SuccessTenantStatus]
+    other = "Tenant status updated successfully"
+
+    # User related success messages
+    [SuccessLogin]
+    other = "Login successful"
+
+    [SuccessLogout]
+    other = "Logout successful"
+
+    [SuccessPasswordChanged]
+    other = "Password changed successfully"
+
+    [SuccessUserCreated]
+    other = "User created successfully"
+
+    [SuccessUserUpdated]
+    other = "User updated successfully"
+
+    [SuccessUserDeleted]
+    other = "User deleted successfully"
+
+    [SuccessUserInfo]
+    other = "User information retrieved successfully"
+
+    [SuccessUserList]
+    other = "User list retrieved successfully"
+
+    [SuccessUserWithTenants]
+    other = "User with tenants retrieved successfully"
+
+    [SuccessUserTenantsUpdated]
+    other = "User tenants updated successfully"
+
+    # MCP related success messages
+    [SuccessMCPServerCreated]
+    other = "MCP server created successfully"
+
+    [SuccessMCPServerUpdated]
+    other = "MCP server updated successfully"
+
+    [SuccessMCPServerDeleted]
+    other = "MCP server deleted successfully"
+
+    [SuccessMCPServerSynced]
+    other = "MCP server synced successfully"
+
+    [SuccessMCPServerList]
+    other = "MCP server list retrieved successfully"
+
+    [SuccessMCPServerInfo]
+    other = "MCP server information retrieved successfully"
+
+    [SuccessMCPServerStatus]
+    other = "MCP server status updated successfully"
+
+    # OpenAPI related success messages
+    [SuccessOpenAPIImported]
+    other = "OpenAPI specification imported successfully"
+
+    [SuccessOpenAPIExported]
+    other = "OpenAPI specification exported successfully"
+
+    [SuccessOpenAPIValidated]
+    other = "OpenAPI specification validated successfully"
+
+    # API related success messages
+    [SuccessAPICreated]
+    other = "API created successfully"
+
+    [SuccessAPIUpdated]
+    other = "API updated successfully"
+
+    [SuccessAPIDeleted]
+    other = "API deleted successfully"
+
+    [SuccessAPIList]
+    other = "API list retrieved successfully"
+
+    [SuccessAPIInfo]
+    other = "API information retrieved successfully"
+
+    [SuccessAPIKeyCreated]
+    other = "API key created successfully"
+
+    [SuccessAPIKeyRevoked]
+    other = "API key revoked successfully"
+
+    [SuccessAPIKeyList]
+    other = "API key list retrieved successfully"
+
+    [SuccessAPIRouteCreated]
+    other = "API route created successfully"
+
+    [SuccessAPIRouteUpdated]
+    other = "API route updated successfully"
+
+    [SuccessAPIRouteDeleted]
+    other = "API route deleted successfully"
+
+    [SuccessAPIRouteList]
+    other = "API route list retrieved successfully"
+
+    # Chat related success messages
+    [SuccessChatSessions]
+    other = "Chat sessions retrieved successfully"
+
+    [SuccessChatMessages]
+    other = "Chat messages retrieved successfully"
+
+    [SuccessChatCreated]
+    other = "Chat created successfully"
+
+    [SuccessChatUpdated]
+    other = "Chat updated successfully"
+
+    [SuccessChatDeleted]
+    other = "Chat deleted successfully"
+
+    [SuccessChatHistory]
+    other = "Chat history retrieved successfully"
+
+    # General success messages
+    [SuccessOperationCompleted]
+    other = "Operation completed successfully"
+
+    [SuccessItemCreated]
+    other = "Item created successfully"
+
+    [SuccessItemUpdated]
+    other = "Item updated successfully"
+
+    [SuccessItemDeleted]
+    other = "Item deleted successfully"
+
+    [SuccessDataExported]
+    other = "Data exported successfully"
+
+    [SuccessDataImported]
+    other = "Data imported successfully"
+
+    [SuccessDataSaved]
+    other = "Data saved successfully"
+  "zh.toml": |
+    # Common errors
+    [ErrorTenantRequired]
+    other = "租户名称不能为空"
+
+    [ErrorTenantNotFound]
+    other = "找不到名为'{{.Name}}'的租户"
+
+    [ErrorRouterPrefixError]
+    other = "路由前缀必须以租户前缀开头，后跟路径分隔符"
+
+    [ErrorTenantPermissionError]
+    other = "您没有权限访问此租户"
+
+    # Tenant specific errors
+    [ErrorTenantRequiredFields]
+    other = "租户名称和前缀不能为空"
+
+    [ErrorTenantNameExists]
+    other = "租户名称已存在"
+
+    [ErrorTenantPrefixExists]
+    other = "租户前缀已存在"
+
+    [ErrorTenantNameRequired]
+    other = "租户名称不能为空"
+
+    # Tenant success messages
+    [SuccessTenantCreated]
+    other = "租户创建成功"
+
+    [SuccessTenantUpdated]
+    other = "租户更新成功"
+
+    [SuccessTenantDeleted]
+    other = "租户删除成功"
+
+    # Authentication errors
+    [ErrorUnauthorized]
+    other = "未授权访问，请先登录"
+
+    [ErrorInvalidToken]
+    other = "无效或已过期的令牌"
+
+    # Resource errors
+    [ErrorResourceNotFound]
+    other = "资源未找到"
+
+    [ErrorPrefixConflict]
+    other = "前缀与已存在的前缀冲突"
+
+    [ErrorNamespacePermissionError]
+    other = "用户没有权限配置此命名空间"
+
+    # Validation errors
+    [ErrorValidationFailed]
+    other = "验证失败：{{.Reason}}"
+
+    [ErrorInvalidYaml]
+    other = "无效的YAML格式"
+
+    [ErrorInvalidJson]
+    other = "无效的JSON格式"
+
+    # Success messages
+    [SuccessResourceCreated]
+    other = "资源创建成功"
+
+    [SuccessResourceUpdated]
+    other = "资源更新成功"
+
+    [SuccessResourceDeleted]
+    other = "资源删除成功"
+
+    # Info messages
+    [InfoOperationInProgress]
+    other = "操作正在进行中，请稍候"
+
+    [InfoNoChangesDetected]
+    other = "未检测到变更"
+
+    # Common errors
+    [ErrorNotFound]
+    other = "资源未找到"
+
+    [ErrorForbidden]
+    other = "禁止访问"
+
+    [ErrorBadRequest]
+    other = "请求无效"
+
+    [ErrorInternalServer]
+    other = "服务器内部错误"
+
+    [ErrorMethodNotAllowed]
+    other = "方法不允许"
+
+    [ErrorConflict]
+    other = "资源冲突"
+
+    [ErrorTooManyRequests]
+    other = "请求过于频繁"
+
+    [ErrorServiceUnavailable]
+    other = "服务不可用"
+
+    [ErrorGatewayTimeout]
+    other = "网关超时"
+
+    [ErrorUnsupportedMedia]
+    other = "不支持的媒体类型"
+
+    # User related errors
+    [ErrorUserNotFound]
+    other = "用户不存在"
+
+    [ErrorInvalidCredentials]
+    other = "用户名或密码错误"
+
+    [ErrorUserDisabled]
+    other = "用户账号已禁用"
+
+    [ErrorUserNamePasswordRequired]
+    other = "用户名和密码不能为空"
+
+    [ErrorInvalidOldPassword]
+    other = "旧密码不正确"
+
+    [ErrorUsernameExists]
+    other = "用户名已存在"
+
+    [ErrorInvalidUsername]
+    other = "用户名格式无效"
+
+    [ErrorEmailExists]
+    other = "邮箱已存在"
+
+    [ErrorInvalidEmail]
+    other = "邮箱格式无效"
+
+    # MCP related errors
+    [ErrorMCPServerNotFound]
+    other = "MCP服务不存在"
+
+    [ErrorMCPServerExists]
+    other = "MCP服务已存在"
+
+    [ErrorMCPServerValidation]
+    other = "MCP服务验证失败: {{.Reason}}"
+
+    [ErrorMCPServerNameRequired]
+    other = "MCP服务名称不能为空"
+
+    [ErrorMCPConfigInvalid]
+    other = "MCP配置无效"
+
+    [ErrorMCPRequestFailed]
+    other = "MCP请求失败"
+
+    # API related errors
+    [ErrorAPINotFound]
+    other = "API不存在"
+
+    [ErrorAPIMethodNotAllowed]
+    other = "API方法不允许"
+
+    [ErrorAPIRateLimitExceeded]
+    other = "API请求频率超限"
+
+    [ErrorAPIUnavailable]
+    other = "API不可用"
+
+    [ErrorAPITimeout]
+    other = "API请求超时"
+
+    [ErrorAPIValidationFailed]
+    other = "API验证失败"
+
+    [ErrorAPIMalformedRequest]
+    other = "API请求格式错误"
+
+    [ErrorAPIResponseInvalid]
+    other = "API响应无效"
+
+    [ErrorAPIInvalidCredentials]
+    other = "API凭证无效"
+
+    [ErrorAPIPermissionDenied]
+    other = "API权限被拒绝"
+
+    [ErrorAPIUnsupportedMediaType]
+    other = "API不支持的媒体类型"
+
+    # General validation errors
+    [ErrorRequiredField]
+    other = "必填字段缺失"
+
+    [ErrorInvalidFormat]
+    other = "格式无效"
+
+    [ErrorInvalidValue]
+    other = "值无效"
+
+    [ErrorDuplicateEntity]
+    other = "实体重复"
+
+    [ErrorDataIntegrityViolation]
+    other = "数据完整性违规"
+
+    # Tenant related success messages
+    [SuccessTenantInfo]
+    other = "租户信息获取成功"
+
+    [SuccessTenantList]
+    other = "租户列表获取成功"
+
+    [SuccessTenantStatus]
+    other = "租户状态更新成功"
+
+    # User related success messages
+    [SuccessLogin]
+    other = "登录成功"
+
+    [SuccessLogout]
+    other = "退出登录成功"
+
+    [SuccessPasswordChanged]
+    other = "密码修改成功"
+
+    [SuccessUserCreated]
+    other = "用户创建成功"
+
+    [SuccessUserUpdated]
+    other = "用户更新成功"
+
+    [SuccessUserDeleted]
+    other = "用户删除成功"
+
+    [SuccessUserInfo]
+    other = "用户信息获取成功"
+
+    [SuccessUserList]
+    other = "用户列表获取成功"
+
+    [SuccessUserWithTenants]
+    other = "用户及其租户获取成功"
+
+    [SuccessUserTenantsUpdated]
+    other = "用户租户更新成功"
+
+    # MCP related success messages
+    [SuccessMCPServerCreated]
+    other = "MCP服务创建成功"
+
+    [SuccessMCPServerUpdated]
+    other = "MCP服务更新成功"
+
+    [SuccessMCPServerDeleted]
+    other = "MCP服务删除成功"
+
+    [SuccessMCPServerSynced]
+    other = "MCP服务同步成功"
+
+    [SuccessMCPServerList]
+    other = "MCP服务列表获取成功"
+
+    [SuccessMCPServerInfo]
+    other = "MCP服务信息获取成功"
+
+    [SuccessMCPServerStatus]
+    other = "MCP服务状态更新成功"
+
+    # OpenAPI related success messages
+    [SuccessOpenAPIImported]
+    other = "OpenAPI规范导入成功"
+
+    [SuccessOpenAPIExported]
+    other = "OpenAPI规范导出成功"
+
+    [SuccessOpenAPIValidated]
+    other = "OpenAPI规范验证成功"
+
+    # API related success messages
+    [SuccessAPICreated]
+    other = "API创建成功"
+
+    [SuccessAPIUpdated]
+    other = "API更新成功"
+
+    [SuccessAPIDeleted]
+    other = "API删除成功"
+
+    [SuccessAPIList]
+    other = "API列表获取成功"
+
+    [SuccessAPIInfo]
+    other = "API信息获取成功"
+
+    [SuccessAPIKeyCreated]
+    other = "API密钥创建成功"
+
+    [SuccessAPIKeyRevoked]
+    other = "API密钥撤销成功"
+
+    [SuccessAPIKeyList]
+    other = "API密钥列表获取成功"
+
+    [SuccessAPIRouteCreated]
+    other = "API路由创建成功"
+
+    [SuccessAPIRouteUpdated]
+    other = "API路由更新成功"
+
+    [SuccessAPIRouteDeleted]
+    other = "API路由删除成功"
+
+    [SuccessAPIRouteList]
+    other = "API路由列表获取成功"
+
+    # Chat related success messages
+    [SuccessChatSessions]
+    other = "聊天会话获取成功"
+
+    [SuccessChatMessages]
+    other = "聊天消息获取成功"
+
+    [SuccessChatCreated]
+    other = "聊天创建成功"
+
+    [SuccessChatUpdated]
+    other = "聊天更新成功"
+
+    [SuccessChatDeleted]
+    other = "聊天删除成功"
+
+    [SuccessChatHistory]
+    other = "聊天历史获取成功"
+
+    # General success messages
+    [SuccessOperationCompleted]
+    other = "操作完成成功"
+
+    [SuccessItemCreated]
+    other = "项目创建成功"
+
+    [SuccessItemUpdated]
+    other = "项目更新成功"
+
+    [SuccessItemDeleted]
+    other = "项目删除成功"
+
+    [SuccessDataExported]
+    other = "数据导出成功"
+
+    [SuccessDataImported]
+    other = "数据导入成功"
+
+    [SuccessDataSaved]
+    other = "数据保存成功"

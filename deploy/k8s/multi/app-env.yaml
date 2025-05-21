@@ -51,13 +51,13 @@ data:
 
     # Notifier Configuration
     APISERVER_NOTIFIER_ROLE=sender
-    APISERVER_NOTIFIER_TYPE=signal
+    APISERVER_NOTIFIER_TYPE=api
     ## Signal Notifier Settings
     APISERVER_NOTIFIER_SIGNAL=SIGHUP
     APISERVER_NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
     ## API Notifier Settings
-    APISERVER_NOTIFIER_API_PORT=5235
-    APISERVER_NOTIFIER_API_TARGET_URL=http://localhost:5235/_reload
+    APISERVER_NOTIFIER_API_PORT=5245
+    APISERVER_NOTIFIER_API_TARGET_URL=http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload
     ## Redis Notifier Settings
     APISERVER_NOTIFIER_REDIS_ADDR=localhost:6379
     APISERVER_NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
@@ -66,13 +66,13 @@ data:
 
     # Notifier Configuration
     NOTIFIER_ROLE=receiver
-    NOTIFIER_TYPE=signal
+    NOTIFIER_TYPE=api
     ## Signal Notifier Settings
     NOTIFIER_SIGNAL=SIGHUP
     NOTIFIER_SIGNAL_PID=/data/mcp-gateway.pid
     ## API Notifier Settings
-    NOTIFIER_API_PORT=5235
-    NOTIFIER_API_TARGET_URL=http://localhost:5235/_reload
+    NOTIFIER_API_PORT=5245
+    NOTIFIER_API_TARGET_URL=http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload
     ## Redis Notifier Settings
     NOTIFIER_REDIS_ADDR=localhost:6379
     NOTIFIER_REDIS_PASSWORD=UseStrongPasswordIsAGoodPractice
@@ -87,11 +87,11 @@ data:
     SESSION_REDIS_TOPIC=mcp-gateway:session
 
     OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
-    OPENAI_API_KEY=sk-22a3e2c494d3499c9675c492494e783b
+    OPENAI_API_KEY=sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe
     OPENAI_MODEL=qwen-turbo
 
     MCP_GATEWAY_PID=/data/mcp-gateway.pid
-    MCP_GATEWAY_PORT=5235
+    MCP_GATEWAY_PORT=5245
 
     VITE_API_BASE_URL=/api
     VITE_WS_BASE_URL=/ws

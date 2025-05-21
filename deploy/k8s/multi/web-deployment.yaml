@@ -28,6 +28,8 @@ spec:
           volumeMounts:
             - name: configs
               mountPath: /app/configs
+            - name: i18n-files
+              mountPath: /app/configs/i18n
             - name: data
               mountPath: /app/data
             - name: web-env
@@ -42,6 +44,9 @@ spec:
         - name: web-env
           configMap:
             name: web-env
+        - name: i18n-files
+          configMap:
+            name: i18n-config
 ---
 apiVersion: v1
 kind: Service
