@@ -60,7 +60,8 @@ mcpServers:
       - "@amap/amap-maps-mcp-server"
     env:
       AMAP_MAPS_API_KEY: "{{ env AMAP_MAPS_API_KEY }}"
-    policy: "onStart"
+    policy: "onDemand"
+    preinstalled: true
 
   - type: "sse"
     name: "mock-user-sse"

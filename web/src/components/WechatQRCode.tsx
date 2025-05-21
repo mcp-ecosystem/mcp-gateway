@@ -9,6 +9,9 @@ import { useTranslation } from 'react-i18next';
 
 import { AccessibleModal } from "./AccessibleModal";
 
+// 导入二维码图片
+import wechatQrcode from '/wechat-qrcode.png';
+
 interface WechatQRCodeProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -24,7 +27,7 @@ export function WechatQRCode({ isOpen, onOpenChange }: WechatQRCodeProps) {
         <ModalBody>
           <div className="flex flex-col items-center justify-center">
             <img
-              src="/wechat-qrcode.png"
+              src={wechatQrcode}
               alt="WeChat QR Code"
               className="w-64 h-64 object-contain"
             />

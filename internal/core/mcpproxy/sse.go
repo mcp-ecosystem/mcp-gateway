@@ -67,7 +67,11 @@ func (t *SSETransport) Stop(_ context.Context) error {
 	}
 
 	if t.client != nil {
-		return t.client.Close()
+		err := t.client.Close()
+		if err != nil {
+			return err
+		}
+		t.client = nil
 	}
 
 	return nil
@@ -173,10 +177,10 @@ func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, 
 	callRequest.Params.Name = params.Name
 	callRequest.Params.Arguments = toolCallRequestParams
 
-	mcpgoResult, err := t.client.CallTool(ctx, callRequest)
+	mcpResult, err := t.client.CallTool(ctx, callRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
-	return convertMCPGoResult(mcpgoResult), nil
+	return convertMCPGoResult(mcpResult), nil
 }

@@ -54,6 +54,7 @@ export interface GatewayConfig {
     env?: Record<string, string>;
     url?: string;
     policy?: 'onStart' | 'onDemand';
+    preinstalled?: boolean;
   }>;
 }
 

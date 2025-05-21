@@ -28,16 +28,105 @@ func (e *ValidationError) Error() string {
 	return sb.String()
 }
 
+// validateSingleConfig validates a single MCP configuration and returns validation errors
+func validateSingleConfig(cfg *MCPConfig) []*ValidationError {
+	var errors []*ValidationError
+
+	// Check for duplicate server names within this config
+	serverNameMap := make(map[string]bool)
+	for _, server := range cfg.Servers {
+		if serverNameMap[server.Name] {
+			errors = append(errors, &ValidationError{
+				Message: fmt.Sprintf("duplicate server name %q found in server configurations", server.Name),
+				Locations: []Location{{
+					File: cfg.Name,
+				}},
+			})
+		}
+		serverNameMap[server.Name] = true
+	}
+
+	// Check for duplicate tool names within this config
+	toolNameMap := make(map[string]bool)
+	for _, tool := range cfg.Tools {
+		if toolNameMap[tool.Name] {
+			errors = append(errors, &ValidationError{
+				Message: fmt.Sprintf("duplicate tool name %q found in tool configurations", tool.Name),
+				Locations: []Location{{
+					File: cfg.Name,
+				}},
+			})
+		}
+		toolNameMap[tool.Name] = true
+	}
+
+	// Build server name map for this config
+	serverNames := make(map[string]bool)
+	for _, server := range cfg.Servers {
+		serverNames[server.Name] = true
+	}
+
+	// Also add MCP servers to the server name map
+	for _, mcpServer := range cfg.McpServers {
+		serverNames[mcpServer.Name] = true
+	}
+
+	// Check if all referenced servers exist
+	for _, router := range cfg.Routers {
+		if !serverNames[router.Server] {
+			errors = append(errors, &ValidationError{
+				Message: fmt.Sprintf("server %q referenced in router configuration does not exist", router.Server),
+				Locations: []Location{{
+					File: cfg.Name,
+				}},
+			})
+		}
+	}
+
+	// Check if all referenced tools exist in servers
+	for _, server := range cfg.Servers {
+		for _, toolName := range server.AllowedTools {
+			if !toolNameMap[toolName] {
+				errors = append(errors, &ValidationError{
+					Message: fmt.Sprintf("tool %q referenced in server %q does not exist", toolName, server.Name),
+					Locations: []Location{{
+						File: cfg.Name,
+					}},
+				})
+			}
+		}
+	}
+
+	return errors
+}
+
+// formatValidationErrors formats a slice of validation errors into a single error
+func formatValidationErrors(errors []*ValidationError) error {
+	if len(errors) == 0 {
+		return nil
+	}
+
+	var sb strings.Builder
+	for i, err := range errors {
+		if i > 0 {
+			sb.WriteString("\n\n")
+		}
+		sb.WriteString(err.Error())
+	}
+	return fmt.Errorf("%s", sb.String())
+}
+
 // ValidateMCPConfig validates a single MCP configuration
 func ValidateMCPConfig(cfg *MCPConfig) error {
-	return ValidateMCPConfigs([]*MCPConfig{cfg})
+	errors := validateSingleConfig(cfg)
+	return formatValidationErrors(errors)
 }
 
 // ValidateMCPConfigs validates a list of MCP configurations
 func ValidateMCPConfigs(configs []*MCPConfig) error {
 	var errors []*ValidationError
 
-	// Check for duplicate prefixes
+	// Check for duplicate prefixes (global check)
 	prefixMap := make(map[string][]Location)
 	for _, cfg := range configs {
 		for _, router := range cfg.Routers {
@@ -55,88 +144,39 @@ func ValidateMCPConfigs(configs []*MCPConfig) error {
 	for prefix, locations := range prefixMap {
 		if len(locations) > 1 {
 			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate prefix '%s' found in router configurations", prefix),
+				Message:   fmt.Sprintf("duplicate prefix %q found in router configurations", prefix),
 				Locations: locations,
 			})
 		}
 	}
 
-	// Check for duplicate server names
-	serverNameMap := make(map[string][]Location)
+	// Validate each config individually
 	for _, cfg := range configs {
-		for _, server := range cfg.Servers {
-			serverNameMap[server.Name] = append(serverNameMap[server.Name], Location{
-				File: cfg.Name,
-			})
-		}
+		errors = append(errors, validateSingleConfig(cfg)...)
 	}
 
-	// Check for duplicate server names
-	for name, locations := range serverNameMap {
-		if len(locations) > 1 {
-			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate server name '%s' found in server configurations", name),
-				Locations: locations,
-			})
+	return formatValidationErrors(errors)
+}
+
+// MergeConfigs merges a new configuration with existing configurations
+// It will update the existing config if it exists, or append the new config if it doesn't exist
+func MergeConfigs(existingConfigs []*MCPConfig, newConfig *MCPConfig) []*MCPConfig {
+	// Create a copy of existing configs
+	configs := make([]*MCPConfig, len(existingConfigs))
+	copy(configs, existingConfigs)
+
+	// Find and update the config in configs
+	found := false
+	for i, existingCfg := range configs {
+		if existingCfg.Name == newConfig.Name {
+			configs[i] = newConfig
+			found = true
+			break
 		}
 	}
-
-	// Check for duplicate tool names
-	toolNameMap := make(map[string][]Location)
-	for _, cfg := range configs {
-		for _, tool := range cfg.Tools {
-			toolNameMap[tool.Name] = append(toolNameMap[tool.Name], Location{
-				File: cfg.Name,
-			})
-		}
+	if !found {
+		configs = append(configs, newConfig)
 	}
 
-	// Check for duplicate tool names
-	for name, locations := range toolNameMap {
-		if len(locations) > 1 {
-			errors = append(errors, &ValidationError{
-				Message:   fmt.Sprintf("duplicate tool name '%s' found in tool configurations", name),
-				Locations: locations,
-			})
-		}
-	}
-
-	// Validate router configurations
-	for _, cfg := range configs {
-		// Build server name map for this config
-		serverNames := make(map[string]bool)
-		for _, server := range cfg.Servers {
-			serverNames[server.Name] = true
-		}
-
-		// Also add MCP servers to the server name map
-		for _, mcpServer := range cfg.McpServers {
-			serverNames[mcpServer.Name] = true
-		}
-
-		// Check if all referenced servers exist
-		for _, router := range cfg.Routers {
-			if !serverNames[router.Server] {
-				errors = append(errors, &ValidationError{
-					Message: fmt.Sprintf("server '%s' referenced in router configuration does not exist", router.Server),
-					Locations: []Location{{
-						File: cfg.Name,
-					}},
-				})
-			}
-		}
-	}
-
-	if len(errors) > 0 {
-		var sb strings.Builder
-		for i, err := range errors {
-			if i > 0 {
-				sb.WriteString("\n\n")
-			}
-			sb.WriteString(err.Error())
-		}
-		return fmt.Errorf(sb.String())
-	}
-
-	return nil
+	return configs
 }

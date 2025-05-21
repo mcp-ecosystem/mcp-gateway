@@ -19,6 +19,12 @@ SERVICES = mcp-gateway mock-server web
 # Build flags
 LDFLAGS = -X main.version=$(VERSION)
 
+# Test configurations
+TEST_PACKAGES ?= ./...
+TEST_FLAGS ?= -v
+COVERAGE_FILE ?= coverage.out
+COVERAGE_HTML ?= coverage.html
+
 # Registry targets
 .PHONY: docker ghcr ali
 
@@ -115,6 +121,26 @@ ali: build
 	docker tag $(PROJECT_NAME)-allinone:$(IMAGE_TAG) \
 		$(ALI_REGISTRY)/$(PROJECT_NAME)/allinone:$(IMAGE_TAG)
 	docker push $(ALI_REGISTRY)/$(PROJECT_NAME)/allinone:$(IMAGE_TAG)
+
+# Test targets
+.PHONY: test test-coverage test-race
+
+# Run all tests
+test:
+	go test $(TEST_FLAGS) $(TEST_PACKAGES)
+
+# Run tests with coverage
+test-coverage:
+	go test $(TEST_FLAGS) -coverprofile=$(COVERAGE_FILE) $(TEST_PACKAGES)
+	go tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
+
+# Run tests with race detection
+test-race:
+	go test $(TEST_FLAGS) -race $(TEST_PACKAGES)
+
+# Clean up test artifacts
+clean-test:
+	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
 
 # Clean up local images
 .PHONY: clean

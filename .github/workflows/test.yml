@@ -1,0 +1,103 @@
+name: Test and Lint
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'changelog/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'changelog/**'
+
+jobs:
+  web-test-lint:
+    name: Web Tests and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd web
+          npm run lint
+          
+      - name: Build web (dry run)
+        run: |
+          cd web
+          VITE_API_BASE_URL=/api \
+          VITE_WS_BASE_URL=/api/ws \
+          VITE_BASE_URL=/ \
+          VITE_MCP_GATEWAY_BASE_URL=/mcp \
+          npm run build
+
+  go-tests:
+    name: Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.1'
+          cache: true
+
+      - name: Run tests for cmd
+        run: go test ./cmd/... -v
+
+      - name: Run tests for internal
+        run: go test ./internal/... -v -race
+
+      - name: Run tests for pkg
+        run: go test ./pkg/... -v -race
+
+      - name: Generate coverage
+        run: |
+          go test ./cmd/... -coverprofile=coverage-cmd.txt -covermode=atomic
+          go test ./internal/... -coverprofile=coverage-internal.txt -covermode=atomic
+          go test ./pkg/... -coverprofile=coverage-pkg.txt -covermode=atomic
+          
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage-cmd.txt,./coverage-internal.txt,./coverage-pkg.txt
+          name: go-coverage
+          fail_ci_if_error: false
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.1'
+          
+      - name: Check if builds succeed
+        run: |
+          go build -v ./cmd/apiserver
+          go build -v ./cmd/mcp-gateway
+          go build -v ./cmd/mock-server
+

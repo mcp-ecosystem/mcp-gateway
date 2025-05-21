@@ -38,7 +38,10 @@ function MainLayout() {
 
 export default function App() {
   return (
-    <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <Router 
+      basename={import.meta.env.VITE_BASE_URL}
+      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+    >
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

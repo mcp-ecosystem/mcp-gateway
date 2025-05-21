@@ -7,18 +7,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
-
-	"github.com/mcp-ecosystem/mcp-gateway/pkg/logger"
-
 	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/database"
 	apiserverHandler "github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/handler"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/apiserver/middleware"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/i18n"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage/notifier"
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/logger"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/openai"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/version"
 

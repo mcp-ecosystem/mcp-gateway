@@ -100,8 +100,20 @@ func preprocessResponseData(data map[string]any) map[string]any {
 	return processed
 }
 
+// fillDefaultArgs fills default values for missing arguments
+func fillDefaultArgs(tool *config.ToolConfig, args map[string]any) {
+	for _, arg := range tool.Args {
+		if _, exists := args[arg.Name]; !exists {
+			args[arg.Name] = arg.Default
+		}
+	}
+}
+
 // executeHTTPTool executes a tool with the given arguments
 func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfig, args map[string]any, request *http.Request, serverCfg map[string]string) (*mcp.CallToolResult, error) {
+	// Fill default values for missing arguments
+	fillDefaultArgs(tool, args)
+
 	// Log tool execution at info level
 	s.logger.Info("executing HTTP tool",
 		zap.String("tool", tool.Name),
@@ -203,8 +215,8 @@ func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, e
 		zap.String("prefix", conn.Meta().Prefix))
 
 	// Get http tools for this prefix
-	tools, ok := s.state.prefixToTools[conn.Meta().Prefix]
-	if !ok {
+	tools := s.state.GetToolSchemas(conn.Meta().Prefix)
+	if len(tools) == 0 {
 		s.logger.Warn("no tools found for prefix",
 			zap.String("prefix", conn.Meta().Prefix),
 			zap.String("session_id", conn.Meta().ID))
@@ -219,7 +231,7 @@ func (s *Server) fetchHTTPToolList(conn session.Connection) ([]mcp.ToolSchema, e
 	return tools, nil
 }
 
-func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) *mcp.CallToolResult {
+func (s *Server) callHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn session.Connection, params mcp.CallToolParams) *mcp.CallToolResult {
 	// Log tool invocation at info level
 	s.logger.Info("invoking HTTP tool",
 		zap.String("tool", params.Name),
@@ -227,14 +239,13 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 		zap.String("remote_addr", c.Request.RemoteAddr))
 
 	// Find the tool in the precomputed map
-	tool, exists := s.state.toolMap[params.Name]
-	if !exists {
+	tool := s.state.GetTool(conn.Meta().Prefix, params.Name)
+	if tool == nil {
 		s.logger.Warn("tool not found",
 			zap.String("tool", params.Name),
 			zap.String("session_id", conn.Meta().ID),
 			zap.String("remote_addr", c.Request.RemoteAddr))
-		errMsg := "Tool not found"
-		s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+		s.sendProtocolError(c, req.Id, "Tool not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 		return nil
 	}
 
@@ -245,8 +256,7 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 			zap.String("tool", params.Name),
 			zap.String("session_id", conn.Meta().ID),
 			zap.Error(err))
-		errMsg := "Invalid tool arguments"
-		s.sendProtocolError(c, req.Id, errMsg, http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+		s.sendProtocolError(c, req.Id, "Invalid tool arguments", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 		return nil
 	}
 
@@ -260,14 +270,13 @@ func (s *Server) invokeHTTPTool(c *gin.Context, req mcp.JSONRPCRequest, conn ses
 	}
 
 	// Get server configuration
-	serverCfg, ok := s.state.prefixToServerConfig[conn.Meta().Prefix]
-	if !ok {
+	serverCfg := s.state.GetServerConfig(conn.Meta().Prefix)
+	if serverCfg == nil {
 		s.logger.Error("server configuration not found",
 			zap.String("tool", params.Name),
 			zap.String("prefix", conn.Meta().Prefix),
 			zap.String("session_id", conn.Meta().ID))
-		errMsg := "Server configuration not found"
-		s.sendProtocolError(c, req.Id, errMsg, http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+		s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 		return nil
 	}
 

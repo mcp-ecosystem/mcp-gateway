@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,8 +52,7 @@ func TestConverter_Convert(t *testing.T) {
 	// Verify the converted configuration
 	//assert.Equal(t, "Test API", config.Name)
 	assert.Equal(t, 1, len(config.Routers))
-	//assert.Equal(t, "/test", config.Routers[0].Prefix)
-	//assert.Equal(t, "Test API", config.Routers[0].Server)
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -92,8 +92,7 @@ paths:
 	// Verify the converted configuration
 	//assert.Equal(t, "Test API", config.Name)
 	assert.Equal(t, 1, len(config.Routers))
-	//assert.Equal(t, "/test", config.Routers[0].Prefix)
-	//assert.Equal(t, "Test API", config.Routers[0].Server)
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -163,6 +162,7 @@ func TestConverter_ConvertOpenapi2(t *testing.T) {
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -205,6 +205,9 @@ paths:
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.NotNil(t, config.Routers[0].CORS)
+
 	assert.Equal(t, 1, len(config.Servers))
 	assert.Equal(t, "Test API description", config.Servers[0].Description)
 	assert.Equal(t, "https://api.example.com/v1", config.Servers[0].Config["url"])
@@ -367,6 +370,7 @@ func TestConverter_ConvertOpenapi31(t *testing.T) {
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
 	assert.NotNil(t, config.Routers[0].CORS)
 
 	assert.Equal(t, 1, len(config.Servers))
@@ -487,6 +491,9 @@ components:
 
 	// Verify the converted configuration
 	assert.Equal(t, 1, len(config.Routers))
+	assert.True(t, strings.HasPrefix(config.Routers[0].Prefix, "/mcp/"))
+	assert.NotNil(t, config.Routers[0].CORS)
+
 	assert.Equal(t, 1, len(config.Servers))
 	assert.Equal(t, "", config.Servers[0].Description)
 	assert.Equal(t, "http://example.com:8080", config.Servers[0].Config["url"])

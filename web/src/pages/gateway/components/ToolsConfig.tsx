@@ -1,4 +1,4 @@
-import { Input, Select, SelectItem, Button } from "@heroui/react";
+import { Input, Select, SelectItem, Button, Checkbox } from "@heroui/react";
 import { useTranslation } from 'react-i18next';
 
 import { GatewayConfig } from '../types';
@@ -15,7 +15,14 @@ export function ToolsConfig({
   const { t } = useTranslation();
   const tools = parsedConfig?.tools || [];
 
-  const updateTool = (index: number, field: string, value: string) => {
+  const updateTool = (index: number, field: string, value: string | Array<{
+    name: string;
+    position: string;
+    required: boolean;
+    type: string;
+    description: string;
+    default: string;
+  }>) => {
     const updatedTools = [...tools];
     const oldName = updatedTools[index].name;
     updatedTools[index] = {
@@ -28,7 +35,7 @@ export function ToolsConfig({
       const updatedServers = parsedConfig.servers.map(server => {
         if (server.allowedTools) {
           const updatedAllowedTools = server.allowedTools.map(toolName =>
-            toolName === oldName ? value : toolName
+            toolName === oldName ? value as string : toolName
           );
           return { ...server, allowedTools: updatedAllowedTools };
         }
@@ -201,28 +208,167 @@ export function ToolsConfig({
               </Button>
             </div>
           </div>
+
+          {/* Arguments 配置 */}
+          <div className="mt-2 border-t pt-2">
+            <h4 className="text-sm font-medium mb-2">{t('gateway.arguments_config')}</h4>
+            <div className="flex flex-col gap-2">
+              {(tool.args || []).map((arg, argIndex) => (
+                <div key={argIndex} className="flex flex-col gap-2 p-2 border rounded">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="flex-1"
+                      label={t('gateway.argument_name')}
+                      value={arg.name || ""}
+                      onChange={(e) => {
+                        const updatedArgs = [...(tool.args || [])];
+                        updatedArgs[argIndex] = {
+                          ...updatedArgs[argIndex],
+                          name: e.target.value
+                        };
+                        updateTool(index, 'args', updatedArgs);
+                      }}
+                      placeholder={t('gateway.argument_name')}
+                    />
+                    <Select
+                      className="flex-1"
+                      label={t('gateway.argument_position')}
+                      selectedKeys={[arg.position || "body"]}
+                      onChange={(e) => {
+                        const updatedArgs = [...(tool.args || [])];
+                        updatedArgs[argIndex] = {
+                          ...updatedArgs[argIndex],
+                          position: e.target.value
+                        };
+                        updateTool(index, 'args', updatedArgs);
+                      }}
+                    >
+                      <SelectItem key="body">{t('gateway.position_body')}</SelectItem>
+                      <SelectItem key="query">{t('gateway.position_query')}</SelectItem>
+                      <SelectItem key="path">{t('gateway.position_path')}</SelectItem>
+                    </Select>
+
+                    <Button
+                      isIconOnly
+                      color="danger"
+                      onPress={() => {
+                        const updatedArgs = [...(tool.args || [])];
+                        updatedArgs.splice(argIndex, 1);
+                        updateTool(index, 'args', updatedArgs);
+                      }}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      className="flex-1"
+                      label={t('gateway.argument_type')}
+                      selectedKeys={[arg.type || "string"]}
+                      onChange={(e) => {
+                        const updatedArgs = [...(tool.args || [])];
+                        updatedArgs[argIndex] = {
+                          ...updatedArgs[argIndex],
+                          type: e.target.value
+                        };
+                        updateTool(index, 'args', updatedArgs);
+                      }}
+                    >
+                      <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
+                      <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
+                      <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                      <SelectItem key="array">{t('gateway.type_array')}</SelectItem>
+                      <SelectItem key="object">{t('gateway.type_object')}</SelectItem>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        isSelected={arg.required || false}
+                        onValueChange={(isSelected) => {
+                          const updatedArgs = [...(tool.args || [])];
+                          updatedArgs[argIndex] = {
+                            ...updatedArgs[argIndex],
+                            required: isSelected
+                          };
+                          updateTool(index, 'args', updatedArgs);
+                        }}
+                      >
+                        {t('gateway.argument_required')}
+                      </Checkbox>
+                    </div>
+                  </div>
+                  <Input
+                    label={t('gateway.argument_description')}
+                    value={arg.description || ""}
+                    onChange={(e) => {
+                      const updatedArgs = [...(tool.args || [])];
+                      updatedArgs[argIndex] = {
+                        ...updatedArgs[argIndex],
+                        description: e.target.value
+                      };
+                      updateTool(index, 'args', updatedArgs);
+                    }}
+                    placeholder={t('gateway.argument_description')}
+                  />
+                  <Input
+                    label={t('gateway.argument_default')}
+                    value={arg.default || ""}
+                    onChange={(e) => {
+                      const updatedArgs = [...(tool.args || [])];
+                      updatedArgs[argIndex] = {
+                        ...updatedArgs[argIndex],
+                        default: e.target.value
+                      };
+                      updateTool(index, 'args', updatedArgs);
+                    }}
+                    placeholder={t('gateway.argument_default')}
+                  />
+                </div>
+              ))}
+              
+              {/* 添加新的参数 */}
+              <Button
+                color="primary"
+                size="sm"
+                className="mt-1"
+                onPress={() => {
+                  const updatedArgs = [...(tool.args || [])];
+                  updatedArgs.push({
+                    name: "",
+                    position: "body",
+                    required: false,
+                    type: "string",
+                    description: "",
+                    default: ""
+                  });
+                  updateTool(index, 'args', updatedArgs);
+                }}
+              >
+                {t('gateway.add_argument')}
+              </Button>
+            </div>
+          </div>
           
           {/* Request Body */}
           <div className="mt-2 border-t pt-2">
-            <h4 className="text-sm font-medium mb-2">请求体 (Request Body)</h4>
+            <h4 className="text-sm font-medium mb-2">{t('gateway.request_body')}</h4>
             <textarea
               className="w-full border rounded p-2"
               rows={5}
               value={tool.requestBody || ""}
               onChange={(e) => updateTool(index, 'requestBody', e.target.value)}
-              placeholder='例如: {"uid": "{{.Args.uid}}"}'
+              placeholder={t('gateway.request_body_placeholder')}
             ></textarea>
           </div>
           
           {/* Response Body */}
           <div className="mt-2 border-t pt-2">
-            <h4 className="text-sm font-medium mb-2">响应体 (Response Body)</h4>
+            <h4 className="text-sm font-medium mb-2">{t('gateway.response_body')}</h4>
             <textarea
               className="w-full border rounded p-2"
               rows={5}
               value={tool.responseBody || ""}
               onChange={(e) => updateTool(index, 'responseBody', e.target.value)}
-              placeholder="例如: {{.Response.Body}}"
+              placeholder={t('gateway.response_body_placeholder')}
             ></textarea>
           </div>
         </div>

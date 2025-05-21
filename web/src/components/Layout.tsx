@@ -24,6 +24,9 @@ import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WechatQRCode } from './WechatQRCode';
 
+// 导入logo图片
+import logoImg from '/logo.png';
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -205,10 +208,10 @@ export function Layout({ children }: LayoutProps) {
         >
           <div className="flex items-center justify-center p-4 border-b border-border h-16">
             {isCollapsed ? (
-              <img src="/logo.png" alt="MCP Logo" className="w-8 h-8" />
+              <img src={logoImg} alt="MCP Logo" className="w-8 h-8" />
             ) : (
               <div className="flex items-center gap-2">
-                <img src="/logo.png" alt="MCP Logo" className="w-6 h-6" />
+                <img src={logoImg} alt="MCP Logo" className="w-6 h-6" />
                 <span className="text-xl font-bold">MCP Admin</span>
               </div>
             )}

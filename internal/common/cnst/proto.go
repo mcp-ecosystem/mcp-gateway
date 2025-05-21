@@ -13,3 +13,7 @@ const (
 const (
 	FrontendProtoSSE ProtoType = "sse"
 )
+
+func (s ProtoType) String() string {
+	return string(s)
+}

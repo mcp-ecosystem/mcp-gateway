@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Storage defines the interface for storing runtime data
+// Storage defines the interface for storing runtimeUnit data
 type Storage interface {
 	// SaveTool saves a tool configuration
 	SaveTool(ctx context.Context, tool *Tool) error

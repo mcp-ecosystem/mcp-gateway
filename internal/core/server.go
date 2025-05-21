@@ -2,19 +2,18 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/template"
-
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/core/mcpproxy"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/core/state"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/session"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage/helper"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage"
 	"github.com/mcp-ecosystem/mcp-gateway/pkg/mcp"
 
 	"github.com/gin-gonic/gin"
@@ -25,8 +24,12 @@ type (
 	// Server represents the MCP server
 	Server struct {
 		logger *zap.Logger
+		port   int
+		router *gin.Engine
 		// state contains all the read-only shared state
-		state *serverState
+		state *state.State
+		// store is the storage service for MCP configs
+		store storage.Store
 		// sessions manages all active sessions
 		sessions session.Store
 		// shutdownCh is used to signal shutdown to all SSE connections
@@ -34,82 +37,46 @@ type (
 		// toolRespHandler is a chain of response handlers
 		toolRespHandler ResponseHandler
 	}
-
-	// serverState contains all the read-only shared state
-	serverState struct {
-		rawConfigs              []*config.MCPConfig
-		tools                   []mcp.ToolSchema
-		toolMap                 map[string]*config.ToolConfig
-		prefixToTools           map[string][]mcp.ToolSchema
-		prefixToServerConfig    map[string]*config.ServerConfig
-		prefixToRouterConfig    map[string]*config.RouterConfig
-		prefixToMCPServerConfig map[string]config.MCPServerConfig
-		prefixToProtoType       map[string]cnst.ProtoType
-		prefixToTransport       map[string]mcpproxy.Transport
-	}
 )
 
 // NewServer creates a new MCP server
-func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error) {
-	// Initialize session store
-	sessionStore, err := session.NewStore(logger, &cfg.Session)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize session store: %w", err)
-	}
-
-	return &Server{
-		logger: logger,
-		state: &serverState{
-			rawConfigs:              make([]*config.MCPConfig, 0),
-			tools:                   make([]mcp.ToolSchema, 0),
-			toolMap:                 make(map[string]*config.ToolConfig),
-			prefixToTools:           make(map[string][]mcp.ToolSchema),
-			prefixToServerConfig:    make(map[string]*config.ServerConfig),
-			prefixToRouterConfig:    make(map[string]*config.RouterConfig),
-			prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
-			prefixToProtoType:       make(map[string]cnst.ProtoType),
-			prefixToTransport:       make(map[string]mcpproxy.Transport),
-		},
+func NewServer(logger *zap.Logger, port int, store storage.Store, sessionStore session.Store) (*Server, error) {
+	s := &Server{
+		logger:          logger,
+		port:            port,
+		router:          gin.Default(),
+		state:           state.NewState(),
+		store:           store,
 		sessions:        sessionStore,
 		shutdownCh:      make(chan struct{}),
 		toolRespHandler: CreateResponseHandlerChain(),
-	}, nil
+	}
+	s.router.Use(s.loggerMiddleware())
+	s.router.Use(s.recoveryMiddleware())
+	return s, nil
 }
 
 // RegisterRoutes registers routes with the given router for MCP servers
-func (s *Server) RegisterRoutes(ctx context.Context, router *gin.Engine, cfgs []*config.MCPConfig) error {
-	// Validate configuration before registering routes
-	if err := config.ValidateMCPConfigs(cfgs); err != nil {
+func (s *Server) RegisterRoutes(ctx context.Context) error {
+	s.router.GET("/health_check", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"message": "Health check passed.",
+		})
+	})
+
+	newState, err := s.updateConfigs(ctx)
+	if err != nil {
 		s.logger.Error("invalid configuration during route registration",
 			zap.Error(err))
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
-
-	s.logger.Info("registering middleware")
-	router.Use(s.loggerMiddleware())
-	router.Use(s.recoveryMiddleware())
-
-	// Create new state and load configuration
-	s.logger.Debug("initializing server state")
-	newState, err := s.initState(ctx, cfgs, s.state)
-	if err != nil {
-		s.logger.Error("failed to initialize server state",
-			zap.Error(err))
-		return fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	// 记录配置信息
-	s.logger.Info("server configuration loaded",
-		zap.Int("server_count", len(newState.prefixToServerConfig)),
-		zap.Int("tool_count", len(newState.toolMap)),
-		zap.Int("router_count", len(newState.prefixToRouterConfig)))
-
 	// Atomically replace the state
 	s.state = newState
 
 	// Register all routes under root path
 	s.logger.Debug("registering root handler")
-	router.NoRoute(s.handleRoot)
+	s.router.NoRoute(s.handleRoot)
 
 	return nil
 }
@@ -135,10 +102,10 @@ func (s *Server) handleRoot(c *gin.Context) {
 		zap.String("remote_addr", c.Request.RemoteAddr))
 
 	// Dynamically set CORS
-	if routerCfg, ok := s.state.prefixToRouterConfig[prefix]; ok && routerCfg.CORS != nil {
+	if cors := s.state.GetCORS(prefix); cors != nil {
 		s.logger.Debug("applying CORS middleware",
 			zap.String("prefix", prefix))
-		s.corsMiddleware(routerCfg.CORS)(c)
+		s.corsMiddleware(cors)(c)
 		if c.IsAborted() {
 			s.logger.Debug("request aborted by CORS middleware",
 				zap.String("prefix", prefix),
@@ -147,8 +114,8 @@ func (s *Server) handleRoot(c *gin.Context) {
 		}
 	}
 
-	state := s.state
-	if _, ok := state.prefixToProtoType[prefix]; !ok {
+	protoType := s.state.GetProtoType(prefix)
+	if protoType == "" {
 		s.logger.Warn("invalid prefix",
 			zap.String("prefix", prefix),
 			zap.String("remote_addr", c.Request.RemoteAddr))
@@ -179,13 +146,21 @@ func (s *Server) handleRoot(c *gin.Context) {
 	}
 }
 
+func (s *Server) Start() {
+	go func() {
+		if err := s.router.Run(fmt.Sprintf(":%d", s.port)); err != nil {
+			s.logger.Error("failed to start server", zap.Error(err))
+		}
+	}()
+}
+
 // Shutdown gracefully shuts down the server
-func (s *Server) Shutdown(ctx context.Context) error {
+func (s *Server) Shutdown(_ context.Context) error {
 	s.logger.Info("shutting down server")
 	close(s.shutdownCh)
 
 	var wg sync.WaitGroup
-	for prefix, transport := range s.state.prefixToTransport {
+	for prefix, transport := range s.state.GetTransports() {
 		if transport.IsRunning() {
 			wg.Add(1)
 			go func(p string, t mcpproxy.Transport) {
@@ -209,225 +184,104 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// initState creates a new serverState from the given configuration
-func (s *Server) initState(ctx context.Context, cfgs []*config.MCPConfig, oldState *serverState) (*serverState, error) {
-	// Create new state
-	newState := &serverState{
-		rawConfigs:              cfgs,
-		tools:                   make([]mcp.ToolSchema, 0),
-		toolMap:                 make(map[string]*config.ToolConfig),
-		prefixToTools:           make(map[string][]mcp.ToolSchema),
-		prefixToServerConfig:    make(map[string]*config.ServerConfig),
-		prefixToRouterConfig:    make(map[string]*config.RouterConfig),
-		prefixToMCPServerConfig: make(map[string]config.MCPServerConfig),
-		prefixToProtoType:       make(map[string]cnst.ProtoType),
-		prefixToTransport:       make(map[string]mcpproxy.Transport),
+func (s *Server) updateConfigs(ctx context.Context) (*state.State, error) {
+	s.logger.Info("Updating MCP configuration")
+	//todo we can use hash or version to check if the configuration is changed
+	cfgs, err := s.store.List(ctx)
+	if err != nil {
+		s.logger.Error("Failed to load MCP configurations",
+			zap.Error(err))
+		return nil, err
 	}
 
-	for idx := range cfgs {
-		cfg := cfgs[idx]
-
-		// Initialize tool map and list for MCP servers
-		for i := range cfg.Tools {
-			tool := &cfg.Tools[i]
-			newState.toolMap[tool.Name] = tool
-			newState.tools = append(newState.tools, tool.ToToolSchema())
+	// Validate configurations before merging
+	err = config.ValidateMCPConfigs(cfgs)
+	if err != nil {
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			s.logger.Error("Configuration validation failed",
+				zap.String("error", validationErr.Error()))
+		} else {
+			s.logger.Error("failed to validate configurations",
+				zap.Error(err))
 		}
-
-		// Build prefix to tools mapping for MCP servers
-		prefixMap := make(map[string]string)
-		for i, routerCfg := range cfg.Routers {
-			prefixMap[routerCfg.Server] = routerCfg.Prefix
-			newState.prefixToRouterConfig[routerCfg.Prefix] = &cfg.Routers[i]
-		}
-
-		// Process regular HTTP servers
-		for _, serverCfg := range cfg.Servers {
-			prefix, exists := prefixMap[serverCfg.Name]
-			if !exists {
-				return nil, fmt.Errorf("no router prefix found for MCP server: %s", serverCfg.Name)
-			}
-
-			// Filter tools based on MCP server's allowed tools
-			var allowedTools []mcp.ToolSchema
-			for _, toolName := range serverCfg.AllowedTools {
-				if tool, ok := newState.toolMap[toolName]; ok {
-					allowedTools = append(allowedTools, tool.ToToolSchema())
-				}
-			}
-			newState.prefixToTools[prefix] = allowedTools
-			newState.prefixToServerConfig[prefix] = &serverCfg
-			newState.prefixToProtoType[prefix] = cnst.BackendProtoHttp
-		}
-
-		// Process MCP servers
-		for _, mcpServer := range cfg.McpServers {
-			prefix, exists := prefixMap[mcpServer.Name]
-			if !exists {
-				continue // Skip MCP servers without router prefix
-			}
-
-			// Map prefix to MCP server config
-			newState.prefixToMCPServerConfig[prefix] = mcpServer
-
-			// Check if we already have transport with the same configuration
-			var transport mcpproxy.Transport
-			if oldState != nil {
-				if oldTransport, exists := oldState.prefixToTransport[prefix]; exists {
-					// Compare configurations to see if we need to create a new transport
-					oldConfig := oldState.prefixToMCPServerConfig[prefix]
-					if oldConfig.Type == mcpServer.Type &&
-						oldConfig.Command == mcpServer.Command &&
-						oldConfig.URL == mcpServer.URL &&
-						len(oldConfig.Args) == len(mcpServer.Args) {
-						// Compare args
-						argsMatch := true
-						for i, arg := range oldConfig.Args {
-							if arg != mcpServer.Args[i] {
-								argsMatch = false
-								break
-							}
-						}
-						if argsMatch {
-							// Reuse existing transport
-							transport = oldTransport
-						}
-					}
-				}
-			}
-
-			// Create new transport if needed
-			if transport == nil {
-				var err error
-				transport, err = mcpproxy.NewTransport(mcpServer)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create transport for server %s: %w", mcpServer.Name, err)
-				}
-			}
-			if mcpServer.Policy == cnst.PolicyOnStart {
-				go func(prefix string, mcpServer config.MCPServerConfig, transport mcpproxy.Transport) {
-					if transport.IsRunning() {
-						s.logger.Info("server already started",
-							zap.String("prefix", prefix),
-							zap.String("command", mcpServer.Command),
-							zap.Strings("args", mcpServer.Args))
-						return
-					}
-
-					if err := transport.Start(ctx, template.NewContext()); err != nil {
-						s.logger.Error("failed to start server",
-							zap.String("prefix", prefix),
-							zap.String("command", mcpServer.Command),
-							zap.Strings("args", mcpServer.Args),
-							zap.Error(err))
-					} else {
-						s.logger.Info("server started",
-							zap.String("prefix", prefix),
-							zap.String("command", mcpServer.Command),
-							zap.Strings("args", mcpServer.Args))
-					}
-				}(prefix, mcpServer, transport)
-			}
-			newState.prefixToTransport[prefix] = transport
-
-			// Map protocol type based on server type
-			switch mcpServer.Type {
-			case "stdio":
-				newState.prefixToProtoType[prefix] = cnst.BackendProtoStdio
-			case "sse":
-				newState.prefixToProtoType[prefix] = cnst.BackendProtoSSE
-			case "streamable-http":
-				newState.prefixToProtoType[prefix] = cnst.BackendProtoStreamable
-			}
-		}
+		return nil, err
 	}
 
-	if oldState != nil {
-		for prefix, oldTransport := range oldState.prefixToTransport {
-			if _, stillExists := newState.prefixToTransport[prefix]; !stillExists {
-				mcpSvrCfg := oldState.prefixToMCPServerConfig[prefix]
-				if oldTransport == nil {
-					s.logger.Info("transport already stopped", zap.String("prefix", prefix), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
-					continue
-				}
-				s.logger.Info("shutting down unused transport", zap.String("prefix", prefix), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
-				if err := oldTransport.Stop(ctx); err != nil {
-					s.logger.Warn("failed to close old transport", zap.String("prefix", prefix), zap.Error(err), zap.String("command", mcpSvrCfg.Command), zap.Strings("args", mcpSvrCfg.Args))
-				}
-			}
-		}
+	s.logger.Info("initializing server state")
+	newState, err := state.BuildStateFromConfig(ctx, cfgs, s.state, s.logger)
+	if err != nil {
+		s.logger.Error("failed to initialize server state",
+			zap.Error(err))
+		return nil, err
 	}
+
+	s.logger.Info("server configuration loaded",
+		zap.Int("server_count", newState.GetServerCount()),
+		zap.Int("tool_count", newState.GetToolCount()),
+		zap.Int("router_count", newState.GetRouterCount()))
 
 	return newState, nil
 }
 
-// UpdateConfig updates the server configuration
-func (s *Server) UpdateConfig(ctx context.Context, cfgs []*config.MCPConfig) error {
-	// Validate configuration before updating
-	s.logger.Debug("validating updated configuration")
-	if err := config.ValidateMCPConfigs(cfgs); err != nil {
-		s.logger.Error("invalid configuration during update",
-			zap.Error(err))
-		return fmt.Errorf("invalid configuration: %w", err)
-	}
+func (s *Server) ReloadConfigs(ctx context.Context) {
+	s.logger.Info("Reloading MCP configuration")
 
-	// Create new state and load configuration
-	s.logger.Info("updating server configuration")
-	newState, err := s.initState(ctx, cfgs, s.state)
+	newState, err := s.updateConfigs(ctx)
 	if err != nil {
-		s.logger.Error("failed to initialize state during update",
+		s.logger.Error("failed to reload configuration",
 			zap.Error(err))
-		return fmt.Errorf("failed to load configuration: %w", err)
+		return
 	}
-
-	// 记录配置更新信息
-	s.logger.Info("server configuration updated",
-		zap.Int("server_count", len(newState.prefixToServerConfig)),
-		zap.Int("tool_count", len(newState.toolMap)),
-		zap.Int("router_count", len(newState.prefixToRouterConfig)))
-
 	// Atomically replace the state
 	s.state = newState
 
-	return nil
+	s.logger.Info("Configuration reloaded successfully")
 }
 
-// MergeConfig updates the server configuration incrementally
-func (s *Server) MergeConfig(ctx context.Context, cfg *config.MCPConfig) error {
-	s.logger.Info("merging configuration")
+func (s *Server) UpdateConfig(ctx context.Context, cfg *config.MCPConfig) {
+	s.logger.Info("Updating MCP configuration", zap.String("name", cfg.Name))
 
-	newConfig, err := helper.MergeConfigs(s.state.rawConfigs, cfg)
-	if err != nil {
-		s.logger.Error("failed to merge configuration",
-			zap.Error(err))
-		return fmt.Errorf("failed to merge configuration: %w", err)
-	}
-
-	// Validate configuration after merge
-	s.logger.Debug("validating merged configuration")
+	// Validate the new configuration
 	if err := config.ValidateMCPConfig(cfg); err != nil {
-		s.logger.Error("invalid configuration after merge",
-			zap.Error(err))
-		return fmt.Errorf("invalid configuration: %w", err)
+		var validationErr *config.ValidationError
+		if errors.As(err, &validationErr) {
+			s.logger.Error("Configuration validation failed",
+				zap.String("error", validationErr.Error()))
+		} else {
+			s.logger.Error("failed to validate configuration",
+				zap.Error(err))
+		}
+		return
 	}
 
-	// Create new state and load configuration
-	s.logger.Debug("initializing state with merged configuration")
-	newState, err := s.initState(ctx, newConfig, s.state)
+	// Get current state
+	currentState := s.state
+	if currentState == nil {
+		s.logger.Warn("current state is nil, triggering reload")
+		s.ReloadConfigs(ctx)
+		return
+	}
+
+	// Merge the new configuration with existing configs
+	cfgs := config.MergeConfigs(currentState.GetRawConfigs(), cfg)
+
+	// Build new state from updated configs
+	updatedState, err := state.BuildStateFromConfig(ctx, cfgs, currentState, s.logger)
 	if err != nil {
-		s.logger.Error("failed to initialize state with merged configuration",
+		s.logger.Error("failed to build state from updated configs",
 			zap.Error(err))
-		return fmt.Errorf("failed to load configuration: %w", err)
+		return
 	}
 
-	// Record configuration merge information
-	s.logger.Info("configuration merged successfully",
-		zap.Int("server_count", len(newState.prefixToServerConfig)),
-		zap.Int("tool_count", len(newState.toolMap)),
-		zap.Int("router_count", len(newState.prefixToRouterConfig)))
+	// Log the changes
+	s.logger.Info("Configuration updated",
+		zap.Int("server_count", updatedState.GetServerCount()),
+		zap.Int("tool_count", updatedState.GetToolCount()),
+		zap.Int("router_count", updatedState.GetRouterCount()))
 
 	// Atomically replace the state
-	s.state = newState
+	s.state = updatedState
 
-	return nil
+	return
 }

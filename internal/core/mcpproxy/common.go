@@ -8,16 +8,16 @@ import (
 )
 
 // convertMCPGoResult converts mcp-go result to local mcp format
-func convertMCPGoResult(mcpgoResult *mcpgo.CallToolResult) *mcp.CallToolResult {
+func convertMCPGoResult(res *mcpgo.CallToolResult) *mcp.CallToolResult {
 	result := &mcp.CallToolResult{
-		IsError: mcpgoResult.IsError,
+		IsError: res.IsError,
 	}
 
 	// Process content items
-	if len(mcpgoResult.Content) > 0 {
+	if len(res.Content) > 0 {
 		var validContents []mcp.Content
 
-		for _, content := range mcpgoResult.Content {
+		for _, content := range res.Content {
 			// Skip null content
 			if content == nil {
 				continue

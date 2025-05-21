@@ -21,7 +21,6 @@ var (
 	// defaultZapOpts default zap options
 	defaultZapOpts = []zap.Option{
 		zap.AddCaller(),
-		zap.AddCallerSkip(1),
 	}
 )
 

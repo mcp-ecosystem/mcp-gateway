@@ -325,8 +325,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		// Handle ping request with an empty response
 		s.sendSuccessResponse(c, conn, req, struct{}{}, true)
 	case mcp.ToolsList:
-		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
-		if !ok {
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
 			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
@@ -341,8 +341,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoStdio:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
@@ -353,8 +353,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoSSE:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
@@ -365,8 +365,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoStreamable:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 				return
 			}
@@ -395,8 +395,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		}
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
-		protoType, ok := s.state.prefixToProtoType[conn.Meta().Prefix]
-		if !ok {
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
 			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
 			return
 		}
@@ -414,10 +414,10 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		)
 		switch protoType {
 		case cnst.BackendProtoHttp:
-			result = s.invokeHTTPTool(c, req, conn, params)
+			result = s.callHTTPTool(c, req, conn, params)
 		case cnst.BackendProtoStdio:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				errMsg := "Server configuration not found"
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
@@ -429,8 +429,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoSSE:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				errMsg := "Server configuration not found"
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
@@ -442,8 +442,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				return
 			}
 		case cnst.BackendProtoStreamable:
-			transport, ok := s.state.prefixToTransport[conn.Meta().Prefix]
-			if !ok {
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
 				errMsg := "Server configuration not found"
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return

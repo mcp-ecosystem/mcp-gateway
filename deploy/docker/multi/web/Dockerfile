@@ -38,6 +38,8 @@ RUN npm run build
 
 FROM nginx:1.27.5-bookworm
 
+WORKDIR /app
+
 # Set default timezone
 ENV TZ=UTC
 

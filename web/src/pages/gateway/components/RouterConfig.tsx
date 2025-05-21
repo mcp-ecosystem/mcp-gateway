@@ -80,7 +80,7 @@ export function RouterConfig({
           <div className="flex gap-2">
             <Input
               size="sm"
-              placeholder="例如: https://example.com 或 *"
+              placeholder={t('gateway.origin_placeholder')}
               className="flex-1"
               value={originInput}
               onChange={(e) => setOriginInput(e.target.value)}
@@ -147,7 +147,7 @@ export function RouterConfig({
           <div className="flex gap-2">
             <Input
               size="sm"
-              placeholder="例如: Content-Type"
+              placeholder={t('gateway.header_placeholder')}
               className="flex-1"
               value={headerInput}
               onChange={(e) => setHeaderInput(e.target.value)}
@@ -195,7 +195,7 @@ export function RouterConfig({
           <div className="flex gap-2">
             <Input
               size="sm"
-              placeholder="例如: Content-Length"
+              placeholder={t('gateway.expose_header_placeholder')}
               className="flex-1"
               value={exposeHeaderInput}
               onChange={(e) => setExposeHeaderInput(e.target.value)}
