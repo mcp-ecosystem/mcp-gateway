@@ -1,0 +1,185 @@
+name: "mock-server"
+tenant: "default"
+
+routers:
+  - server: "mock-server"
+    prefix: "/mcp/user"
+    cors:
+      allowOrigins:
+        - "*"
+      allowMethods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "OPTIONS"
+      allowHeaders:
+        - "Content-Type"
+        - "Authorization"
+        - "Mcp-Session-Id"
+      exposeHeaders:
+        - "Mcp-Session-Id"
+      allowCredentials: true
+
+servers:
+  - name: "mock-server"
+    namespace: "user-service"
+    description: "Mock User Service"
+    allowedTools:
+      - "register_user"
+      - "get_user_by_email"
+      - "update_user_preferences"
+      - "update_user_avatar"
+    config:
+      Cookie: 123
+      Authorization: 'Bearer {{ env "AUTH_TOKEN" }}'
+
+tools:
+  - name: "register_user"
+    description: "Register a new user"
+    method: "POST"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "{{.Config.Authorization}}"
+      Cookie: "{{.Config.Cookie}}"
+    args:
+      - name: "username"
+        position: "body"
+        required: true
+        type: "string"
+        description: "Username"
+        default: ""
+      - name: "email"
+        position: "body"
+        required: true
+        type: "string"
+        description: "Email"
+        default: ""
+    requestBody: |-
+      {
+        "username": "{{.Args.username}}",
+        "email": "{{.Args.email}}"
+      }
+    responseBody: |-
+      {
+        "id": "{{.Response.Data.id}}",
+        "username": "{{.Response.Data.username}}",
+        "email": "{{.Response.Data.email}}",
+        "createdAt": "{{.Response.Data.createdAt}}"
+      }
+
+  - name: "get_user_by_email"
+    description: "Get user by email"
+    method: "GET"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/email/{{.Args.email}}"
+    args:
+      - name: "email"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Email"
+        default: ""
+    responseBody: |-
+      {
+        "id": "{{.Response.Data.id}}",
+        "username": "{{.Response.Data.username}}",
+        "email": "{{.Response.Data.email}}",
+        "createdAt": "{{.Response.Data.createdAt}}"
+      }
+
+  - name: "update_user_preferences"
+    description: "Update user preferences"
+    method: "PUT"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/preferences"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "{{.Request.Headers.Authorization}}"
+      Cookie: "{{.Config.Cookie}}"
+    args:
+      - name: "email"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Email"
+        default: ""
+      - name: "isPublic"
+        position: "body"
+        required: true
+        type: "boolean"
+        description: "Whether the user profile is public"
+        default: "false"
+      - name: "showEmail"
+        position: "body"
+        required: true
+        type: "boolean"
+        description: "Whether to show email in profile"
+        default: "true"
+      - name: "theme"
+        position: "body"
+        required: true
+        type: "string"
+        description: "User interface theme"
+        default: "light"
+      - name: "tags"
+        position: "body"
+        required: true
+        type: "array"
+        items:
+          type: "string"
+          enum: ["developer", "designer", "manager", "tester"]
+        description: "User role tags"
+        default: "[]"
+      - name: "settings"
+        position: "body"
+        required: false
+        type: "object"
+        description: "User custom settings as key-value pairs"
+        default: "{}"
+    requestBody: |-
+      {
+        "isPublic": {{.Args.isPublic}},
+        "showEmail": {{.Args.showEmail}},
+        "theme": "{{.Args.theme}}",
+        "tags": {{.Args.tags}},
+        "settings": {{ toJSON .Args.settings }}
+      }
+    responseBody: |-
+      {
+        "id": "{{.Response.Data.id}}",
+        "username": "{{.Response.Data.username}}",
+        "email": "{{.Response.Data.email}}",
+        "createdAt": "{{.Response.Data.createdAt}}",
+        "preferences": {
+          "isPublic": {{.Response.Data.preferences.isPublic}},
+          "showEmail": {{.Response.Data.preferences.showEmail}},
+          "theme": "{{.Response.Data.preferences.theme}}",
+          "tags": {{.Response.Data.preferences.tags}},
+          "settings": {{ toJSON .Response.Data.preferences.settings }}
+        }
+      }
+
+  - name: "update_user_avatar"
+    description: "Update user avatar using a URL via multipart form"
+    method: "POST"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/avatar"
+    headers:
+      Authorization: "{{.Request.Headers.Authorization}}"
+      Cookie: "{{.Config.Cookie}}"
+    args:
+      - name: "email"
+        position: "path"
+        required: true
+        type: "string"
+        description: "Email of the user"
+        default: ""
+      - name: "url"
+        position: "form-data"
+        required: true
+        type: "string"
+        description: "The avatar image URL"
+        default: ""
+    responseBody: |-
+      {
+        "message": "{{.Response.Data.message}}",
+        "avatarUrl": "{{.Response.Data.avatarUrl}}"
+      }
