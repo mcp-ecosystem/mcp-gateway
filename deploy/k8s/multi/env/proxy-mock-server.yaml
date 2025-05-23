@@ -71,7 +71,7 @@ tools:
   - name: "get_user_by_email"
     description: "Get user by email"
     method: "GET"
-    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236:5236/users/email/{{.Args.email}}"
+    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236/users/email/{{.Args.email}}"
     args:
       - name: "email"
         position: "path"
