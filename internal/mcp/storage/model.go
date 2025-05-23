@@ -112,7 +112,7 @@ func (m *MCPConfig) BeforeUpdate(_ *gorm.DB) error {
 // ActiveVersion represents the currently active version of an MCP configuration
 type ActiveVersion struct {
 	ID        uint      `gorm:"primarykey"`
-	Name      string    `gorm:"uniqueIndex;not null"`
+	Name      string    `gorm:"type:varchar(255);uniqueIndex;not null"`
 	Version   int       `gorm:"not null"`
 	UpdatedAt time.Time `gorm:"not null"`
 }
