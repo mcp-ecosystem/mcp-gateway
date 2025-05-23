@@ -155,12 +155,12 @@ data:
         password: "${SESSION_REDIS_PASSWORD:}"
         db: ${SESSION_REDIS_DB:0}
         topic: "${SESSION_REDIS_TOPIC:mcp-gateway:session}"
-  mock-user-svc.yaml: |-
-    name: "mock-user-svc"
+  mock-user.yaml: |-
+    name: "mock-user"
     tenant: "default"
 
     routers:
-      - server: "mock-user-svc"
+      - server: "mock-user"
         prefix: "/mcp/user"
         cors:
           allowOrigins:
@@ -179,7 +179,7 @@ data:
           allowCredentials: true
 
     servers:
-      - name: "mock-user-svc"
+      - name: "mock-user"
         namespace: "user-service"
         description: "Mock User Service"
         allowedTools:

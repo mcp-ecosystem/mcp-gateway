@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mock-user-svc
+  name: mock-user
   namespace: mcp-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mock-user-svc
+      app: mock-user
   template:
     metadata:
       labels:
-        app: mock-user-svc
+        app: mock-user
     spec:
       containers:
-      - name: mock-user-svc
+      - name: mock-user
         imagePullPolicy: IfNotPresent  # 优先使用本地镜像
-        image: ghcr.io/mcp-ecosystem/mcp-gateway/mock-user-svc:latest
+        image: ghcr.io/mcp-ecosystem/mcp-gateway/mock-user:latest
         env:
         - name: ENV
           value: production
@@ -45,7 +45,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mock-user-svc
+  name: mock-user
   namespace: mcp-gateway
 spec:
   type: NodePort
@@ -54,4 +54,4 @@ spec:
       targetPort: 5236
       nodePort: 30236
   selector:
-    app: mock-user-svc
+    app: mock-user

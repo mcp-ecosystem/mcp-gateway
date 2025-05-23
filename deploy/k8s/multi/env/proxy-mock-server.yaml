@@ -37,7 +37,7 @@ tools:
   - name: "register_user"
     description: "Register a new user"
     method: "POST"
-    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236/users"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users"
     headers:
       Content-Type: "application/json"
       Authorization: "{{.Config.Authorization}}"
@@ -71,7 +71,7 @@ tools:
   - name: "get_user_by_email"
     description: "Get user by email"
     method: "GET"
-    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236/users/email/{{.Args.email}}"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/email/{{.Args.email}}"
     args:
       - name: "email"
         position: "path"
@@ -90,7 +90,7 @@ tools:
   - name: "update_user_preferences"
     description: "Update user preferences"
     method: "PUT"
-    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/preferences"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/preferences"
     headers:
       Content-Type: "application/json"
       Authorization: "{{.Request.Headers.Authorization}}"
@@ -161,7 +161,7 @@ tools:
   - name: "update_user_avatar"
     description: "Update user avatar using a URL via multipart form"
     method: "POST"
-    endpoint: "http://mock-user-svc.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/avatar"
+    endpoint: "http://mock-user.mcp-gateway.svc.cluster.local:5236/users/{{.Args.email}}/avatar"
     headers:
       Authorization: "{{.Request.Headers.Authorization}}"
       Cookie: "{{.Config.Cookie}}"
