@@ -89,6 +89,21 @@ type (
 		Type string   `json:"type" yaml:"type"`
 		Enum []string `json:"enum,omitempty" yaml:"enum,omitempty"`
 	}
+
+	// MCPConfigVersion represents a version of an MCP configuration
+	MCPConfigVersion struct {
+		Version    int             `json:"version" yaml:"version"`
+		CreatedBy  string          `json:"created_by" yaml:"created_by"`
+		CreatedAt  time.Time       `json:"created_at" yaml:"created_at"`
+		ActionType cnst.ActionType `json:"action_type" yaml:"action_type"` // Create, Update, Delete, Revert
+		Name       string          `json:"name" yaml:"name"`
+		Tenant     string          `json:"tenant" yaml:"tenant"`
+		Routers    string          `json:"routers" yaml:"routers"`
+		Servers    string          `json:"servers" yaml:"servers"`
+		Tools      string          `json:"tools" yaml:"tools"`
+		McpServers string          `json:"mcp_servers" yaml:"mcp_servers"`
+		IsActive   bool            `json:"is_active" yaml:"is_active"` // indicates if this version is currently active
+	}
 )
 
 // ToToolSchema converts a ToolConfig to a ToolSchema
@@ -133,5 +148,15 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			Properties: properties,
 			Required:   required,
 		},
+	}
+}
+
+// FromMCPConfigVersion creates a new MCPConfigVersion from an MCPConfig
+func FromMCPConfigVersion(cfg *MCPConfig, version int, createdBy string, actionType cnst.ActionType) *MCPConfigVersion {
+	return &MCPConfigVersion{
+		Version:    version,
+		CreatedBy:  createdBy,
+		CreatedAt:  time.Now(),
+		ActionType: actionType,
 	}
 }

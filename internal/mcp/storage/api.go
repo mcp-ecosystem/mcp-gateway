@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// Note: This APIStore is used to fetch MCP configuration from a remote server, it's not a universal use case,
+// if you want to use it, please make sure it's compatible with your server,
+// or you can easily modify it to fit your needs.
+
 // APIStore implements the Store interface using the remote http server
 type APIStore struct {
 	logger *zap.Logger
@@ -52,12 +56,12 @@ func (s *APIStore) Get(_ context.Context, name string) (*config.MCPConfig, error
 	if err != nil {
 		return nil, err
 	}
-	var config config.MCPConfig
-	err = json.Unmarshal([]byte(jsonStr), &config)
+	var data config.MCPConfig
+	err = json.Unmarshal([]byte(jsonStr), &data)
 	if err != nil {
 		return nil, err
 	}
-	return &config, nil
+	return &data, nil
 }
 
 // List implements Store.List
@@ -75,14 +79,36 @@ func (s *APIStore) List(_ context.Context) ([]*config.MCPConfig, error) {
 }
 
 // Update implements Store.Update
-func (s *APIStore) Update(_ context.Context, server *config.MCPConfig) error {
+func (s *APIStore) Update(_ context.Context, _ *config.MCPConfig) error {
 	// only use for read config
 	return nil
 }
 
 // Delete implements Store.Delete
-func (s *APIStore) Delete(_ context.Context, name string) error {
+func (s *APIStore) Delete(_ context.Context, _ string) error {
 	// only use for read config
+	return nil
+}
+
+// GetVersion implements Store.GetVersion
+func (s *APIStore) GetVersion(_ context.Context, _ string, _ int) (*config.MCPConfigVersion, error) {
+	return nil, nil
+}
+
+// ListVersions implements Store.ListVersions
+func (s *APIStore) ListVersions(_ context.Context, _ string) ([]*config.MCPConfigVersion, error) {
+	return nil, nil
+}
+
+// SetActiveVersion implements Store.SetActiveVersion
+func (s *APIStore) SetActiveVersion(_ context.Context, _ string, _ int) error {
+	// API store is read-only
+	return nil
+}
+
+// DeleteVersion implements Store.DeleteVersion
+func (s *APIStore) DeleteVersion(_ context.Context, _ string, _ int) error {
+	// API store is read-only
 	return nil
 }
 
