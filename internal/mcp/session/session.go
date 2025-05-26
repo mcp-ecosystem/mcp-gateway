@@ -20,12 +20,13 @@ type RequestInfo struct {
 
 // Meta holds immutable metadata about a session.
 type Meta struct {
-	ID        string       `json:"id"`         // Unique session ID
-	CreatedAt time.Time    `json:"created_at"` // Timestamp of session creation
-	Prefix    string       `json:"prefix"`     // Optional namespace or application prefix
-	Type      string       `json:"type"`       // Connection type, e.g., "sse", "streamable"
-	Request   *RequestInfo `json:"request"`    // Request information
-	Extra     []byte       `json:"extra"`      // Optional serialized extra data
+	ID            string       `json:"id"`         // Unique session ID
+	CreatedAt     time.Time    `json:"created_at"` // Timestamp of session creation
+	Prefix        string       `json:"prefix"`     // Optional namespace or application prefix
+	Type          string       `json:"type"`       // Connection type, e.g., "sse", "streamable"
+	Request       *RequestInfo `json:"request"`    // Request information
+	Extra         []byte       `json:"extra"`      // Optional serialized extra data
+	Authenticated bool         `json:"authenticated"`
 }
 
 // Connection represents an active session connection capable of sending messages.

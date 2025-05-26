@@ -33,6 +33,26 @@ func (s *Server) handleSSE(c *gin.Context) {
 		prefix = "/"
 	}
 
+	// auth
+	authenticated := false
+	keyQuery := c.Request.URL.Query()["key"]
+	mcpConfig := s.state.prefixToMCPServerConfig[prefix]
+	if len(keyQuery) > 0 {
+		if keyQuery[0] == mcpConfig.Env["authQueryKey"] {
+			authenticated = true
+		}
+	} else {
+		bearerAuthenticator := impl.BearerAuthenticator{Header: "Authorization", ArgKey: "Authorization"}
+		if err := bearerAuthenticator.Authenticate(c.Request.Context(), c.Request); err == nil {
+			config := jwt.Config{SecretKey: mcpConfig.Env["authSecretKey"]}
+			service := jwt.NewService(config)
+			_, err = service.ValidateTokenWithCustomClaims(c.Request.Context().Value("Authorization").(string))
+			if err == nil {
+				authenticated = true
+			}
+		}
+	}
+
 	requestInfo := &session.RequestInfo{
 		Headers: make(map[string]string),
 		Query:   make(map[string]string),
@@ -59,12 +79,13 @@ func (s *Server) handleSSE(c *gin.Context) {
 
 	sessionID := uuid.New().String()
 	meta := &session.Meta{
-		ID:        sessionID,
-		CreatedAt: time.Now(),
-		Prefix:    prefix,
-		Type:      "sse",
-		Request:   requestInfo,
-		Extra:     nil,
+		ID:            sessionID,
+		CreatedAt:     time.Now(),
+		Prefix:        prefix,
+		Type:          "sse",
+		Request:       requestInfo,
+		Extra:         nil,
+		Authenticated: authenticated,
 	}
 
 	s.logger.Info("establishing SSE connection",
@@ -398,16 +419,8 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 		s.sendSuccessResponse(c, conn, req, result, true)
 	case mcp.ToolsCall:
 		// auth
-		bearerAuthenticator := impl.BearerAuthenticator{Header: "Authorization", ArgKey: "Authorization"}
-		if err := bearerAuthenticator.Authenticate(c.Request.Context(), c.Request); err != nil {
-			s.sendProtocolError(c, req.Id, err.Error(), http.StatusUnauthorized, mcp.ErrorCodeUnauthorized)
-			return
-		}
-		config := jwt.Config{SecretKey: "AAAAA"}
-		service := jwt.NewService(config)
-		_, err := service.ValidateTokenWithCustomClaims(c.Request.Context().Value("Authorization").(string))
-		if err != nil {
-			s.sendProtocolError(c, req.Id, err.Error(), http.StatusUnauthorized, mcp.ErrorCodeUnauthorized)
+		if !conn.Meta().Authenticated {
+			s.sendProtocolError(c, req.Id, "Invalid auth", http.StatusUnauthorized, mcp.ErrorCodeUnauthorized)
 			return
 		}
 
@@ -426,7 +439,7 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 
 		var (
 			result *mcp.CallToolResult
-			//err    error
+			err    error
 		)
 		switch protoType {
 		case cnst.BackendProtoHttp:
