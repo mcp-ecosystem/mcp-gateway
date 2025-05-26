@@ -112,6 +112,26 @@ func (s *APIStore) DeleteVersion(_ context.Context, _ string, _ int) error {
 	return nil
 }
 
+func (s *APIStore) ListRegistryServers(_ context.Context, _ string, _ int, _ string) ([]*config.MCPConfig, string, error) {
+	// API store doesn't support registry operations
+	return nil, "", fmt.Errorf("registry operations not supported in API store")
+}
+
+func (s *APIStore) GetRegistryServerByID(_ context.Context, _ string, _ string) (*config.MCPConfig, error) {
+	// API store doesn't support registry operations
+	return nil, fmt.Errorf("registry operations not supported in API store")
+}
+
+func (s *APIStore) PublishToRegistry(_ context.Context, _ *config.MCPConfig) error {
+	// API store is read-only
+	return fmt.Errorf("registry operations not supported in API store")
+}
+
+func (s *APIStore) UnpublishFromRegistry(_ context.Context, _ string, _ string) error {
+	// API store is read-only
+	return fmt.Errorf("registry operations not supported in API store")
+}
+
 func (s *APIStore) request() (string, error) {
 	client := &http.Client{
 		Timeout: s.timeout,

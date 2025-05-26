@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
@@ -358,6 +359,108 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, name string, version int
 			return err
 		}
 
+		return nil
+	})
+}
+
+func (s *DBStore) ListRegistryServers(ctx context.Context, cursor string, limit int, tenantName string) ([]*config.MCPConfig, string, error) {
+	var models []MCPConfig
+	query := s.db.Where("is_published = ?", true)
+	
+	if tenantName != "" {
+		query = query.Where("tenant = ?", tenantName)
+	}
+	
+	if cursor != "" {
+		var cursorModel MCPConfig
+		if err := s.db.Where("id = ?", cursor).First(&cursorModel).Error; err != nil {
+			return nil, "", err
+		}
+		query = query.Where("created_at > ?", cursorModel.CreatedAt)
+	}
+	
+	if limit > 0 {
+		query = query.Limit(limit + 1) // +1 to check if there are more results
+	}
+	
+	if err := query.Order("created_at ASC").Find(&models).Error; err != nil {
+		return nil, "", err
+	}
+	
+	var nextCursor string
+	if limit > 0 && len(models) > limit {
+		nextCursor = models[limit].ID
+		models = models[:limit]
+	}
+	
+	configs := make([]*config.MCPConfig, len(models))
+	for i, model := range models {
+		cfg, err := model.ToMCPConfig()
+		if err != nil {
+			return nil, "", err
+		}
+		configs[i] = cfg
+	}
+	
+	return configs, nextCursor, nil
+}
+
+func (s *DBStore) GetRegistryServerByID(ctx context.Context, id string, tenantName string) (*config.MCPConfig, error) {
+	var model MCPConfig
+	query := s.db.Where("id = ? AND is_published = ?", id, true)
+	
+	if tenantName != "" {
+		query = query.Where("tenant = ?", tenantName)
+	}
+	
+	if err := query.First(&model).Error; err != nil {
+		return nil, err
+	}
+	
+	return model.ToMCPConfig()
+}
+
+func (s *DBStore) PublishToRegistry(ctx context.Context, cfg *config.MCPConfig) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		model, err := FromMCPConfig(cfg)
+		if err != nil {
+			return err
+		}
+		
+		if model.ID == "" {
+			model.ID = uuid.New().String()
+		}
+		
+		model.IsPublished = true
+		
+		if err := tx.Save(model).Error; err != nil {
+			return err
+		}
+		
+		// Update the cfg with the generated ID
+		cfg.ID = model.ID
+		
+		return nil
+	})
+}
+
+func (s *DBStore) UnpublishFromRegistry(ctx context.Context, name string, tenantName string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var model MCPConfig
+		if err := tx.Where("name = ?", name).First(&model).Error; err != nil {
+			return err
+		}
+		
+		if tenantName != "" && model.Tenant != tenantName {
+			return fmt.Errorf("unauthorized: server belongs to a different tenant")
+		}
+		
+		model.IsPublished = false
+		
+		if err := tx.Save(&model).Error; err != nil {
+			return err
+		}
+		
 		return nil
 	})
 }

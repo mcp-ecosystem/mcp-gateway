@@ -34,4 +34,12 @@ type Store interface {
 
 	// SetActiveVersion sets a specific version as the active version
 	SetActiveVersion(ctx context.Context, name string, version int) error
+	
+	ListRegistryServers(ctx context.Context, cursor string, limit int, tenantName string) ([]*config.MCPConfig, string, error)
+	
+	GetRegistryServerByID(ctx context.Context, id string, tenantName string) (*config.MCPConfig, error)
+	
+	PublishToRegistry(ctx context.Context, cfg *config.MCPConfig) error
+	
+	UnpublishFromRegistry(ctx context.Context, name string, tenantName string) error
 }

@@ -203,6 +203,14 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		protected.DELETE("/mcp-servers/:name", mcpHandler.HandleMCPServerDelete)
 		protected.POST("/mcp-servers/sync", mcpHandler.HandleMCPServerSync)
 
+		registryHandler := apiserverHandler.NewRegistry(db, store, logger)
+		registry := protected.Group("/v0")
+		{
+			registry.GET("/servers", registryHandler.HandleListServers)
+			registry.GET("/servers/:id", registryHandler.HandleGetServerDetail)
+			registry.POST("/publish", registryHandler.HandlePublishServer)
+		}
+
 		// OpenAPI routes
 		protected.POST("/openapi/import", openapiHandler.HandleImport)
 

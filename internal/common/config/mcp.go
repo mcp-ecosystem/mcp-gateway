@@ -24,6 +24,13 @@ type (
 		CreatedAt  time.Time         `json:"createdAt" yaml:"createdAt"`
 		UpdatedAt  time.Time         `json:"updatedAt" yaml:"updatedAt"`
 		DeletedAt  time.Time         `json:"deletedAt" yaml:"deletedAt"` // non-zero indicates that all information has been deleted
+		
+		ID          string            `json:"id,omitempty" yaml:"id,omitempty"`                             // Registry server ID
+		Description string            `json:"description,omitempty" yaml:"description,omitempty"`           // Server description
+		Repository  *RepositoryConfig `json:"repository,omitempty" yaml:"repository,omitempty"`             // Source repository
+		Version     string            `json:"version,omitempty" yaml:"version,omitempty"`                   // Current version
+		IsPublished bool              `json:"isPublished,omitempty" yaml:"isPublished,omitempty"`           // Whether published to registry
+		
 		Routers    []RouterConfig    `json:"routers" yaml:"routers" gorm:"type:json"`
 		Servers    []ServerConfig    `json:"servers" yaml:"servers" gorm:"type:json"`
 		Tools      []ToolConfig      `json:"tools" yaml:"tools" gorm:"type:json"`
@@ -48,6 +55,13 @@ type (
 		Host string `json:"host" yaml:"host"`
 		Port int    `json:"port" yaml:"port"`
 		Type string `json:"type" yaml:"type"` // http, https, socks5
+	}
+	
+	// RepositoryConfig represents source repository information
+	RepositoryConfig struct {
+		URL    string `json:"url" yaml:"url"`       // Repository URL
+		Source string `json:"source" yaml:"source"` // Source provider (e.g., github, gitlab)
+		ID     string `json:"id" yaml:"id"`         // Repository identifier
 	}
 
 	ServerConfig struct {

@@ -14,23 +14,32 @@ import (
 
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
-	Name       string `gorm:"primaryKey; column:name"`
-	Tenant     string `gorm:"column:tenant; default:''"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Routers    string `gorm:"type:text; column:routers"`
-	Servers    string `gorm:"type:text; column:servers"`
-	Tools      string `gorm:"type:text; column:tools"`
-	McpServers string `gorm:"type:text; column:mcp_servers"`
+	Name        string `gorm:"primaryKey; column:name"`
+	Tenant      string `gorm:"column:tenant; default:''"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Routers     string `gorm:"type:text; column:routers"`
+	Servers     string `gorm:"type:text; column:servers"`
+	Tools       string `gorm:"type:text; column:tools"`
+	McpServers  string `gorm:"type:text; column:mcp_servers"`
+	ID          string `gorm:"column:id; index"`
+	Description string `gorm:"type:text; column:description"`
+	Repository  string `gorm:"type:text; column:repository"`
+	Version     string `gorm:"column:version"`
+	IsPublished bool   `gorm:"column:is_published; default:false"`
 }
 
 // ToMCPConfig converts the database model to MCPConfig
 func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 	cfg := &config.MCPConfig{
-		Name:      m.Name,
-		Tenant:    m.Tenant,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		Name:        m.Name,
+		Tenant:      m.Tenant,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
+		ID:          m.ID,
+		Description: m.Description,
+		Version:     m.Version,
+		IsPublished: m.IsPublished,
 	}
 
 	if len(m.Routers) > 0 {
@@ -52,6 +61,14 @@ func (m *MCPConfig) ToMCPConfig() (*config.MCPConfig, error) {
 		if err := json.Unmarshal([]byte(m.McpServers), &cfg.McpServers); err != nil {
 			return nil, err
 		}
+	}
+	
+	if len(m.Repository) > 0 {
+		var repo config.RepositoryConfig
+		if err := json.Unmarshal([]byte(m.Repository), &repo); err != nil {
+			return nil, err
+		}
+		cfg.Repository = &repo
 	}
 
 	return cfg, nil
@@ -78,16 +95,30 @@ func FromMCPConfig(cfg *config.MCPConfig) (*MCPConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	var repository string
+	if cfg.Repository != nil {
+		repoBytes, err := json.Marshal(cfg.Repository)
+		if err != nil {
+			return nil, err
+		}
+		repository = string(repoBytes)
+	}
 
 	return &MCPConfig{
-		Name:       cfg.Name,
-		Tenant:     cfg.Tenant,
-		CreatedAt:  cfg.CreatedAt,
-		UpdatedAt:  cfg.UpdatedAt,
-		Routers:    string(routers),
-		Servers:    string(servers),
-		Tools:      string(tools),
-		McpServers: string(mcpServers),
+		Name:        cfg.Name,
+		Tenant:      cfg.Tenant,
+		CreatedAt:   cfg.CreatedAt,
+		UpdatedAt:   cfg.UpdatedAt,
+		Routers:     string(routers),
+		Servers:     string(servers),
+		Tools:       string(tools),
+		McpServers:  string(mcpServers),
+		ID:          cfg.ID,
+		Description: cfg.Description,
+		Repository:  repository,
+		Version:     cfg.Version,
+		IsPublished: cfg.IsPublished,
 	}, nil
 }
 

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"gopkg.in/yaml.v3"
@@ -434,4 +435,95 @@ func getConfigPath(baseDir string) string {
 		}
 	}
 	return filepath.Join(appData, ".mcp", "gateway")
+}
+
+
+func (s *DiskStore) ListRegistryServers(ctx context.Context, cursor string, limit int, tenantName string) ([]*config.MCPConfig, string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	servers, err := s.List(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+
+	var published []*config.MCPConfig
+	for _, server := range servers {
+		if server.IsPublished && (tenantName == "" || server.Tenant == tenantName) {
+			published = append(published, server)
+		}
+	}
+
+	startIdx := 0
+	if cursor != "" {
+		for i, server := range published {
+			if server.ID == cursor {
+				startIdx = i + 1
+				break
+			}
+		}
+	}
+
+	endIdx := len(published)
+	if limit > 0 && startIdx+limit < len(published) {
+		endIdx = startIdx + limit
+	}
+
+	if startIdx >= len(published) {
+		return []*config.MCPConfig{}, "", nil
+	}
+
+	result := published[startIdx:endIdx]
+	nextCursor := ""
+	if endIdx < len(published) {
+		nextCursor = published[endIdx].ID
+	}
+
+	return result, nextCursor, nil
+}
+
+func (s *DiskStore) GetRegistryServerByID(ctx context.Context, id string, tenantName string) (*config.MCPConfig, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	servers, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, server := range servers {
+		if server.ID == id && server.IsPublished && (tenantName == "" || server.Tenant == tenantName) {
+			return server, nil
+		}
+	}
+
+	return nil, fmt.Errorf("registry server not found")
+}
+
+func (s *DiskStore) PublishToRegistry(ctx context.Context, cfg *config.MCPConfig) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if cfg.ID == "" {
+		cfg.ID = uuid.New().String()
+	}
+	
+	cfg.IsPublished = true
+	
+	return s.Update(ctx, cfg)
+}
+
+func (s *DiskStore) UnpublishFromRegistry(ctx context.Context, name string, tenantName string) error {
+	cfg, err := s.Get(ctx, name)
+	if err != nil {
+		return err
+	}
+	
+	if cfg.Tenant != tenantName {
+		return fmt.Errorf("unauthorized: server belongs to a different tenant")
+	}
+	
+	cfg.IsPublished = false
+	
+	return s.Update(ctx, cfg)
 }
