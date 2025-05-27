@@ -120,7 +120,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   if (isCollapsed) return null;
 
   return (
-    <Card className="w-80">
+    <Card className="w-64">
       <CardBody className="p-0">
         <div className="p-4">
           <Button
@@ -141,60 +141,58 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
             sessions.map((session) => (
               <div
                 key={session.id}
-                className={`flex items-center justify-between px-4 py-2 rounded-lg ${
+                className={`group flex items-center justify-between px-4 py-2 rounded-lg cursor-pointer hover:bg-default-100 transition-all ${
                   selectedChat === session.id ? 'bg-primary-100' : ''
                 }`}
+                onClick={() => handleSessionSelect(session.id)}
               >
-                <Button
-                  variant="light"
-                  className="flex-1 justify-start"
-                  onPress={() => handleSessionSelect(session.id)}
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium truncate max-w-full">
-                      {session.title || t('chat.untitled')}
-                    </span>
-                    <span className="text-xs text-default-400">
-                      {formatDate(session.createdAt)}
-                    </span>
-                  </div>
-                </Button>
-                <Dropdown>
-                  <DropdownTrigger>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      size="sm"
-                      className="ml-2"
+                <div className="flex flex-col items-start flex-1 min-w-0 mr-2 relative">
+                  <span className="text-sm font-medium truncate w-full">
+                    {session.title || t('chat.untitled')}
+                  </span>
+                  <span className="text-xs text-default-400 truncate w-full">
+                    {formatDate(session.createdAt)}
+                  </span>
+                  <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-default-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity absolute right-6">
+                  <Dropdown className='min-w-0 w-fit'>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        className="ml-2"
+                      >
+                        <Icon icon="lucide:more-vertical" />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu
+                      aria-label="Session actions"
+                      onAction={(key) => {
+                        setSelectedSession(session);
+                        if (key === 'rename') {
+                          setNewTitle(session.title);
+                          setIsRenameModalOpen(true);
+                        } else if (key === 'delete') {
+                          setIsDeleteModalOpen(true);
+                        }
+                      }}
                     >
-                      <Icon icon="lucide:more-vertical" />
-                    </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Session actions"
-                    onAction={(key) => {
-                      setSelectedSession(session);
-                      if (key === 'rename') {
-                        setNewTitle(session.title);
-                        setIsRenameModalOpen(true);
-                      } else if (key === 'delete') {
-                        setIsDeleteModalOpen(true);
-                      }
-                    }}
-                  >
-                    <DropdownItem key="rename" startContent={<Icon icon="lucide:edit" />}>
-                      {t('chat.rename')}
-                    </DropdownItem>
-                    <DropdownItem
-                      key="delete"
-                      className="text-danger"
-                      color="danger"
-                      startContent={<Icon icon="lucide:trash" />}
-                    >
-                      {t('chat.delete')}
-                    </DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
+                      <DropdownItem key="rename" startContent={<Icon icon="lucide:edit" />}>
+                        {t('chat.rename')}
+                      </DropdownItem>
+                      <DropdownItem
+                        key="delete"
+                        className="text-danger"
+                        color="danger"
+                        startContent={<Icon icon="lucide:trash" />}
+                      >
+                        {t('chat.delete')}
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
               </div>
             ))
           )}
