@@ -85,7 +85,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   };
 
   const handleRename = async () => {
-    if (!selectedSession || !newTitle) return;
+    if (!selectedSession || !newTitle) {
 
     try {
       await updateChatSessionTitle(selectedSession.id, newTitle);
