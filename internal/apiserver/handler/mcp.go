@@ -394,13 +394,8 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 		h.logger.Warn("tenant permission check failed",
 			zap.String("tenant", cfg.Tenant),
 			zap.Error(err))
-		if errors.Is(err, i18n.ErrUnauthorized) {
-			i18n.RespondWithError(c, i18n.ErrUnauthorized)
-		} else if errors.Is(err, i18n.ErrorTenantPermissionError) {
-			i18n.RespondWithError(c, i18n.ErrorTenantPermissionError)
-		} else {
-			i18n.RespondWithError(c, err)
-		}
+
+		i18n.RespondWithError(c, err)
 		return
 	}
 
