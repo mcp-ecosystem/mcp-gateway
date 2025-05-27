@@ -86,6 +86,8 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
 
   const handleRename = async () => {
     if (!selectedSession || !newTitle) {
+      return;
+    }
 
     try {
       await updateChatSessionTitle(selectedSession.id, newTitle);
@@ -100,7 +102,9 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   };
 
   const handleDelete = async () => {
-    if (!selectedSession) return;
+    if (!selectedSession) {
+      return;
+    }
 
     try {
       await deleteChatSession(selectedSession.id);
