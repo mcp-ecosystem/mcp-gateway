@@ -2,14 +2,22 @@ import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button
 import { Icon } from '@iconify/react';
 import dayjs from 'dayjs';
 import yaml from 'js-yaml';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
 import { useTheme } from '../../hooks/useTheme';
-import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames } from '../../services/api';
+import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '../../services/api';
 import type { MCPConfigVersion } from '../../types/mcp';
+
+interface Tenant {
+  id: number;
+  name: string;
+  prefix: string;
+  description: string;
+  isActive: boolean;
+}
 
 export function ConfigVersionsPage() {
   const { t } = useTranslation();
@@ -18,43 +26,62 @@ export function ConfigVersionsPage() {
   const [versions, setVersions] = useState<MCPConfigVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [configNames, setConfigNames] = useState<string[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<string | undefined>(searchParams.get('name') || undefined);
+  const [selectedTenant, setSelectedTenant] = useState<string | undefined>(searchParams.get('tenant') || undefined);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<{ old?: MCPConfigVersion; new?: MCPConfigVersion }>({});
   const [showDiffOnly, setShowDiffOnly] = useState(true);
 
-  const fetchConfigNames = async () => {
+  const fetchConfigNames = useCallback(async () => {
     try {
-      const names = await getMCPConfigNames();
+      const names = await getMCPConfigNames(selectedTenant);
       setConfigNames(names);
     } catch (error) {
       console.error('Failed to fetch config names:', error);
     }
-  };
+  }, [selectedTenant]);
 
-  const fetchVersions = async (name?: string) => {
+  const fetchTenants = useCallback(async () => {
+    try {
+      const data = await getTenants();
+      setTenants(data);
+    } catch (error) {
+      console.error('Failed to fetch tenants:', error);
+    }
+  }, []);
+
+  const fetchVersions = useCallback(async (name?: string) => {
     setLoading(true);
     try {
-      const response = await getMCPConfigVersions(name);
+      const response = await getMCPConfigVersions(selectedTenant, name);
       setVersions(response.data || []);
     } catch (error) {
       console.error('Failed to fetch config versions:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTenant]);
 
   useEffect(() => {
-    fetchConfigNames();
-  }, []);
+    fetchTenants();
+  }, [fetchTenants]);
+
+  useEffect(() => {
+    if (selectedTenant) {
+      fetchConfigNames();
+    } else {
+      setConfigNames([]);
+    }
+  }, [selectedTenant, fetchConfigNames]);
 
   useEffect(() => {
     fetchVersions(selectedConfig);
-  }, [selectedConfig]);
+  }, [selectedTenant, selectedConfig, fetchVersions]);
 
   const handleSetActive = async (name: string, version: number) => {
     try {
-      await setActiveVersion(name, version);
+      await setActiveVersion(selectedTenant || 'default', name, version);
       console.log('Config active version set successfully');
       fetchVersions(selectedConfig);
     } catch (error) {
@@ -64,7 +91,24 @@ export function ConfigVersionsPage() {
 
   const handleConfigChange = (value: string) => {
     setSelectedConfig(value);
-    setSearchParams(value ? { name: value } : {});
+    const params: Record<string, string> = {};
+    if (value) {
+      params.name = value;
+    }
+    if (selectedTenant) {
+      params.tenant = selectedTenant;
+    }
+    setSearchParams(params);
+  };
+
+  const handleTenantChange = (value: string) => {
+    setSelectedTenant(value);
+    setSelectedConfig(undefined); // Reset selected config when tenant changes
+    const params: Record<string, string> = {};
+    if (value) {
+      params.tenant = value;
+    }
+    setSearchParams(params);
   };
 
   const handleCompareWithPrevious = (record: MCPConfigVersion) => {
@@ -129,6 +173,10 @@ export function ConfigVersionsPage() {
     {
       key: 'name',
       render: (record: MCPConfigVersion) => record.name,
+    },
+    {
+      key: 'tenant',
+      render: (record: MCPConfigVersion) => record.tenant,
     },
     {
       key: 'version',
@@ -221,7 +269,18 @@ export function ConfigVersionsPage() {
 
   return (
     <div>
-      <div className="mb-4">
+      <div className="mb-4 flex gap-4">
+        <Select
+          className="mt-1 block w-48"
+          selectedKeys={selectedTenant ? [selectedTenant] : []}
+          onSelectionChange={(keys) => handleTenantChange(Array.from(keys)[0] as string)}
+          aria-label={t('mcp.configVersions.select_tenant')}
+          placeholder={t('mcp.configVersions.select_tenant')}
+        >
+          {tenants.map(tenant => (
+            <SelectItem key={tenant.name}>{tenant.name}</SelectItem>
+          ))}
+        </Select>
         <Select
           className="mt-1 block w-48"
           selectedKeys={selectedConfig ? [selectedConfig] : []}
@@ -238,6 +297,7 @@ export function ConfigVersionsPage() {
       <Table aria-label={t('mcp.configVersions.title')}>
         <TableHeader>
           <TableColumn>{t('mcp.configVersions.name')}</TableColumn>
+          <TableColumn>{t('mcp.configVersions.tenant')}</TableColumn>
           <TableColumn>{t('mcp.configVersions.version')}</TableColumn>
           <TableColumn>{t('mcp.configVersions.created_by')}</TableColumn>
           <TableColumn>{t('mcp.configVersions.created_at')}</TableColumn>

@@ -157,6 +157,9 @@ data:
     [ErrorMCPServerNameRequired]
     other = "MCP server name is required"
 
+    [ErrorVersionRequired]
+    other = "Version is required"
+
     [ErrorMCPConfigInvalid]
     other = "MCP configuration is invalid"
 
@@ -515,6 +518,9 @@ data:
 
     [ErrorMCPServerNameRequired]
     other = "MCP服务名称不能为空"
+
+    [ErrorVersionRequired]
+    other = "版本不能为空"
 
     [ErrorMCPConfigInvalid]
     other = "MCP配置无效"

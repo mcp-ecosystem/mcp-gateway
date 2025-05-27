@@ -92,6 +92,7 @@ func (s *DBStore) Create(_ context.Context, server *config.MCPConfig) error {
 		// Create active version record
 		activeVersion := &ActiveVersion{
 			Name:      server.Name,
+			Tenant:    server.Tenant,
 			Version:   1,
 			UpdatedAt: time.Now(),
 		}
@@ -105,9 +106,9 @@ func (s *DBStore) Create(_ context.Context, server *config.MCPConfig) error {
 }
 
 // Get implements Store.Get
-func (s *DBStore) Get(_ context.Context, name string) (*config.MCPConfig, error) {
+func (s *DBStore) Get(_ context.Context, tenant, name string) (*config.MCPConfig, error) {
 	var model MCPConfig
-	err := s.db.Where("name = ?", name).First(&model).Error
+	err := s.db.Where("tenant = ? AND name = ?", tenant, name).First(&model).Error
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (s *DBStore) Update(ctx context.Context, server *config.MCPConfig) error {
 		}
 
 		// Update the main record
-		if err := tx.Save(model).Error; err != nil {
+		if err := tx.Model(&MCPConfig{}).Where("tenant = ? AND name = ?", server.Tenant, server.Name).Updates(model).Error; err != nil {
 			return err
 		}
 
@@ -179,12 +180,13 @@ func (s *DBStore) Update(ctx context.Context, server *config.MCPConfig) error {
 		// Update active version
 		activeVersion := &ActiveVersion{
 			Name:      server.Name,
+			Tenant:    server.Tenant,
 			Version:   version.Version,
 			UpdatedAt: time.Now(),
 		}
 
 		if err := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}},
+			Columns:   []clause.Column{{Name: "tenant"}, {Name: "name"}},
 			DoUpdates: clause.AssignmentColumns([]string{"version", "updated_at"}),
 		}).Create(activeVersion).Error; err != nil {
 			return err
@@ -195,25 +197,25 @@ func (s *DBStore) Update(ctx context.Context, server *config.MCPConfig) error {
 }
 
 // Delete implements Store.Delete
-func (s *DBStore) Delete(ctx context.Context, name string) error {
+func (s *DBStore) Delete(ctx context.Context, tenant, name string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Get the config before deletion to create version record
-		var config MCPConfig
-		if err := tx.Where("name = ?", name).First(&config).Error; err != nil {
+		var model MCPConfig
+		if err := tx.Where("tenant = ? AND name = ?", tenant, name).First(&model).Error; err != nil {
 			return err
 		}
 
 		// Get the latest version number
 		var latestVersion int
 		if err := tx.Model(&MCPConfigVersion{}).
-			Where("name = ?", name).
+			Where("tenant = ? AND name = ?", tenant, name).
 			Select("COALESCE(MAX(version), 0)").
 			Scan(&latestVersion).Error; err != nil {
 			return err
 		}
 
 		// Create version record for deletion
-		mcpConfig, err := config.ToMCPConfig()
+		mcpConfig, err := model.ToMCPConfig()
 		if err != nil {
 			return err
 		}
@@ -227,12 +229,12 @@ func (s *DBStore) Delete(ctx context.Context, name string) error {
 		}
 
 		// Soft delete the active version
-		if err := tx.Where("name = ?", name).Delete(&ActiveVersion{}).Error; err != nil {
+		if err := tx.Where("tenant = ? AND name = ?", tenant, name).Delete(&ActiveVersion{}).Error; err != nil {
 			return err
 		}
 
 		// Soft delete the main record
-		if err := tx.Where("name = ?", name).Delete(&MCPConfig{}).Error; err != nil {
+		if err := tx.Where("tenant = ? AND name = ?", tenant, name).Delete(&MCPConfig{}).Error; err != nil {
 			return err
 		}
 
@@ -241,37 +243,32 @@ func (s *DBStore) Delete(ctx context.Context, name string) error {
 }
 
 // GetVersion gets a specific version of the configuration
-func (s *DBStore) GetVersion(ctx context.Context, name string, version int) (*config.MCPConfigVersion, error) {
+func (s *DBStore) GetVersion(ctx context.Context, tenant, name string, version int) (*config.MCPConfigVersion, error) {
 	var versionModel MCPConfigVersion
-	if err := s.db.Where("name = ? AND version = ?", name, version).First(&versionModel).Error; err != nil {
+	if err := s.db.Where("tenant = ? AND name = ? AND version = ?", tenant, name, version).First(&versionModel).Error; err != nil {
 		return nil, err
 	}
-	return &config.MCPConfigVersion{
-		Version:    versionModel.Version,
-		CreatedBy:  versionModel.CreatedBy,
-		CreatedAt:  versionModel.CreatedAt,
-		ActionType: versionModel.ActionType,
-		Name:       versionModel.Name,
-		Tenant:     versionModel.Tenant,
-		Routers:    versionModel.Routers,
-		Servers:    versionModel.Servers,
-		Tools:      versionModel.Tools,
-		McpServers: versionModel.McpServers,
-		Hash:       versionModel.Hash,
-	}, nil
+	return versionModel.ToConfigVersion(), nil
 }
 
 // ListVersions lists all versions of a configuration
-func (s *DBStore) ListVersions(ctx context.Context, name string) ([]*config.MCPConfigVersion, error) {
+func (s *DBStore) ListVersions(ctx context.Context, tenant, name string) ([]*config.MCPConfigVersion, error) {
 	var versions []MCPConfigVersion
-	if err := s.db.Where("name = ?", name).Order("version DESC").Find(&versions).Error; err != nil {
+	err := s.db.Model(&MCPConfigVersion{}).Where("tenant = ? AND name = ?", tenant, name).Order("version DESC").Find(&versions).Error
+	if err != nil {
 		return nil, err
 	}
 
-	// Get active version
-	var activeVersion ActiveVersion
-	if err := s.db.Where("name = ?", name).First(&activeVersion).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	// Get active versions
+	var activeVersions []ActiveVersion
+	if err := s.db.Where("name = ?", name).Find(&activeVersions).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
+	}
+
+	// Create a map of active versions for quick lookup
+	activeVersionMap := make(map[string]int)
+	for _, av := range activeVersions {
+		activeVersionMap[av.Name] = av.Version
 	}
 
 	result := make([]*config.MCPConfigVersion, len(versions))
@@ -287,7 +284,7 @@ func (s *DBStore) ListVersions(ctx context.Context, name string) ([]*config.MCPC
 			Servers:    v.Servers,
 			Tools:      v.Tools,
 			McpServers: v.McpServers,
-			IsActive:   v.Version == activeVersion.Version,
+			IsActive:   v.Version == activeVersionMap[v.Name],
 			Hash:       v.Hash,
 		}
 	}
@@ -295,16 +292,16 @@ func (s *DBStore) ListVersions(ctx context.Context, name string) ([]*config.MCPC
 }
 
 // DeleteVersion deletes a specific version
-func (s *DBStore) DeleteVersion(ctx context.Context, name string, version int) error {
+func (s *DBStore) DeleteVersion(ctx context.Context, tenant, name string, version int) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Check if this is the active version
 		var activeVersion ActiveVersion
-		if err := tx.Where("name = ? AND version = ?", name, version).First(&activeVersion).Error; err == nil {
+		if err := tx.Where("tenant = ? AND name = ? AND version = ?", tenant, name, version).First(&activeVersion).Error; err == nil {
 			return fmt.Errorf("cannot delete active version")
 		}
 
 		// Delete the version
-		if err := tx.Where("name = ? AND version = ?", name, version).Delete(&MCPConfigVersion{}).Error; err != nil {
+		if err := tx.Where("tenant = ? AND name = ? AND version = ?", tenant, name, version).Delete(&MCPConfigVersion{}).Error; err != nil {
 			return err
 		}
 
@@ -313,18 +310,18 @@ func (s *DBStore) DeleteVersion(ctx context.Context, name string, version int) e
 }
 
 // SetActiveVersion sets a specific version as the active version
-func (s *DBStore) SetActiveVersion(ctx context.Context, name string, version int) error {
+func (s *DBStore) SetActiveVersion(ctx context.Context, tenant, name string, version int) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// Check if the version exists
 		var versionModel MCPConfigVersion
-		if err := tx.Where("name = ? AND version = ?", name, version).First(&versionModel).Error; err != nil {
+		if err := tx.Where("tenant = ? AND name = ? AND version = ?", tenant, name, version).First(&versionModel).Error; err != nil {
 			return fmt.Errorf("version %d not found: %w", version, err)
 		}
 
 		// Get the latest version number
 		var latestVersion int
 		if err := tx.Model(&MCPConfigVersion{}).
-			Where("name = ?", name).
+			Where("tenant = ? AND name = ?", tenant, name).
 			Select("COALESCE(MAX(version), 0)").
 			Scan(&latestVersion).Error; err != nil {
 			return err
@@ -361,8 +358,8 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, name string, version int
 		}
 
 		if err := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}},
-			DoUpdates: clause.AssignmentColumns([]string{"tenant", "updated_at", "routers", "servers", "tools", "mcp_servers"}),
+			Columns:   []clause.Column{{Name: "name"}, {Name: "tenant"}},
+			DoUpdates: clause.AssignmentColumns([]string{"updated_at", "routers", "servers", "tools", "mcp_servers"}),
 		}).Create(mcpConfig).Error; err != nil {
 			return err
 		}
@@ -370,12 +367,13 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, name string, version int
 		// Update or create active version
 		activeVersion := &ActiveVersion{
 			Name:      name,
+			Tenant:    tenant,
 			Version:   newVersion.Version,
 			UpdatedAt: time.Now(),
 		}
 
 		if err := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}},
+			Columns:   []clause.Column{{Name: "tenant"}, {Name: "name"}},
 			DoUpdates: clause.AssignmentColumns([]string{"version", "updated_at"}),
 		}).Create(activeVersion).Error; err != nil {
 			return err
@@ -383,4 +381,28 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, name string, version int
 
 		return nil
 	})
+}
+
+// ListUpdated implements Store.ListUpdated
+func (s *DBStore) ListUpdated(_ context.Context, since time.Time) ([]*config.MCPConfig, error) {
+	// Get active versions and their configs in one query
+	var models []MCPConfig
+	err := s.db.Model(&MCPConfig{}).
+		Joins("INNER JOIN active_versions ON mcp_configs.tenant = active_versions.tenant AND mcp_configs.name = active_versions.name").
+		Where("active_versions.updated_at > ?", since).
+		Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+
+	configs := make([]*config.MCPConfig, len(models))
+	for i, model := range models {
+		cfg, err := model.ToMCPConfig()
+		if err != nil {
+			return nil, err
+		}
+		configs[i] = cfg
+	}
+
+	return configs, nil
 }

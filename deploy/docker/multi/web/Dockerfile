@@ -72,7 +72,7 @@ COPY deploy/docker/multi/web/nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80 5234
 
 # Create startup script
-RUN echo '#!/bin/bash\n\
+RUN echo -e '#!/bin/sh\n\
 nginx &\n\
 exec /app/apiserver\n' > /app/start.sh && \
 chmod +x /app/start.sh

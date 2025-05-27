@@ -137,17 +137,6 @@ func (h *MCP) checkTenantPermission(c *gin.Context, tenantName string, cfg *conf
 }
 
 func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
-	// Get the server name from path parameter instead of query parameter
-	name := c.Param("name")
-	if name == "" {
-		h.logger.Warn("MCP server name required but missing")
-		i18n.RespondWithError(c, i18n.ErrorMCPServerNameRequired)
-		return
-	}
-
-	h.logger.Info("handling MCP server update request",
-		zap.String("server_name", name))
-
 	// Read the raw YAML content from request body
 	content, err := c.GetRawData()
 	if err != nil {
@@ -165,18 +154,17 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 	}
 
 	// Get existing server
-	oldCfg, err := h.store.Get(c.Request.Context(), name)
+	oldCfg, err := h.store.Get(c.Request.Context(), cfg.Tenant, cfg.Name)
 	if err != nil {
 		h.logger.Error("MCP server not found",
-			zap.String("server_name", name),
+			zap.String("server_name", cfg.Name),
 			zap.Error(err))
-		i18n.RespondWithError(c, i18n.ErrorMCPServerNotFound.WithParam("Name", name))
+		i18n.RespondWithError(c, i18n.ErrorMCPServerNotFound.WithParam("Name", cfg.Name))
 		return
 	}
 
 	if oldCfg.Name != cfg.Name {
 		h.logger.Warn("server name mismatch",
-			zap.String("param_name", name),
 			zap.String("config_name", cfg.Name))
 		i18n.RespondWithError(c, i18n.ErrorMCPServerValidation.WithParam("Reason", "Server name in configuration must match name parameter"))
 		return
@@ -218,7 +206,7 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 
 	if err := h.store.Update(c.Request.Context(), &cfg); err != nil {
 		h.logger.Error("failed to update MCP server",
-			zap.String("server_name", name),
+			zap.String("server_name", cfg.Name),
 			zap.Error(err))
 		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to update MCP server: "+err.Error()))
 		return
@@ -232,7 +220,7 @@ func (h *MCP) HandleMCPServerUpdate(c *gin.Context) {
 	}
 
 	h.logger.Info("MCP server updated successfully",
-		zap.String("server_name", name))
+		zap.String("server_name", cfg.Name))
 	i18n.Success(i18n.SuccessMCPServerUpdated).With("status", "success").Send(c)
 }
 
@@ -417,7 +405,7 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 	}
 
 	// Check if server already exists
-	_, err = h.store.Get(c.Request.Context(), cfg.Name)
+	_, err = h.store.Get(c.Request.Context(), cfg.Tenant, cfg.Name)
 	if err == nil {
 		h.logger.Warn("MCP server already exists",
 			zap.String("server_name", cfg.Name))
@@ -472,6 +460,12 @@ func (h *MCP) HandleMCPServerCreate(c *gin.Context) {
 
 func (h *MCP) HandleMCPServerDelete(c *gin.Context) {
 	// Get the server name from path parameter
+	tenant := c.Param("tenant")
+	if tenant == "" {
+		h.logger.Warn("MCP server tenant required but missing")
+		i18n.RespondWithError(c, i18n.ErrorTenantRequired)
+		return
+	}
 	name := c.Param("name")
 	if name == "" {
 		h.logger.Warn("MCP server name required but missing")
@@ -483,7 +477,7 @@ func (h *MCP) HandleMCPServerDelete(c *gin.Context) {
 		zap.String("server_name", name))
 
 	// Check if server exists
-	cfg, err := h.store.Get(c.Request.Context(), name)
+	existingCfg, err := h.store.Get(c.Request.Context(), tenant, name)
 	if err != nil {
 		h.logger.Error("MCP server not found",
 			zap.String("server_name", name),
@@ -493,17 +487,17 @@ func (h *MCP) HandleMCPServerDelete(c *gin.Context) {
 	}
 
 	// Check tenant permission
-	_, err = h.checkTenantPermission(c, cfg.Tenant, cfg)
+	_, err = h.checkTenantPermission(c, existingCfg.Tenant, existingCfg)
 	if err != nil {
 		h.logger.Warn("tenant permission check failed",
-			zap.String("tenant", cfg.Tenant),
+			zap.String("tenant", existingCfg.Tenant),
 			zap.Error(err))
 		i18n.RespondWithError(c, err)
 		return
 	}
 
 	// Delete server
-	if err := h.store.Delete(c.Request.Context(), name); err != nil {
+	if err := h.store.Delete(c.Request.Context(), existingCfg.Tenant, name); err != nil {
 		h.logger.Error("failed to delete MCP server",
 			zap.String("server_name", name),
 			zap.Error(err))
@@ -512,8 +506,8 @@ func (h *MCP) HandleMCPServerDelete(c *gin.Context) {
 	}
 
 	// Send reload signal to gateway using notifier
-	cfg.DeletedAt = time.Now()
-	if err := h.notifier.NotifyUpdate(c.Request.Context(), cfg); err != nil {
+	existingCfg.DeletedAt = time.Now()
+	if err := h.notifier.NotifyUpdate(c.Request.Context(), existingCfg); err != nil {
 		h.logger.Error("failed to notify gateway", zap.Error(err))
 		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to notify gateway: "+err.Error()))
 		return
@@ -567,9 +561,10 @@ func (h *MCP) HandleMCPServerSync(c *gin.Context) {
 
 // HandleGetConfigVersions handles the request to get configuration versions
 func (h *MCP) HandleGetConfigVersions(c *gin.Context) {
-	// Get config names from query parameters
 	configNames := c.QueryArray("names")
+	tenant := c.Query("tenant")
 	var versions []*config.MCPConfigVersion
+	var configs []*config.MCPConfig
 
 	// Get user from claims
 	claims, exists := c.Get("claims")
@@ -590,93 +585,79 @@ func (h *MCP) HandleGetConfigVersions(c *gin.Context) {
 		return
 	}
 
-	if len(configNames) == 0 {
-		// If no names provided, get all configs first
-		configs, err := h.store.List(c.Request.Context(), true)
+	// If no names provided, get all configs first
+	configs, err = h.store.List(c.Request.Context(), true)
+	if err != nil {
+		h.logger.Error("failed to list configs", zap.Error(err))
+		i18n.RespondWithError(c, i18n.ErrInternalServer)
+		return
+	}
+
+	// Filter by tenant if specified
+	if tenant != "" {
+		filteredConfigs := make([]*config.MCPConfig, 0)
+		for _, cfg := range configs {
+			if cfg.Tenant == tenant {
+				filteredConfigs = append(filteredConfigs, cfg)
+			}
+		}
+		configs = filteredConfigs
+	}
+
+	if user.Role != database.RoleAdmin {
+		// Get user's tenants
+		tenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
 		if err != nil {
-			h.logger.Error("failed to list configs", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list configs"})
+			h.logger.Error("failed to get user tenants",
+				zap.String("username", user.Username),
+				zap.Error(err))
+			i18n.RespondWithError(c, i18n.ErrInternalServer)
 			return
 		}
 
-		// Filter configs by tenant if user is not admin
-		if user.Role != database.RoleAdmin {
-			// Get user's tenants
-			tenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
-			if err != nil {
-				h.logger.Error("failed to get user tenants",
-					zap.String("username", user.Username),
-					zap.Error(err))
-				i18n.RespondWithError(c, i18n.ErrInternalServer)
-				return
-			}
-
-			// Create a map of tenant names for faster lookup
-			userTenants := make(map[string]bool)
-			for _, t := range tenants {
-				userTenants[t.Name] = true
-			}
-
-			filteredConfigs := make([]*config.MCPConfig, 0)
-			for _, cfg := range configs {
-				if userTenants[cfg.Tenant] {
-					filteredConfigs = append(filteredConfigs, cfg)
-				}
-			}
-			configs = filteredConfigs
+		// Create a map of tenant names for faster lookup
+		userTenants := make(map[string]bool)
+		for _, t := range tenants {
+			userTenants[t.Name] = true
 		}
 
-		// Get versions for each config
+		filteredConfigs := make([]*config.MCPConfig, 0)
 		for _, cfg := range configs {
-			configVersions, err := h.store.ListVersions(c.Request.Context(), cfg.Name)
-			if err != nil {
-				h.logger.Error("failed to list versions", zap.String("config", cfg.Name), zap.Error(err))
-				continue
+			if userTenants[cfg.Tenant] {
+				filteredConfigs = append(filteredConfigs, cfg)
 			}
-			versions = append(versions, configVersions...)
 		}
-	} else {
-		// Get versions for specified configs
-		for _, name := range configNames {
-			// Check if user has permission to access this config
-			cfg, err := h.store.Get(c.Request.Context(), name)
-			if err != nil {
-				h.logger.Error("failed to get config", zap.String("config", name), zap.Error(err))
-				continue
-			}
+		configs = filteredConfigs
+	}
 
-			// Check tenant permission
-			if user.Role != database.RoleAdmin {
-				// Get user's tenants
-				tenants, err := h.db.GetUserTenants(c.Request.Context(), user.ID)
-				if err != nil {
-					h.logger.Error("failed to get user tenants",
-						zap.String("username", user.Username),
-						zap.Error(err))
-					i18n.RespondWithError(c, i18n.ErrInternalServer)
-					return
-				}
-
-				// Check if user has access to the tenant
-				hasAccess := false
-				for _, t := range tenants {
-					if t.Name == cfg.Tenant {
-						hasAccess = true
-						break
-					}
-				}
-				if !hasAccess {
-					continue
+	if len(configNames) > 0 {
+		// Filter configs by names
+		filteredConfigs := make([]*config.MCPConfig, 0)
+		for _, cfg := range configs {
+			for _, name := range configNames {
+				if cfg.Name == name {
+					filteredConfigs = append(filteredConfigs, cfg)
+					break
 				}
 			}
-
-			configVersions, err := h.store.ListVersions(c.Request.Context(), name)
-			if err != nil {
-				h.logger.Error("failed to list versions", zap.String("config", name), zap.Error(err))
-				continue
-			}
-			versions = append(versions, configVersions...)
 		}
+		configs = filteredConfigs
+	}
+
+	if len(configs) == 0 {
+		h.logger.Warn("no configs found")
+		i18n.Success(i18n.SuccessMCPConfigVersions).With("data", versions).Send(c)
+		return
+	}
+
+	// Get versions for each config
+	for _, cfg := range configs {
+		configVersions, err := h.store.ListVersions(c.Request.Context(), cfg.Tenant, cfg.Name)
+		if err != nil {
+			h.logger.Error("failed to list versions", zap.String("config", cfg.Name), zap.Error(err))
+			continue
+		}
+		versions = append(versions, configVersions...)
 	}
 
 	// Sort versions by created_at in descending order
@@ -684,18 +665,27 @@ func (h *MCP) HandleGetConfigVersions(c *gin.Context) {
 		return versions[i].CreatedAt.After(versions[j].CreatedAt)
 	})
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": versions,
-	})
+	i18n.Success(i18n.SuccessMCPConfigVersions).With("data", versions).Send(c)
 }
 
 // HandleSetActiveVersion handles setting a version as active
 func (h *MCP) HandleSetActiveVersion(c *gin.Context) {
+	tenant := c.Param("tenant")
+	if tenant == "" {
+		h.logger.Warn("MCP server tenant required but missing")
+		i18n.RespondWithError(c, i18n.ErrorTenantRequired)
+		return
+	}
 	name := c.Param("name")
-	versionStr := c.Param("version")
-	if name == "" || versionStr == "" {
-		h.logger.Warn("config name or version required but missing")
+	if name == "" {
+		h.logger.Warn("config name required but missing")
 		i18n.RespondWithError(c, i18n.ErrorMCPServerNameRequired)
+		return
+	}
+	versionStr := c.Param("version")
+	if versionStr == "" {
+		h.logger.Warn("version required but missing")
+		i18n.RespondWithError(c, i18n.ErrorVersionRequired)
 		return
 	}
 
@@ -713,7 +703,7 @@ func (h *MCP) HandleSetActiveVersion(c *gin.Context) {
 		zap.Int("version", version))
 
 	// Get the config
-	cfg, err := h.store.Get(c.Request.Context(), name)
+	existingCfg, err := h.store.Get(c.Request.Context(), tenant, name)
 	if err != nil {
 		h.logger.Error("failed to get config",
 			zap.String("config_name", name),
@@ -723,17 +713,17 @@ func (h *MCP) HandleSetActiveVersion(c *gin.Context) {
 	}
 
 	// Check tenant permission
-	_, err = h.checkTenantPermission(c, cfg.Tenant, cfg)
+	_, err = h.checkTenantPermission(c, existingCfg.Tenant, existingCfg)
 	if err != nil {
 		h.logger.Warn("tenant permission check failed",
-			zap.String("tenant", cfg.Tenant),
+			zap.String("tenant", existingCfg.Tenant),
 			zap.Error(err))
 		i18n.RespondWithError(c, err)
 		return
 	}
 
 	// Set version as active in store
-	if err := h.store.SetActiveVersion(c.Request.Context(), name, version); err != nil {
+	if err := h.store.SetActiveVersion(c.Request.Context(), existingCfg.Tenant, name, version); err != nil {
 		h.logger.Error("failed to set active version",
 			zap.String("config_name", name),
 			zap.Int("version", version),
@@ -743,7 +733,7 @@ func (h *MCP) HandleSetActiveVersion(c *gin.Context) {
 	}
 
 	// Send reload signal to gateway using notifier
-	if err := h.notifier.NotifyUpdate(c.Request.Context(), cfg); err != nil {
+	if err := h.notifier.NotifyUpdate(c.Request.Context(), existingCfg); err != nil {
 		h.logger.Error("failed to notify gateway", zap.Error(err))
 		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to notify gateway: "+err.Error()))
 		return
@@ -758,6 +748,7 @@ func (h *MCP) HandleSetActiveVersion(c *gin.Context) {
 // HandleGetConfigNames handles the request to get all configuration names
 func (h *MCP) HandleGetConfigNames(c *gin.Context) {
 	includeDeleted := c.Query("includeDeleted") == "true"
+	tenant := c.Query("tenant")
 
 	configs, err := h.store.List(c.Request.Context(), includeDeleted)
 	if err != nil {
@@ -806,6 +797,17 @@ func (h *MCP) HandleGetConfigNames(c *gin.Context) {
 		filteredConfigs := make([]*config.MCPConfig, 0)
 		for _, cfg := range configs {
 			if userTenants[cfg.Tenant] {
+				filteredConfigs = append(filteredConfigs, cfg)
+			}
+		}
+		configs = filteredConfigs
+	}
+
+	// Filter by tenant if specified
+	if tenant != "" {
+		filteredConfigs := make([]*config.MCPConfig, 0)
+		for _, cfg := range configs {
+			if cfg.Tenant == tenant {
 				filteredConfigs = append(filteredConfigs, cfg)
 			}
 		}

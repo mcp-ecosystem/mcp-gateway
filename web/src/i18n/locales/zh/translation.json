@@ -492,12 +492,15 @@
     "router_prefix_error": "路由前缀必须以租户前缀开头, 且不能为空",
     "tenant_required": "租户字段不能为空",
     "tenant_not_found": "指定前缀的租户不存在",
-    "validate_router_prefix_failed": "验证路由前缀失败"
+    "validate_router_prefix_failed": "验证路由前缀失败",
+    "export_mcp_server": "导出 MCP 服务失败",
+    "set_active_version": "设置版本为激活状态失败"
   },
   "mcp": {
     "configVersions": {
       "title": "配置版本",
       "name": "名称",
+      "tenant": "租户",
       "version": "版本",
       "created_by": "创建者",
       "created_at": "创建时间",
@@ -520,7 +523,8 @@
       "no_latest_version": "没有可用的最新版本",
       "show_all": "显示全部",
       "show_diff_only": "仅显示差异",
-      "select_config": "选择配置"
+      "select_config": "选择配置",
+      "select_tenant": "选择租户"
     }
   }
 }

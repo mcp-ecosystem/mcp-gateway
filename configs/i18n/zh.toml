@@ -150,6 +150,9 @@ other = "MCP服务验证失败: {{.Reason}}"
 [ErrorMCPServerNameRequired]
 other = "MCP服务名称不能为空"
 
+[ErrorVersionRequired]
+other = "版本不能为空"
+
 [ErrorMCPConfigInvalid]
 other = "MCP配置无效"
 
@@ -268,6 +271,9 @@ other = "MCP服务信息获取成功"
 
 [SuccessMCPServerStatus]
 other = "MCP服务状态更新成功"
+
+[SuccessMCPConfigVersions]
+other = "MCP配置版本获取成功"
 
 # OpenAPI related success messages
 [SuccessOpenAPIImported]

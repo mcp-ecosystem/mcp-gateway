@@ -178,7 +178,7 @@ func MergeConfigs(existingConfigs []*MCPConfig, newConfig *MCPConfig) []*MCPConf
 	// If the new config has DeletedAt set, we need to remove it from the list
 	if !newConfig.DeletedAt.IsZero() {
 		for _, existingCfg := range existingConfigs {
-			if existingCfg.Name != newConfig.Name {
+			if existingCfg.Tenant != newConfig.Tenant && existingCfg.Name != newConfig.Name {
 				configs = append(configs, existingCfg)
 			}
 		}
@@ -188,7 +188,7 @@ func MergeConfigs(existingConfigs []*MCPConfig, newConfig *MCPConfig) []*MCPConf
 	// Otherwise, handle normal update/append case
 	found := false
 	for _, existingCfg := range existingConfigs {
-		if existingCfg.Name == newConfig.Name {
+		if existingCfg.Tenant == newConfig.Tenant && existingCfg.Name == newConfig.Name {
 			configs = append(configs, newConfig)
 			found = true
 		} else {

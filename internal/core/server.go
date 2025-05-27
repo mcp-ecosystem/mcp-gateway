@@ -36,6 +36,7 @@ type (
 		shutdownCh chan struct{}
 		// toolRespHandler is a chain of response handlers
 		toolRespHandler ResponseHandler
+		lastUpdateTime  time.Time
 	}
 )
 
@@ -71,6 +72,11 @@ func (s *Server) RegisterRoutes(ctx context.Context) error {
 			zap.Error(err))
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
+
+	if newState == nil {
+		return nil
+	}
+
 	// Atomically replace the state
 	s.state = newState
 
@@ -186,12 +192,39 @@ func (s *Server) Shutdown(_ context.Context) error {
 
 func (s *Server) updateConfigs(ctx context.Context) (*state.State, error) {
 	s.logger.Info("Updating MCP configuration")
-	//todo we can use hash or version to check if the configuration is changed
-	cfgs, err := s.store.List(ctx)
-	if err != nil {
-		s.logger.Error("Failed to load MCP configurations",
-			zap.Error(err))
-		return nil, err
+	var (
+		cfgs []*config.MCPConfig
+		err  error
+		now  = time.Now()
+	)
+
+	if s.lastUpdateTime.IsZero() {
+		cfgs, err = s.store.List(ctx)
+		if err != nil {
+			s.logger.Error("Failed to load MCP configurations",
+				zap.Error(err))
+			return nil, err
+		}
+	} else {
+		updatedCfgs, err := s.store.ListUpdated(ctx, s.lastUpdateTime)
+		if err != nil {
+			s.logger.Error("Failed to load MCP configurations",
+				zap.Error(err))
+			return nil, err
+		}
+		if len(updatedCfgs) == 0 {
+			s.logger.Info("no updated MCP configurations found, skipping update")
+			return s.state, nil
+		}
+		s.logger.Info("deleting deleted MCP configurations",
+			zap.Int("count", len(updatedCfgs)))
+		cfgs = s.state.GetRawConfigs()
+		for _, cfg := range updatedCfgs {
+			cfgs = config.MergeConfigs(cfgs, cfg)
+		}
+		s.logger.Info("merging updated MCP configurations",
+			zap.Int("total_old", len(s.state.GetRawConfigs())),
+			zap.Int("total_new", len(cfgs)))
 	}
 
 	// Validate configurations before merging
@@ -221,6 +254,7 @@ func (s *Server) updateConfigs(ctx context.Context) (*state.State, error) {
 		zap.Int("tool_count", newState.GetToolCount()),
 		zap.Int("router_count", newState.GetRouterCount()))
 
+	s.lastUpdateTime = now
 	return newState, nil
 }
 
@@ -231,6 +265,9 @@ func (s *Server) ReloadConfigs(ctx context.Context) {
 	if err != nil {
 		s.logger.Error("failed to reload configuration",
 			zap.Error(err))
+		return
+	}
+	if newState == nil {
 		return
 	}
 	// Atomically replace the state
@@ -282,6 +319,4 @@ func (s *Server) UpdateConfig(ctx context.Context, cfg *config.MCPConfig) {
 
 	// Atomically replace the state
 	s.state = updatedState
-
-	return
 }

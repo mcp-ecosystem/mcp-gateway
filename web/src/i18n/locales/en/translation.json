@@ -491,12 +491,15 @@
     "router_prefix_error": "Router prefix must start with tenant prefix, and cannot be empty",
     "tenant_required": "Tenant field is required",
     "tenant_not_found": "Tenant with the specified prefix does not exist",
-    "validate_router_prefix_failed": "Failed to validate router prefix"
+    "validate_router_prefix_failed": "Failed to validate router prefix",
+    "export_mcp_server": "Failed to export MCP server",
+    "set_active_version": "Failed to set version as active"
   },
   "mcp": {
     "configVersions": {
       "title": "Configuration Versions",
       "name": "Name",
+      "tenant": "Tenant",
       "version": "Version",
       "created_by": "Created By",
       "created_at": "Created At",
@@ -506,6 +509,7 @@
       "actions": "Actions",
       "rollback": "Rollback to this version",
       "select_config": "Select Config",
+      "select_tenant": "Select Tenant",
       "fetch_names_error": "Failed to fetch config names",
       "fetch_error": "Failed to fetch versions",
       "set_active_success": "Version set as active successfully",

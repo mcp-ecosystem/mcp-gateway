@@ -51,7 +51,7 @@ func (s *APIStore) Create(_ context.Context, server *config.MCPConfig) error {
 }
 
 // Get implements Store.Get
-func (s *APIStore) Get(_ context.Context, name string) (*config.MCPConfig, error) {
+func (s *APIStore) Get(_ context.Context, tenant, name string) (*config.MCPConfig, error) {
 	jsonStr, err := s.request()
 	if err != nil {
 		return nil, err
@@ -85,31 +85,39 @@ func (s *APIStore) Update(_ context.Context, _ *config.MCPConfig) error {
 }
 
 // Delete implements Store.Delete
-func (s *APIStore) Delete(_ context.Context, _ string) error {
+func (s *APIStore) Delete(_ context.Context, tenant, name string) error {
 	// only use for read config
 	return nil
 }
 
 // GetVersion implements Store.GetVersion
-func (s *APIStore) GetVersion(_ context.Context, _ string, _ int) (*config.MCPConfigVersion, error) {
+func (s *APIStore) GetVersion(_ context.Context, tenant, name string, version int) (*config.MCPConfigVersion, error) {
 	return nil, nil
 }
 
 // ListVersions implements Store.ListVersions
-func (s *APIStore) ListVersions(_ context.Context, _ string) ([]*config.MCPConfigVersion, error) {
+func (s *APIStore) ListVersions(_ context.Context, tenant, name string) ([]*config.MCPConfigVersion, error) {
+	// API store is read-only and doesn't support versioning
 	return nil, nil
 }
 
 // SetActiveVersion implements Store.SetActiveVersion
-func (s *APIStore) SetActiveVersion(_ context.Context, _ string, _ int) error {
+func (s *APIStore) SetActiveVersion(_ context.Context, tenant, name string, version int) error {
 	// API store is read-only
 	return nil
 }
 
 // DeleteVersion implements Store.DeleteVersion
-func (s *APIStore) DeleteVersion(_ context.Context, _ string, _ int) error {
+func (s *APIStore) DeleteVersion(_ context.Context, tenant, name string, version int) error {
 	// API store is read-only
 	return nil
+}
+
+// ListUpdated implements Store.ListUpdated
+func (s *APIStore) ListUpdated(_ context.Context, since time.Time) ([]*config.MCPConfig, error) {
+	// API store is read-only and doesn't support versioning
+	// Just return all configs as they are always up to date
+	return s.List(context.Background())
 }
 
 func (s *APIStore) request() (string, error) {

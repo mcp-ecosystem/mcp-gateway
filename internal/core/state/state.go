@@ -71,6 +71,10 @@ func BuildStateFromConfig(ctx context.Context, cfgs []*config.MCPConfig, oldStat
 		for _, router := range cfg.Routers {
 			prefixMap[router.Server] = router.Prefix
 			newState.setRouter(router.Prefix, &router)
+			logger.Info("registered router",
+				zap.String("tenant", cfg.Tenant),
+				zap.String("prefix", router.Prefix),
+				zap.String("server", router.Server))
 		}
 
 		// Process regular HTTP servers

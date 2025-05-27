@@ -3,7 +3,7 @@ import {t} from 'i18next';
 
 import i18n from '../i18n';
 import type {Gateway} from '../types/gateway';
-import type { MCPConfigVersionListResponse } from '../types/mcp';
+import type {MCPConfigVersionListResponse} from '../types/mcp';
 import {handleApiError} from '../utils/error-handler';
 import {toast} from '../utils/toast';
 
@@ -88,9 +88,9 @@ export const createMCPServer = async (config: string) => {
   }
 };
 
-export const updateMCPServer = async (name: string, config: string) => {
+export const updateMCPServer = async (config: string) => {
   try {
-    const response = await api.put(`/mcp/configs/${name}`, config, {
+    const response = await api.put(`/mcp/configs`, config, {
       headers: {
         'Content-Type': 'application/yaml',
       },
@@ -102,9 +102,9 @@ export const updateMCPServer = async (name: string, config: string) => {
   }
 };
 
-export const deleteMCPServer = async (name: string) => {
+export const deleteMCPServer = async (tenant: string, name: string) => {
   try {
-    const response = await api.delete(`/mcp/configs/${name}`);
+    const response = await api.delete(`/mcp/configs/${tenant}/${name}`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'errors.delete_mcp_server');
@@ -518,11 +518,12 @@ export const updateUserTenants = async (userId: number, tenantIds: number[]) => 
 };
 
 // MCP Config Version APIs
-export const getMCPConfigNames = async (): Promise<string[]> => {
+export const getMCPConfigNames = async (tenant?: string): Promise<string[]> => {
   try {
     const response = await api.get('/mcp/configs/names', {
       params: {
-        includeDeleted: true
+        includeDeleted: true,
+        tenant
       }
     });
     return response.data.data || [];
@@ -532,9 +533,15 @@ export const getMCPConfigNames = async (): Promise<string[]> => {
   }
 };
 
-export const getMCPConfigVersions = async (name?: string): Promise<MCPConfigVersionListResponse> => {
+export const getMCPConfigVersions = async (tenant?: string, name?: string): Promise<MCPConfigVersionListResponse> => {
   try {
-    const params = name ? { names: name } : {};
+    const params: Record<string, string> = {};
+    if (tenant) {
+      params.tenant = tenant;
+    }
+    if (name) {
+      params.names = name;
+    }
     const response = await api.get('/mcp/configs/versions', { params });
     return response.data;
   } catch (error) {
@@ -543,9 +550,9 @@ export const getMCPConfigVersions = async (name?: string): Promise<MCPConfigVers
   }
 };
 
-export const setActiveVersion = async (name: string, version: number): Promise<void> => {
+export const setActiveVersion = async (tenant: string, name: string, version: number): Promise<void> => {
   try {
-    await api.post(`/mcp/configs/${name}/versions/${version}/active`);
+    await api.post(`/mcp/configs/${tenant}/${name}/versions/${version}/active`);
   } catch (error) {
     handleApiError(error, 'errors.set_active_version');
     throw error;

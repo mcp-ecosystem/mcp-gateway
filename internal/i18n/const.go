@@ -38,7 +38,9 @@ var (
 	ErrorMCPServerNotFound     = NewErrorWithCode("ErrorMCPServerNotFound", ErrorNotFound)
 	ErrorMCPServerExists       = NewErrorWithCode("ErrorMCPServerExists", ErrorConflict)
 	ErrorMCPServerValidation   = NewErrorWithCode("ErrorMCPServerValidation", ErrorBadRequest)
+	ErrorTenantRequired        = NewErrorWithCode("ErrorTenantRequired", ErrorBadRequest)
 	ErrorMCPServerNameRequired = NewErrorWithCode("ErrorMCPServerNameRequired", ErrorBadRequest)
+	ErrorVersionRequired       = NewErrorWithCode("ErrorVersionRequired", ErrorBadRequest)
 	ErrorRouterPrefixError     = NewErrorWithCode("ErrorRouterPrefixError", ErrorBadRequest)
 	ErrorMCPConfigInvalid      = NewErrorWithCode("ErrorMCPConfigInvalid", ErrorBadRequest)
 	ErrorMCPRequestFailed      = NewErrorWithCode("ErrorMCPRequestFailed", ErrorInternalServer)
@@ -94,13 +96,14 @@ const (
 
 // MCP related success messages
 const (
-	SuccessMCPServerCreated = "SuccessMCPServerCreated"
-	SuccessMCPServerUpdated = "SuccessMCPServerUpdated"
-	SuccessMCPServerDeleted = "SuccessMCPServerDeleted"
-	SuccessMCPServerSynced  = "SuccessMCPServerSynced"
-	SuccessMCPServerList    = "SuccessMCPServerList"
-	SuccessMCPServerInfo    = "SuccessMCPServerInfo"
-	SuccessMCPServerStatus  = "SuccessMCPServerStatus"
+	SuccessMCPServerCreated  = "SuccessMCPServerCreated"
+	SuccessMCPServerUpdated  = "SuccessMCPServerUpdated"
+	SuccessMCPServerDeleted  = "SuccessMCPServerDeleted"
+	SuccessMCPServerSynced   = "SuccessMCPServerSynced"
+	SuccessMCPServerList     = "SuccessMCPServerList"
+	SuccessMCPServerInfo     = "SuccessMCPServerInfo"
+	SuccessMCPServerStatus   = "SuccessMCPServerStatus"
+	SuccessMCPConfigVersions = "SuccessMCPConfigVersions"
 )
 
 // OpenAPI related success messages

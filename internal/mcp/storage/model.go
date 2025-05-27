@@ -14,8 +14,9 @@ import (
 
 // MCPConfig represents the database model for MCPConfig
 type MCPConfig struct {
-	Name       string `gorm:"primaryKey; column:name; type:varchar(50)"`
-	Tenant     string `gorm:"column:tenant; default:''"`
+	ID         int64  `gorm:"primaryKey;autoIncrement"`
+	Name       string `gorm:"column:name; type:varchar(50); uniqueIndex:idx_name_tenant,priority:2"`
+	Tenant     string `gorm:"column:tenant; type:varchar(50); default:''; uniqueIndex:idx_name_tenant,priority:1"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Routers    string         `gorm:"type:text; column:routers"`
@@ -113,7 +114,8 @@ func (m *MCPConfig) BeforeUpdate(_ *gorm.DB) error {
 // ActiveVersion represents the currently active version of an MCP configuration
 type ActiveVersion struct {
 	ID        uint      `gorm:"primarykey"`
-	Name      string    `gorm:"type:varchar(50);uniqueIndex;not null"`
+	Tenant    string    `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:1"`
+	Name      string    `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:2"`
 	Version   int       `gorm:"not null"`
 	UpdatedAt time.Time `gorm:"not null"`
 }
@@ -122,7 +124,7 @@ type ActiveVersion struct {
 type MCPConfigVersion struct {
 	ID         int64           `gorm:"primaryKey;autoIncrement"`
 	Name       string          `gorm:"column:name;type:varchar(50);index:idx_name_tenant_version,uniqueIndex"`
-	Tenant     string          `gorm:"column:tenant;default:'';index:idx_name_tenant_version,uniqueIndex"`
+	Tenant     string          `gorm:"column:tenant;type:varchar(50);index:idx_name_tenant_version,uniqueIndex"`
 	Version    int             `gorm:"column:version;index:idx_name_tenant_version,uniqueIndex"`
 	ActionType cnst.ActionType `gorm:"column:action_type;not null"` // Create, Update, Delete, Revert
 	CreatedBy  string          `gorm:"column:created_by"`
@@ -221,4 +223,20 @@ func FromMCPConfigVersion(cfg *config.MCPConfig, version int, createdBy string, 
 		McpServers: string(mcpServers),
 		Hash:       hex.EncodeToString(hash[:]),
 	}, nil
+}
+
+func (m *MCPConfigVersion) ToConfigVersion() *config.MCPConfigVersion {
+	return &config.MCPConfigVersion{
+		Version:    m.Version,
+		CreatedBy:  m.CreatedBy,
+		CreatedAt:  m.CreatedAt,
+		ActionType: m.ActionType,
+		Name:       m.Name,
+		Tenant:     m.Tenant,
+		Routers:    m.Routers,
+		Servers:    m.Servers,
+		Tools:      m.Tools,
+		McpServers: m.McpServers,
+		Hash:       m.Hash,
+	}
 }

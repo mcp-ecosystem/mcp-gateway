@@ -39,7 +39,7 @@ storage:
     port: ${GATEWAY_DB_PORT:5432}
     user: "${GATEWAY_DB_USER:postgres}"
     password: "${GATEWAY_DB_PASSWORD:example}"
-    dbname: "${GATEWAY_DB_NAME:./data/mcp-gateway.db}"
+    dbname: "${GATEWAY_DB_NAME:./mcp-gateway.db}"
     sslmode: "${GATEWAY_DB_SSL_MODE:disable}"
   # Disk configuration (only used when type is disk)
   disk:

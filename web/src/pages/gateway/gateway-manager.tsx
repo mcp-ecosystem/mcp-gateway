@@ -33,7 +33,7 @@ import yaml from 'js-yaml';
 import {configureMonacoYaml} from 'monaco-yaml';
 import React from 'react';
 import {useTranslation} from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 
 import {
   createMCPServer,
@@ -284,7 +284,7 @@ export function GatewayManager() {
       }
 
       if (currentMCPServer) {
-        await updateMCPServer(currentMCPServer.name, cleanedConfig);
+        await updateMCPServer(cleanedConfig);
         const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
         const servers = await getMCPServers(tenantId);
         setMCPServers(servers);
@@ -305,7 +305,7 @@ export function GatewayManager() {
     if (!serverToDelete) return;
 
     try {
-      await deleteMCPServer(serverToDelete.name);
+      await deleteMCPServer(serverToDelete.tenant, serverToDelete.name);
       const tenantId = selectedTenants.length > 0 ? selectedTenants[0].id : undefined;
       const servers = await getMCPServers(tenantId);
       setMCPServers(servers);

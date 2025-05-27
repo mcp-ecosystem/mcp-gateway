@@ -203,12 +203,12 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		{
 			mcpGroup.GET("/configs/names", mcpHandler.HandleGetConfigNames)
 			mcpGroup.GET("/configs/versions", mcpHandler.HandleGetConfigVersions)
-			mcpGroup.POST("/configs/:name/versions/:version/active", mcpHandler.HandleSetActiveVersion)
+			mcpGroup.POST("/configs/:tenant/:name/versions/:version/active", mcpHandler.HandleSetActiveVersion)
 
 			mcpGroup.GET("/configs", mcpHandler.HandleListMCPServers)
 			mcpGroup.POST("/configs", mcpHandler.HandleMCPServerCreate)
-			mcpGroup.PUT("/configs/:name", mcpHandler.HandleMCPServerUpdate)
-			mcpGroup.DELETE("/configs/:name", mcpHandler.HandleMCPServerDelete)
+			mcpGroup.PUT("/configs", mcpHandler.HandleMCPServerUpdate)
+			mcpGroup.DELETE("/configs/:tenant/:name", mcpHandler.HandleMCPServerDelete)
 			mcpGroup.POST("/configs/sync", mcpHandler.HandleMCPServerSync)
 		}
 
