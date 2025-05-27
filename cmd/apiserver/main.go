@@ -217,6 +217,8 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 
 		protected.GET("/chat/sessions", chatHandler.HandleGetChatSessions)
 		protected.GET("/chat/sessions/:sessionId/messages", chatHandler.HandleGetChatMessages)
+		protected.DELETE("/chat/sessions/:sessionId", chatHandler.HandleDeleteChatSession)
+		protected.PUT("/chat/sessions/:sessionId/title", chatHandler.HandleUpdateChatSessionTitle)
 	}
 
 	wsHandler := apiserverHandler.NewWebSocket(db, openaiClient, jwtService, logger)

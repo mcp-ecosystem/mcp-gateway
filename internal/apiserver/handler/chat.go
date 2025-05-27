@@ -102,3 +102,80 @@ func (h *Chat) HandleGetChatMessages(c *gin.Context) {
 
 	i18n.Success(i18n.SuccessChatMessages).WithPayload(messages).Send(c)
 }
+
+// HandleDeleteChatSession handles the deletion of a chat session
+func (h *Chat) HandleDeleteChatSession(c *gin.Context) {
+	sessionId := c.Param("sessionId")
+	if sessionId == "" {
+		h.logger.Warn("missing sessionId parameter",
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "SessionId is required"))
+		return
+	}
+
+	h.logger.Info("deleting chat session",
+		zap.String("session_id", sessionId),
+		zap.String("remote_addr", c.ClientIP()))
+
+	err := h.db.DeleteSession(c.Request.Context(), sessionId)
+	if err != nil {
+		h.logger.Error("failed to delete chat session",
+			zap.Error(err),
+			zap.String("session_id", sessionId),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to delete session"))
+		return
+	}
+
+	h.logger.Debug("successfully deleted chat session",
+		zap.String("session_id", sessionId),
+		zap.String("remote_addr", c.ClientIP()))
+
+	i18n.Success(i18n.SuccessChatDeleted).Send(c)
+}
+
+// HandleUpdateChatSessionTitle handles updating the title of a chat session
+func (h *Chat) HandleUpdateChatSessionTitle(c *gin.Context) {
+	sessionId := c.Param("sessionId")
+	if sessionId == "" {
+		h.logger.Warn("missing sessionId parameter",
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "SessionId is required"))
+		return
+	}
+
+	var request struct {
+		Title string `json:"title" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Warn("invalid request body",
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Invalid request body"))
+		return
+	}
+
+	h.logger.Info("updating chat session title",
+		zap.String("session_id", sessionId),
+		zap.String("title", request.Title),
+		zap.String("remote_addr", c.ClientIP()))
+
+	err := h.db.UpdateSessionTitle(c.Request.Context(), sessionId, request.Title)
+	if err != nil {
+		h.logger.Error("failed to update chat session title",
+			zap.Error(err),
+			zap.String("session_id", sessionId),
+			zap.String("title", request.Title),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to update session title"))
+		return
+	}
+
+	h.logger.Debug("successfully updated chat session title",
+		zap.String("session_id", sessionId),
+		zap.String("title", request.Title),
+		zap.String("remote_addr", c.ClientIP()))
+
+	i18n.Success(i18n.SuccessChatUpdated).Send(c)
+}

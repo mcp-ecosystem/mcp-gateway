@@ -348,7 +348,18 @@
     "new_chat": "New Chat",
     "no_history": "No chat history",
     "untitled": "Untitled Chat",
-    "resize_history": "Resize chat history"
+    "resize_history": "Resize chat history",
+    "rename": "Rename",
+    "delete": "Delete",
+    "rename_title": "Rename Chat Session",
+    "delete_title": "Delete Chat Session",
+    "delete_confirm": "Are you sure you want to delete this chat session?",
+    "rename_success": "Chat session renamed successfully",
+    "rename_failed": "Failed to rename chat session",
+    "delete_success": "Chat session deleted successfully",
+    "delete_failed": "Failed to delete chat session",
+    "rename_session": "Rename Chat Session",
+    "session_title_placeholder": "Enter new session title"
   },
   "users": {
     "title": "User Management",

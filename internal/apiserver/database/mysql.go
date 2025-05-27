@@ -107,6 +107,13 @@ func (db *MySQL) GetSessions(ctx context.Context) ([]*Session, error) {
 	return sessions, err
 }
 
+// DeleteSession deletes a session by ID
+func (db *MySQL) DeleteSession(ctx context.Context, sessionID string) error {
+	return db.db.WithContext(ctx).
+		Where("id = ?", sessionID).
+		Delete(&Session{}).Error
+}
+
 // CreateUser creates a new user
 func (db *MySQL) CreateUser(ctx context.Context, user *User) error {
 	return db.db.WithContext(ctx).Create(user).Error

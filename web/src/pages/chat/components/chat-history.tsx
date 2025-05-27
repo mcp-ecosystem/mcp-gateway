@@ -1,10 +1,10 @@
-import { Card, CardBody, Button } from '@heroui/react';
+import { Card, CardBody, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import { getChatSessions } from '../../../services/api';
+import { getChatSessions, deleteChatSession, updateChatSessionTitle } from '../../../services/api';
 import { wsService } from '../../../services/websocket';
 import { toast } from '../../../utils/toast';
 
@@ -26,6 +26,10 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   const [sessions, setSessions] = React.useState<Session[]>([]);
   const [loading, setLoading] = React.useState(true);
   const loadedRef = React.useRef(false);
+  const [isRenameModalOpen, setIsRenameModalOpen] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [selectedSession, setSelectedSession] = React.useState<Session | null>(null);
+  const [newTitle, setNewTitle] = React.useState('');
 
   const fetchSessions = React.useCallback(async () => {
     try {
@@ -80,45 +84,39 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
     navigate(`/chat/${sessionId}`);
   };
 
+  const handleRename = async () => {
+    if (!selectedSession || !newTitle) return;
+
+    try {
+      await updateChatSessionTitle(selectedSession.id, newTitle);
+      toast.success(t('chat.rename_success'));
+      fetchSessions();
+      setIsRenameModalOpen(false);
+      setSelectedSession(null);
+      setNewTitle('');
+    } catch (error) {
+      toast.error(t('chat.rename_failed'));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedSession) return;
+
+    try {
+      await deleteChatSession(selectedSession.id);
+      toast.success(t('chat.delete_success'));
+      fetchSessions();
+      setIsDeleteModalOpen(false);
+      setSelectedSession(null);
+    } catch (error) {
+      toast.error(t('chat.delete_failed'));
+    }
+  };
+
   if (isCollapsed) return null;
+
   return (
-    <Card className="w-64 relative group bg-card transition-all duration-200">
-      {/* Resize bar only shown when expanded */}
-      <button
-        type="button"
-        aria-label={t('chat.resize_history')}
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors"
-        onMouseDown={(e: React.MouseEvent) => {
-          const startX = e.pageX;
-          const startWidth = e.currentTarget.parentElement?.offsetWidth || 0;
-          const handleMouseMove = (e: MouseEvent) => {
-            const delta = e.pageX - startX;
-            const newWidth = Math.max(200, Math.min(400, startWidth + delta));
-            const parent = (e.target as HTMLElement).parentElement;
-            if (parent) {
-              parent.style.width = `${newWidth}px`;
-            }
-          };
-          const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-          };
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-        }}
-        onKeyDown={(e: React.KeyboardEvent) => {
-          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-            e.preventDefault();
-            const parent = e.currentTarget.parentElement;
-            if (parent) {
-              const currentWidth = parent.offsetWidth;
-              const delta = e.key === 'ArrowLeft' ? -10 : 10;
-              const newWidth = Math.max(200, Math.min(400, currentWidth + delta));
-              parent.style.width = `${newWidth}px`;
-            }
-          }
-        }}
-      />
+    <Card className="w-80">
       <CardBody className="p-0">
         <div className="p-4">
           <Button
@@ -137,27 +135,108 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
             <div className="p-4 text-center text-default-500">{t('chat.no_history')}</div>
           ) : (
             sessions.map((session) => (
-              <Button
+              <div
                 key={session.id}
-                variant="light"
-                className={`w-full justify-start px-4 py-2 ${
+                className={`flex items-center justify-between px-4 py-2 rounded-lg ${
                   selectedChat === session.id ? 'bg-primary-100' : ''
                 }`}
-                onPress={() => handleSessionSelect(session.id)}
               >
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium truncate max-w-full">
-                    {session.title || t('chat.untitled')}
-                  </span>
-                  <span className="text-xs text-default-400">
-                    {formatDate(session.createdAt)}
-                  </span>
-                </div>
-              </Button>
+                <Button
+                  variant="light"
+                  className="flex-1 justify-start"
+                  onPress={() => handleSessionSelect(session.id)}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium truncate max-w-full">
+                      {session.title || t('chat.untitled')}
+                    </span>
+                    <span className="text-xs text-default-400">
+                      {formatDate(session.createdAt)}
+                    </span>
+                  </div>
+                </Button>
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      size="sm"
+                      className="ml-2"
+                    >
+                      <Icon icon="lucide:more-vertical" />
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Session actions"
+                    onAction={(key) => {
+                      setSelectedSession(session);
+                      if (key === 'rename') {
+                        setNewTitle(session.title);
+                        setIsRenameModalOpen(true);
+                      } else if (key === 'delete') {
+                        setIsDeleteModalOpen(true);
+                      }
+                    }}
+                  >
+                    <DropdownItem key="rename" startContent={<Icon icon="lucide:edit" />}>
+                      {t('chat.rename')}
+                    </DropdownItem>
+                    <DropdownItem
+                      key="delete"
+                      className="text-danger"
+                      color="danger"
+                      startContent={<Icon icon="lucide:trash" />}
+                    >
+                      {t('chat.delete')}
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
             ))
           )}
         </div>
       </CardBody>
+
+      {/* Rename Modal */}
+      <Modal isOpen={isRenameModalOpen} onClose={() => setIsRenameModalOpen(false)}>
+        <ModalContent>
+          <ModalHeader>{t('chat.rename_session')}</ModalHeader>
+          <ModalBody>
+            <Input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder={t('chat.session_title_placeholder')}
+              autoFocus
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsRenameModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button color="primary" onPress={handleRename}>
+              {t('common.save')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <ModalContent>
+          <ModalHeader>{t('chat.delete_session')}</ModalHeader>
+          <ModalBody>
+            {t('chat.delete_session_confirm')}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsDeleteModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button color="danger" onPress={handleDelete}>
+              {t('common.delete')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Card>
   );
 }

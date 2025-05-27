@@ -349,7 +349,18 @@
     "new_chat": "新建聊天",
     "no_history": "暂无聊天记录",
     "untitled": "未命名聊天",
-    "resize_history": "调整聊天历史宽度"
+    "resize_history": "调整聊天历史宽度",
+    "rename": "重命名",
+    "delete": "删除",
+    "rename_title": "重命名聊天会话",
+    "delete_title": "删除聊天会话",
+    "delete_confirm": "确定要删除这个聊天会话吗？",
+    "rename_success": "聊天会话重命名成功",
+    "rename_failed": "聊天会话重命名失败",
+    "delete_success": "聊天会话删除成功",
+    "delete_failed": "聊天会话删除失败",
+    "rename_session": "重命名聊天会话",
+    "session_title_placeholder": "请输入新的会话标题"
   },
   "users": {
     "title": "用户管理",

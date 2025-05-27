@@ -23,6 +23,8 @@ type Database interface {
 	GetSessions(ctx context.Context) ([]*Session, error)
 	// UpdateSessionTitle updates the title of a session.
 	UpdateSessionTitle(ctx context.Context, sessionID string, title string) error
+	// DeleteSession deletes a session by ID.
+	DeleteSession(ctx context.Context, sessionID string) error
 
 	CreateUser(ctx context.Context, user *User) error
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
