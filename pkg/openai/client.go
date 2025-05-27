@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
 	"github.com/openai/openai-go"
@@ -63,5 +64,5 @@ func (c *Client) ChatCompletionStream(ctx context.Context, messages []openai.Cha
 		params,
 	)
 
-	return stream, nil
+	return stream, stream.Err()
 }
