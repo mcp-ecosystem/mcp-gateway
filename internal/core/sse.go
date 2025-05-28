@@ -1,11 +1,14 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/impl"
 	"github.com/mcp-ecosystem/mcp-gateway/internal/auth/jwt"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"net/http"
+	url2 "net/url"
 	"strings"
 	"time"
 
@@ -51,6 +54,20 @@ func (s *Server) handleSSE(c *gin.Context) {
 				authenticated = true
 			}
 		}
+	}
+
+	// map auth
+	if mcpConfig.Name == "gaode-sse" || mcpConfig.Name == "tencent-sse" || mcpConfig.Name == "baidu-sse" {
+		err := s.getValidMCPKey(&mcpConfig, false)
+		if err != nil {
+			s.logger.Error("failed to get MCP key",
+				zap.Error(err),
+				zap.String("prefix", prefix),
+			)
+		}
+		s.mu.Lock()
+		s.state.prefixToMCPServerConfig[prefix] = mcpConfig
+		s.mu.Unlock()
 	}
 
 	requestInfo := &session.RequestInfo{
@@ -468,6 +485,22 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
 			}
+			for result != nil && result.IsError &&
+				(mcpProxyCfg.Name == "gaode-sse" || mcpProxyCfg.Name == "tencent-sse" || mcpProxyCfg.Name == "baidu-sse") {
+				err = s.getValidMCPKey(&mcpProxyCfg, true)
+				if err != nil {
+					s.sendToolExecutionError(c, conn, req, err, true)
+					return
+				}
+				result, err = mcpproxy.InvokeSSETool(c, conn, mcpProxyCfg, params)
+				if err != nil {
+					s.sendToolExecutionError(c, conn, req, err, true)
+					return
+				}
+			}
+			s.mu.Lock()
+			s.state.prefixToMCPServerConfig[conn.Meta().Prefix] = mcpProxyCfg
+			s.mu.Unlock()
 		case cnst.BackendProtoStreamable:
 			mcpProxyCfg, ok := s.state.prefixToMCPServerConfig[conn.Meta().Prefix]
 			if !ok {
@@ -489,4 +522,35 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 	default:
 		s.sendProtocolError(c, req.Id, "Unknown method", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 	}
+}
+
+func (s *Server) getValidMCPKey(config *config.MCPServerConfig, invalidate bool) error {
+	var key string
+	switch config.Name {
+	case "gaode-sse", "tencent-sse":
+		key = "key"
+	case "baidu-sse":
+		key = "ak"
+	}
+
+	provider := strings.TrimSuffix(config.Name, "-sse")
+	url, _ := url2.Parse(config.URL)
+	values := url.Query()
+
+	if invalidate {
+		invalidKey := values.Get(key)
+		err := s.db.InvalidateMcpKey(context.Background(), provider, invalidKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	value, err := s.db.GetValidMcpKey(context.Background(), provider)
+	if err != nil {
+		return err
+	}
+	values.Set(key, value)
+	url.RawQuery = values.Encode()
+	config.URL = url.String()
+	return nil
 }

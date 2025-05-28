@@ -86,6 +86,15 @@ type (
 		Type string   `yaml:"type" json:"type"`
 		Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
 	}
+
+	McpKey struct {
+		Id        int64     `gorm:"primaryKey"`
+		Provider  string    `gorm:"provider"`
+		Key       string    `gorm:"key"`
+		IsValid   bool      `gorm:"is_valid"`
+		CreatedAt time.Time `gorm:"created_at"`
+		UpdatedAt time.Time `gorm:"updated_at"`
+	}
 )
 
 // ToToolSchema converts a ToolConfig to a ToolSchema

@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/mcp/storage"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/cnst"
 
@@ -29,6 +31,8 @@ type (
 		shutdownCh chan struct{}
 		// toolRespHandler is a chain of response handlers
 		toolRespHandler ResponseHandler
+		db              *storage.DBStore
+		mu              *sync.Mutex
 	}
 
 	// serverState contains all the read-only shared state
@@ -51,6 +55,14 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize session store: %w", err)
 	}
+	db, err := storage.NewDBStore(
+		logger,
+		storage.DatabaseType(cfg.Storage.Database.Type),
+		cfg.Storage.Database.GetDSN(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize db store: %w", err)
+	}
 
 	return &Server{
 		logger: logger,
@@ -67,6 +79,8 @@ func NewServer(logger *zap.Logger, cfg *config.MCPGatewayConfig) (*Server, error
 		sessions:        sessionStore,
 		shutdownCh:      make(chan struct{}),
 		toolRespHandler: CreateResponseHandlerChain(),
+		db:              db,
+		mu:              new(sync.Mutex),
 	}, nil
 }
 

@@ -2,14 +2,13 @@ package storage
 
 import (
 	"context"
-
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
-
 	"github.com/glebarez/sqlite"
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"time"
 )
 
 // DBStore implements the Store interface using a database
@@ -127,6 +126,25 @@ func (s *DBStore) Delete(_ context.Context, name string) error {
 		return result.Error
 	}
 	return nil
+}
+
+func (s *DBStore) GetValidMcpKey(_ context.Context, provider string) (string, error) {
+	var model config.McpKey
+	result := s.db.Where("provider = ?", provider).Where("is_valid = ?", true).First(&model)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	return model.Key, nil
+}
+
+func (s *DBStore) InvalidateMcpKey(_ context.Context, provider, key string) error {
+	result := s.db.Model(&config.McpKey{}).Where("provider = ?", provider).
+		Where("key = ?", key).
+		Updates(map[string]interface{}{
+			"is_valid":   false,
+			"updated_at": time.Now(),
+		})
+	return result.Error
 }
 
 // ErrInvalidDatabaseType is returned when an invalid database type is provided
