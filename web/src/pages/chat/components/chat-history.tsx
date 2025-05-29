@@ -96,7 +96,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
       setIsRenameModalOpen(false);
       setSelectedSession(null);
       setNewTitle('');
-    } catch (error) {
+    } catch {
       toast.error(t('chat.rename_failed'));
     }
   };
@@ -112,7 +112,7 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
       fetchSessions();
       setIsDeleteModalOpen(false);
       setSelectedSession(null);
-    } catch (error) {
+    } catch {
       toast.error(t('chat.delete_failed'));
     }
   };
@@ -145,6 +145,13 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
                   selectedChat === session.id ? 'bg-primary-100' : ''
                 }`}
                 onClick={() => handleSessionSelect(session.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleSessionSelect(session.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <div className="flex flex-col items-start flex-1 min-w-0 mr-2 relative">
                   <span className="text-sm font-medium truncate w-full">
@@ -208,7 +215,6 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder={t('chat.session_title_placeholder')}
-              autoFocus
             />
           </ModalBody>
           <ModalFooter>
