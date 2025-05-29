@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
+	"github.com/mcp-ecosystem/mcp-gateway/pkg/utils"
 )
 
 // Converter handles the conversion from OpenAPI to MCP configuration
@@ -130,7 +131,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 
 			tool := config.ToolConfig{
 				Name:         operation.OperationID,
-				Description:  operation.Summary,
+				Description:  utils.FirstNonEmpty(operation.Description, operation.Summary),
 				Method:       method,
 				Endpoint:     fmt.Sprintf("{{.Config.url}}%s", path),
 				Headers:      make(map[string]string),
