@@ -1,7 +1,7 @@
 {
   "name": "mcp-admin-dashboard",
   "private": true,
-  "version": "0.4.7",
+  "version": "0.5.0",
   "type": "module",
   "description": "MCP Gateway Admin Dashboard - A modern web interface for managing MCP Gateway services",
   "keywords": [

@@ -9,6 +9,15 @@ export interface Message {
   toolResult?: ToolResult;
 }
 
+export interface BackendMessage {
+  id: string;
+  content: string;
+  sender: string;
+  timestamp: string;
+  toolCalls?: string;
+  toolResult?: string;
+}
+
 export interface ToolCall {
   id: string;
   type: string;

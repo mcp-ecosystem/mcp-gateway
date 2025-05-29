@@ -10,14 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
 import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '../../services/api';
 import type { MCPConfigVersion } from '../../types/mcp';
-
-interface Tenant {
-  id: number;
-  name: string;
-  prefix: string;
-  description: string;
-  isActive: boolean;
-}
+import {Tenant} from '../../types/user';
 
 export function ConfigVersionsPage() {
   const { t } = useTranslation();

@@ -51,7 +51,7 @@ func (s *APIStore) Create(_ context.Context, server *config.MCPConfig) error {
 }
 
 // Get implements Store.Get
-func (s *APIStore) Get(_ context.Context, tenant, name string) (*config.MCPConfig, error) {
+func (s *APIStore) Get(_ context.Context, tenant, name string, includeDeleted ...bool) (*config.MCPConfig, error) {
 	jsonStr, err := s.request()
 	if err != nil {
 		return nil, err

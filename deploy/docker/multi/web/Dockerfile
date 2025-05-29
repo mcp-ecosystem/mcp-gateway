@@ -36,16 +36,19 @@ COPY web/ .
 
 RUN npm run build
 
-FROM nginx:1.28.0-alpine3.21-slim
+FROM nginx:1.27.5-bookworm
 
 WORKDIR /app
 
 # Set default timezone
 ENV TZ=UTC
 
-RUN apk add --no-cache tzdata && \
-    ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime && \
-    echo ${TZ} > /etc/timezone
+RUN apt-get update && apt-get install -y \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata
 
 # Copy apiserver binary and config
 COPY --from=apiserver-builder /app/apiserver /app/
@@ -72,7 +75,7 @@ COPY deploy/docker/multi/web/nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80 5234
 
 # Create startup script
-RUN echo -e '#!/bin/sh\n\
+RUN echo '#!/bin/bash\n\
 nginx &\n\
 exec /app/apiserver\n' > /app/start.sh && \
 chmod +x /app/start.sh

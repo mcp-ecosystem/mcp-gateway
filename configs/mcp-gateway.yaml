@@ -70,3 +70,4 @@ session:
     db: ${SESSION_REDIS_DB:0}
     topic: "${SESSION_REDIS_TOPIC:mcp-gateway:session}"
     prefix: "${SESSION_REDIS_PREFIX:session}"
+    ttl: "${SESSION_REDIS_TTL:24h}"  # Session TTL in Redis

@@ -5,8 +5,8 @@ import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {getTenants} from '../../../services/api';
+import {ConfigEditorProps, Gateway, Tenant} from '../../../types/gateway';
 import {defaultConfig} from '../constants/defaultConfig';
-import {ConfigEditorProps, GatewayConfig, Tenant} from '../types';
 
 import {MCPServersConfig} from './MCPServersConfig';
 import {RouterConfig} from './RouterConfig';
@@ -16,18 +16,15 @@ import {ToolsConfig} from './ToolsConfig';
 export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditing }: ConfigEditorProps) {
   const { t } = useTranslation();
   const [isYamlMode, setIsYamlMode] = useState<boolean>(false);
-  const [parsedConfig, setParsedConfig] = useState<GatewayConfig | null>(null);
+  const [parsedConfig, setParsedConfig] = useState<Gateway | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoadingTenants, setIsLoadingTenants] = useState<boolean>(false);
-
-  // 表单状态
   const [generalFormState, setGeneralFormState] = useState<{name?: string; tenant?: string}>({});
 
-  // 使用useCallback包装updateConfig函数
-  const updateConfig = useCallback((newData: Partial<GatewayConfig>) => {
+  const updateConfig = useCallback((newData: Partial<Gateway>) => {
     const baseConfig = parsedConfig || defaultConfig;
 
-    const updated: GatewayConfig = {
+    const updated: Gateway = {
       ...baseConfig,
       ...newData,
     };
@@ -46,7 +43,6 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
     }
   }, [parsedConfig, isYamlMode, isEditing, onChange]);
 
-  // 加载租户列表
   useEffect(() => {
     const fetchTenants = async () => {
       setIsLoadingTenants(true);
@@ -70,7 +66,7 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
         return;
       }
 
-      const parsed = yaml.load(config) as GatewayConfig;
+      const parsed = yaml.load(config) as Gateway;
       setParsedConfig(parsed);
     } catch (e) {
       console.error("Failed to parse config:", e);

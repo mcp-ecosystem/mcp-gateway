@@ -2,11 +2,11 @@ import { Input, Select, SelectItem, Button, Checkbox, Accordion, AccordionItem, 
 import { Icon } from "@iconify/react";
 import { useTranslation } from 'react-i18next';
 
-import { GatewayConfig } from '../types';
+import { Gateway, ToolConfig, ServerConfig } from '../../../types/gateway';
 
 interface ToolsConfigProps {
-  parsedConfig: GatewayConfig;
-  updateConfig: (newData: Partial<GatewayConfig>) => void;
+  parsedConfig: Gateway;
+  updateConfig: (newData: Partial<Gateway>) => void;
 }
 
 export function ToolsConfig({
@@ -33,9 +33,9 @@ export function ToolsConfig({
 
     // If tool name changed, update server references
     if (field === 'name' && oldName !== value && parsedConfig.servers) {
-      const updatedServers = parsedConfig.servers.map(server => {
+      const updatedServers = parsedConfig.servers.map((server: ServerConfig) => {
         if (server.allowedTools) {
-          const updatedAllowedTools = server.allowedTools.map(toolName =>
+          const updatedAllowedTools = server.allowedTools.map((toolName: string) =>
             toolName === oldName ? value as string : toolName
           );
           return { ...server, allowedTools: updatedAllowedTools };
@@ -141,7 +141,7 @@ export function ToolsConfig({
   return (
     <div className="space-y-4">
       <Accordion variant="splitted">
-        {tools.map((tool, index) => (
+        {tools.map((tool: ToolConfig, index: number) => (
           <AccordionItem 
             key={index} 
             title={tool.name || `Tool ${index + 1}`}
@@ -202,7 +202,7 @@ export function ToolsConfig({
                 </div>
                 
                 <div className="space-y-3">
-                  {(tool.headersOrder || Object.keys(tool.headers || {})).map((key, headerIndex) => (
+                  {(tool.headersOrder || Object.keys(tool.headers || {})).map((key: string, headerIndex: number) => (
                     <div key={headerIndex} className="flex gap-2">
                       <Input
                         className="flex-1"
@@ -257,7 +257,7 @@ export function ToolsConfig({
                 </div>
 
                 <div className="space-y-3">
-                  {(tool.args || []).map((arg, argIndex) => (
+                  {(tool.args || []).map((arg: { name: string; position: string; required: boolean; type: string; description: string; default: string }, argIndex: number) => (
                     <div key={argIndex} className="flex flex-col gap-2 p-3 border border-content2 rounded-md bg-content1">
                       <div className="flex items-center gap-2">
                         <Input

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {t} from 'i18next';
+import yaml from 'js-yaml';
 
 import i18n from '../i18n';
 import type {Gateway} from '../types/gateway';
@@ -57,19 +58,9 @@ export const getMCPServers = async (tenantId?: number) => {
   try {
     const params = tenantId ? { tenantId } : {};
     const response = await api.get('/mcp/configs', { params });
-    return response.data.data || response.data;
+    return response.data.data;
   } catch (error) {
     handleApiError(error, 'errors.fetch_mcp_servers');
-    throw error;
-  }
-};
-
-export const getMCPServer = async (name: string) => {
-  try {
-    const response = await api.get(`/mcp/configs/${name}`);
-    return response.data.data || response.data;
-  } catch (error) {
-    handleApiError(error, 'errors.fetch_mcp_server');
     throw error;
   }
 };
@@ -114,14 +105,14 @@ export const deleteMCPServer = async (tenant: string, name: string) => {
 
 export const exportMCPServer = async (server: Gateway) => {
   try {
-    const name = server.name
-    const config = server.config
+    const name = server.name;
+    const config = yaml.dump(server);
 
     const blob = new Blob([config], { type: 'application/yaml' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
 
-    toast.info(t(url))
+    toast.info(t('gateway.exporting'));
     a.href = url;
     a.download = `${name}.yaml`;
     a.click();

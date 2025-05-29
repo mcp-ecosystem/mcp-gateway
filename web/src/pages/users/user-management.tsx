@@ -24,39 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { AccessibleModal } from "../../components/AccessibleModal";
 import { MultiSelectAutocomplete } from "../../components/ui/MultiSelectAutocomplete";
 import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
-
-interface User {
-  id: number;
-  username: string;
-  role: 'admin' | 'normal';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  tenants?: Tenant[];
-}
-
-interface Tenant {
-  id: number;
-  name: string;
-  prefix: string;
-  description: string;
-  isActive: boolean;
-}
-
-interface CreateUserForm {
-  username: string;
-  password: string;
-  role: 'admin' | 'normal';
-  tenantIds?: number[];
-}
-
-interface UpdateUserForm {
-  username: string;
-  password?: string;
-  role?: 'admin' | 'normal';
-  isActive?: boolean;
-  tenantIds?: number[];
-}
+import {User, Tenant, CreateUserForm, UpdateUserForm} from '../../types/user';
 
 export function UserManagement() {
   const { t } = useTranslation();

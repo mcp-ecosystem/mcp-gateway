@@ -2,11 +2,11 @@ import { Input, Button, Chip, Accordion, AccordionItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTranslation } from 'react-i18next';
 
-import { GatewayConfig } from '../types';
+import { Gateway, RouterConfig, ServerConfig } from '../../../types/gateway';
 
 interface ServersConfigProps {
-  parsedConfig: GatewayConfig;
-  updateConfig: (newData: Partial<GatewayConfig>) => void;
+  parsedConfig: Gateway;
+  updateConfig: (newData: Partial<Gateway>) => void;
 }
 
 export function ServersConfig({
@@ -26,7 +26,7 @@ export function ServersConfig({
 
     // If server name changed, update router references
     if (field === 'name' && oldName !== value && parsedConfig.routers) {
-      const updatedRouters = parsedConfig.routers.map(router => {
+      const updatedRouters = parsedConfig.routers.map((router: RouterConfig) => {
         if (router.server === oldName) {
           return { ...router, server: value };
         }
@@ -39,7 +39,7 @@ export function ServersConfig({
   };
 
   const addServer = () => {
-    const newServer = {
+    const newServer: ServerConfig = {
       name: "",
       description: "",
       allowedTools: []
@@ -50,7 +50,7 @@ export function ServersConfig({
   };
 
   const removeServer = (index: number) => {
-    const updatedServers = servers.filter((_, i) => i !== index);
+    const updatedServers = servers.filter((_: ServerConfig, i: number) => i !== index);
     updateConfig({
       servers: updatedServers
     });
@@ -59,7 +59,7 @@ export function ServersConfig({
   return (
     <div className="space-y-4">
       <Accordion variant="splitted">
-        {servers.map((server, index) => (
+        {servers.map((server: ServerConfig, index: number) => (
           <AccordionItem 
             key={index} 
             title={server.name || `Server ${index + 1}`}
@@ -87,14 +87,14 @@ export function ServersConfig({
                   <h4 className="text-md font-medium">{t('gateway.allowed_tools')}</h4>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {server.allowedTools && server.allowedTools.map((tool, toolIndex) => (
+                  {(server.allowedTools || []).map((tool: string, toolIndex: number) => (
                     <Chip
                       key={toolIndex}
                       onClose={() => {
-                        const updated = [...server.allowedTools];
+                        const updated = [...(server.allowedTools || [])];
                         updated.splice(toolIndex, 1);
                         updateConfig({
-                          servers: servers.map((s, i) =>
+                          servers: servers.map((s: ServerConfig, i: number) =>
                             i === index ? { ...s, allowedTools: updated } : s
                           )
                         });
@@ -108,8 +108,8 @@ export function ServersConfig({
                   <h4 className="text-sm font-medium mb-2">{t('gateway.add_tool')}</h4>
                   <div className="flex flex-wrap gap-2">
                     {(parsedConfig?.tools || [])
-                      .filter(tool => !server.allowedTools?.includes(tool.name || ""))
-                      .map(tool => (
+                      .filter((tool: { name?: string }) => tool.name && !(server.allowedTools || []).includes(tool.name))
+                      .map((tool: { name?: string }) => (
                         <Button
                           key={tool.name}
                           size="sm"
@@ -117,13 +117,14 @@ export function ServersConfig({
                           color="primary"
                           className="min-w-0"
                           onPress={() => {
-                            if (tool.name && server.allowedTools && !server.allowedTools.includes(tool.name)) {
+                            if (tool.name && !(server.allowedTools || []).includes(tool.name)) {
+                              const updatedServer: ServerConfig = {
+                                ...server,
+                                allowedTools: [...(server.allowedTools || []), tool.name]
+                              };
                               updateConfig({
-                                servers: servers.map((s, i) =>
-                                  i === index ? {
-                                    ...s,
-                                    allowedTools: [...s.allowedTools, tool.name]
-                                  } : s
+                                servers: servers.map((s: ServerConfig, i: number) =>
+                                  i === index ? updatedServer : s
                                 )
                               });
                             }
@@ -134,7 +135,7 @@ export function ServersConfig({
                       ))
                     }
                     {(parsedConfig?.tools || []).length > 0 &&
-                     (parsedConfig?.tools || []).every(tool => server.allowedTools?.includes(tool.name || "")) && (
+                     (parsedConfig?.tools || []).every((tool: { name?: string }) => tool.name && (server.allowedTools || []).includes(tool.name)) && (
                       <span className="text-sm text-default-500">{t('gateway.tools_already_all_added')}</span>
                     )}
                     {(parsedConfig?.tools || []).length === 0 && (

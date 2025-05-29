@@ -348,16 +348,21 @@ func (h *MCP) HandleListMCPServers(c *gin.Context) {
 	// TODO: temporary
 	results := make([]*dto.MCPServer, len(filteredServers))
 	for i, server := range filteredServers {
-		s, _ := yaml.Marshal(server)
 		results[i] = &dto.MCPServer{
-			Name:   server.Name,
-			Config: string(s),
+			Name:       server.Name,
+			Tenant:     server.Tenant,
+			McpServers: dto.FromMCPServerConfigs(server.McpServers),
+			Tools:      dto.FromToolConfigs(server.Tools),
+			Servers:    dto.FromServerConfigs(server.Servers),
+			Routers:    dto.FromRouterConfigs(server.Routers),
+			CreatedAt:  server.CreatedAt,
+			UpdatedAt:  server.UpdatedAt,
 		}
 	}
 
 	h.logger.Info("returning MCP server list",
 		zap.Int("server_count", len(results)))
-	c.JSON(http.StatusOK, results)
+	i18n.Success(i18n.SuccessMCPServerList).With("data", results).Send(c)
 }
 
 func (h *MCP) HandleMCPServerCreate(c *gin.Context) {

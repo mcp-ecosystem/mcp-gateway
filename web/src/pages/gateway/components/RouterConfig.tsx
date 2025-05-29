@@ -3,11 +3,11 @@ import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { useTranslation } from 'react-i18next';
 
-import { GatewayConfig, CorsConfig, Tenant } from '../types';
+import { Gateway, CORSConfig, Tenant } from '../../../types/gateway';
 
 interface RouterConfigProps {
-  parsedConfig: GatewayConfig;
-  updateConfig: (newData: Partial<GatewayConfig>) => void;
+  parsedConfig: Gateway;
+  updateConfig: (newData: Partial<Gateway>) => void;
   tenants: Tenant[];
 }
 
@@ -34,11 +34,11 @@ export function RouterConfig({
     updateConfig({ routers: updatedRouters });
   };
 
-  const renderCorsConfig = (router: { cors?: Record<string, unknown> }, index: number) => {
-    const corsConfig = router.cors as CorsConfig;
+  const renderCorsConfig = (router: { cors?: CORSConfig }, index: number) => {
+    const corsConfig = router.cors;
     if (!corsConfig) return null;
 
-    const updateCors = (updates: Partial<CorsConfig>) => {
+    const updateCors = (updates: Partial<CORSConfig>) => {
       const updatedCors = { ...corsConfig, ...updates };
       const updatedRouters = routers.map((r, i) =>
         i === index ? { ...r, cors: updatedCors } : r
@@ -46,7 +46,7 @@ export function RouterConfig({
       updateConfig({ routers: updatedRouters });
     };
 
-    const addCorsItem = (field: keyof CorsConfig, value: string) => {
+    const addCorsItem = (field: keyof CORSConfig, value: string) => {
       if (!value?.trim()) return;
       const currentValues = corsConfig[field] as string[] || [];
       if (!currentValues.includes(value.trim())) {
@@ -56,7 +56,7 @@ export function RouterConfig({
       }
     };
 
-    const removeCorsItem = (field: keyof CorsConfig, itemIndex: number) => {
+    const removeCorsItem = (field: keyof CORSConfig, itemIndex: number) => {
       const currentValues = corsConfig[field] as string[] || [];
       updateCors({
         [field]: currentValues.filter((_, i) => i !== itemIndex)

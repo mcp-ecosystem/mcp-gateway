@@ -113,11 +113,12 @@ func (m *MCPConfig) BeforeUpdate(_ *gorm.DB) error {
 
 // ActiveVersion represents the currently active version of an MCP configuration
 type ActiveVersion struct {
-	ID        uint      `gorm:"primarykey"`
-	Tenant    string    `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:1"`
-	Name      string    `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:2"`
-	Version   int       `gorm:"not null"`
-	UpdatedAt time.Time `gorm:"not null"`
+	ID        uint           `gorm:"primarykey"`
+	Tenant    string         `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:1"`
+	Name      string         `gorm:"type:varchar(50);not null;uniqueIndex:idx_tenant_name,priority:2"`
+	Version   int            `gorm:"not null"`
+	UpdatedAt time.Time      `gorm:"not null"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 // MCPConfigVersion represents the database model for MCPConfigVersion

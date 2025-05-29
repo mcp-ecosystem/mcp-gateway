@@ -3,11 +3,11 @@ import { Icon } from "@iconify/react";
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { GatewayConfig } from '../types';
+import type { Gateway, MCPServerConfig } from '../../../types/gateway';
 
 interface MCPServersConfigProps {
-  parsedConfig: GatewayConfig;
-  updateConfig: (newData: Partial<GatewayConfig>) => void;
+  parsedConfig: Gateway;
+  updateConfig: (newData: Partial<Gateway>) => void;
 }
 
 export function MCPServersConfig({
@@ -16,17 +16,25 @@ export function MCPServersConfig({
 }: MCPServersConfigProps) {
   const { t } = useTranslation();
   const mcpServers = useMemo(() => 
-    parsedConfig?.mcpServers || [{ type: "stdio", name: "", command: "", args: [], env: {} }],
+    parsedConfig?.mcpServers || [{
+      type: "stdio",
+      name: "",
+      command: "",
+      args: [],
+      env: {},
+      policy: "onDemand",
+      preinstalled: false
+    }],
     [parsedConfig?.mcpServers]
   );
   const [commandInputs, setCommandInputs] = useState<{ [key: number]: string }>({});
 
   // Initialize command inputs when mcpServers changes
   useEffect(() => {
-    const initialInputs = mcpServers.reduce((acc, server, index) => {
+    const initialInputs = mcpServers.reduce<{ [key: number]: string }>((acc, server, index) => {
       acc[index] = `${server.command || ''} ${server.args?.join(' ') || ''}`.trim();
       return acc;
-    }, {} as { [key: number]: string });
+    }, {});
     setCommandInputs(initialInputs);
   }, [mcpServers]);
 
@@ -162,12 +170,13 @@ export function MCPServersConfig({
   };
 
   const addServer = () => {
-    const newServer = {
+    const newServer: MCPServerConfig = {
       type: "stdio",
       name: "",
       command: "",
       args: [],
       env: {},
+      policy: "onDemand",
       preinstalled: false
     };
     updateConfig({

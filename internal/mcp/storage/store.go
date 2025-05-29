@@ -13,7 +13,7 @@ type Store interface {
 	Create(ctx context.Context, cfg *config.MCPConfig) error
 
 	// Get gets an MCP configuration by tenant and name
-	Get(ctx context.Context, tenant, name string) (*config.MCPConfig, error)
+	Get(ctx context.Context, tenant, name string, includeDeleted ...bool) (*config.MCPConfig, error)
 
 	// List lists all MCP configurations
 	// includeDeleted: if true, includes soft deleted records

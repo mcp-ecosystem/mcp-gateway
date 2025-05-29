@@ -66,7 +66,7 @@ func (s *DiskStore) Create(_ context.Context, server *config.MCPConfig) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func (s *DiskStore) Get(_ context.Context, tenant, name string) (*config.MCPConfig, error) {
+func (s *DiskStore) Get(_ context.Context, tenant, name string, includeDeleted ...bool) (*config.MCPConfig, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

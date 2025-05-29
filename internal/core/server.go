@@ -205,6 +205,8 @@ func (s *Server) updateConfigs(ctx context.Context) (*state.State, error) {
 				zap.Error(err))
 			return nil, err
 		}
+		s.logger.Info("loading all MCP configurations",
+			zap.Int("count", len(cfgs)))
 	} else {
 		updatedCfgs, err := s.store.ListUpdated(ctx, s.lastUpdateTime)
 		if err != nil {
@@ -216,12 +218,14 @@ func (s *Server) updateConfigs(ctx context.Context) (*state.State, error) {
 			s.logger.Info("no updated MCP configurations found, skipping update")
 			return s.state, nil
 		}
-		s.logger.Info("deleting deleted MCP configurations",
+		s.logger.Info("getting updated MCP configurations",
 			zap.Int("count", len(updatedCfgs)))
 		cfgs = s.state.GetRawConfigs()
+		fmt.Println(cfgs)
 		for _, cfg := range updatedCfgs {
 			cfgs = config.MergeConfigs(cfgs, cfg)
 		}
+		fmt.Println(cfgs)
 		s.logger.Info("merging updated MCP configurations",
 			zap.Int("total_old", len(s.state.GetRawConfigs())),
 			zap.Int("total_new", len(cfgs)))

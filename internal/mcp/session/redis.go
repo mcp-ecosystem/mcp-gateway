@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"sync"
+	"time"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
@@ -22,6 +24,7 @@ type RedisStore struct {
 	// Add a map to track active connections
 	connections map[string]*RedisConnection
 	mu          sync.RWMutex
+	ttl         time.Duration // TTL for session data
 }
 
 var _ Store = (*RedisStore)(nil)
@@ -54,6 +57,7 @@ func NewRedisStore(logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisSto
 		prefix:      cfg.Prefix,
 		topic:       cfg.Topic,
 		connections: make(map[string]*RedisConnection),
+		ttl:         cfg.TTL,
 	}
 
 	// Subscribe to session updates
@@ -145,13 +149,17 @@ func (s *RedisStore) Register(ctx context.Context, meta *Meta) (Connection, erro
 	}
 
 	key := s.prefix + meta.ID
-	if err := s.client.Set(ctx, key, data, 0).Err(); err != nil {
+	if err := s.client.Set(ctx, key, data, s.ttl).Err(); err != nil {
 		return nil, fmt.Errorf("failed to store session metadata in Redis: %w", err)
 	}
 
-	// Add session ID to the list of valid sessions
+	// Add session ID to the list of valid sessions with TTL
 	if err := s.client.SAdd(ctx, s.prefix+"ids", meta.ID).Err(); err != nil {
 		return nil, fmt.Errorf("failed to add session ID to list: %w", err)
+	}
+	// Set TTL for the session ID in the set
+	if err := s.client.Expire(ctx, s.prefix+"ids", s.ttl).Err(); err != nil {
+		return nil, fmt.Errorf("failed to set TTL for session ID in set: %w", err)
 	}
 
 	// Create connection
@@ -192,6 +200,18 @@ func (s *RedisStore) Get(ctx context.Context, id string) (Connection, error) {
 			return nil, ErrSessionNotFound
 		}
 		return nil, fmt.Errorf("failed to get session metadata from Redis: %w", err)
+	}
+
+	// Renew TTL for both the session data and the session ID in the set
+	if err := s.client.Expire(ctx, key, s.ttl).Err(); err != nil {
+		s.logger.Warn("failed to renew session TTL",
+			zap.String("id", id),
+			zap.Error(err))
+	}
+	if err := s.client.Expire(ctx, s.prefix+"ids", s.ttl).Err(); err != nil {
+		s.logger.Warn("failed to renew session ID set TTL",
+			zap.String("id", id),
+			zap.Error(err))
 	}
 
 	var meta Meta
@@ -300,6 +320,19 @@ func (c *RedisConnection) EventQueue() <-chan *Message {
 
 // Send implements Connection.Send
 func (c *RedisConnection) Send(ctx context.Context, msg *Message) error {
+	// Renew TTL for both the session data and the session ID in the set
+	key := c.store.prefix + c.meta.ID
+	if err := c.store.client.Expire(ctx, key, c.store.ttl).Err(); err != nil {
+		c.store.logger.Warn("failed to renew session TTL",
+			zap.String("id", c.meta.ID),
+			zap.Error(err))
+	}
+	if err := c.store.client.Expire(ctx, c.store.prefix+"ids", c.store.ttl).Err(); err != nil {
+		c.store.logger.Warn("failed to renew session ID set TTL",
+			zap.String("id", c.meta.ID),
+			zap.Error(err))
+	}
+
 	return c.store.publishUpdate(ctx, "event", c.meta, msg)
 }
 

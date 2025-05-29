@@ -84,6 +84,7 @@ data:
     SESSION_REDIS_PASSWORD: ""
     SESSION_REDIS_DB: "0"
     SESSION_REDIS_TOPIC: "mcp-gateway:session"
+    SESSION_REDIS_TTL: "24h"  # Session TTL in Redis
 
     OPENAI_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1/"
     OPENAI_API_KEY: "sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"

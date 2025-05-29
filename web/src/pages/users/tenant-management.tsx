@@ -21,29 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AccessibleModal } from "../../components/AccessibleModal";
 import { getTenants, createTenant, updateTenant, deleteTenant } from '../../services/api';
-
-interface Tenant {
-  id: number;
-  name: string;
-  prefix: string;
-  description: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CreateTenantForm {
-  name: string;
-  prefix: string;
-  description: string;
-}
-
-interface UpdateTenantForm {
-  name: string;
-  prefix?: string;
-  description?: string;
-  isActive?: boolean;
-}
+import {Tenant, CreateTenantForm, UpdateTenantForm} from '../../types/user';
 
 export function TenantManagement() {
   const { t } = useTranslation();
