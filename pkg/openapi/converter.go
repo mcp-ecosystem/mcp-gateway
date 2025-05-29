@@ -10,8 +10,9 @@ import (
 	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/ifuryst/lol"
-	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/mcp-ecosystem/mcp-gateway/internal/common/config"
 )
 
 // Converter handles the conversion from OpenAPI to MCP configuration
@@ -145,6 +146,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 			var bodyArgs []config.ArgConfig
 			var pathArgs []config.ArgConfig
 			var queryArgs []config.ArgConfig
+			var headerArgs []config.ArgConfig
 
 			// Handle path parameters
 			for _, param := range operation.Parameters {
@@ -180,6 +182,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 					queryArgs = append(queryArgs, arg)
 				case "header":
 					tool.Headers[arg.Name] = fmt.Sprintf("{{.Args.%s}}", arg.Name)
+					headerArgs = append(headerArgs, arg)
 				}
 			}
 
@@ -238,6 +241,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 			tool.Args = append(tool.Args, pathArgs...)
 			tool.Args = append(tool.Args, queryArgs...)
 			tool.Args = append(tool.Args, bodyArgs...)
+			tool.Args = append(tool.Args, headerArgs...)
 
 			// Build request body template if there are body args
 			if len(bodyArgs) > 0 {
