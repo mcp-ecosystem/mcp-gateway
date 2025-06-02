@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,20 @@ type Meta struct {
 	Request       *RequestInfo `json:"request"`    // Request information
 	Extra         []byte       `json:"extra"`      // Optional serialized extra data
 	Authenticated bool         `json:"authenticated"`
+	authQueryKey  string
+	mu            sync.RWMutex
+}
+
+func (m *Meta) GetAuthQueryKey() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.authQueryKey
+}
+
+func (m *Meta) SetAuthQueryKey(key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.authQueryKey = key
 }
 
 // Connection represents an active session connection capable of sending messages.

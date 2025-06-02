@@ -56,18 +56,12 @@ func (s *Server) handleSSE(c *gin.Context) {
 		}
 	}
 
-	// map auth
-	if mcpConfig.Name == "gaode-sse" || mcpConfig.Name == "tencent-sse" || mcpConfig.Name == "baidu-sse" {
-		err := s.getValidMCPKey(&mcpConfig, false)
-		if err != nil {
-			s.logger.Error("failed to get MCP key",
-				zap.Error(err),
-				zap.String("prefix", prefix),
-			)
-		}
-		s.mu.Lock()
-		s.state.prefixToMCPServerConfig[prefix] = mcpConfig
-		s.mu.Unlock()
+	key, err := s.getValidMCPKey(&mcpConfig, false)
+	if err != nil {
+		s.logger.Error("failed to get MCP key",
+			zap.Error(err),
+			zap.String("prefix", prefix),
+		)
 	}
 
 	requestInfo := &session.RequestInfo{
@@ -104,6 +98,7 @@ func (s *Server) handleSSE(c *gin.Context) {
 		Extra:         nil,
 		Authenticated: authenticated,
 	}
+	meta.SetAuthQueryKey(key)
 
 	s.logger.Info("establishing SSE connection",
 		zap.String("session_id", sessionID),
@@ -480,27 +475,34 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 				return
 			}
+			value := conn.Meta().GetAuthQueryKey()
+			var key string
+			switch mcpProxyCfg.Name {
+			case "gaode-sse", "tencent-sse":
+				key = "key"
+			case "baidu-sse":
+				key = "ak"
+			}
+			if len(value) > 0 && len(key) > 0 {
+				mcpProxyCfg.URL += fmt.Sprintf("?%s=%s", key, value)
+			}
 			result, err = mcpproxy.InvokeSSETool(c, conn, mcpProxyCfg, params)
 			if err != nil {
 				s.sendToolExecutionError(c, conn, req, err, true)
 				return
 			}
-			for result != nil && result.IsError &&
-				(mcpProxyCfg.Name == "gaode-sse" || mcpProxyCfg.Name == "tencent-sse" || mcpProxyCfg.Name == "baidu-sse") {
-				err = s.getValidMCPKey(&mcpProxyCfg, true)
+			for result != nil && result.IsError {
+				value, err = s.getValidMCPKey(&mcpProxyCfg, true)
 				if err != nil {
-					s.sendToolExecutionError(c, conn, req, err, true)
-					return
+					break
 				}
+				conn.Meta().SetAuthQueryKey(value)
 				result, err = mcpproxy.InvokeSSETool(c, conn, mcpProxyCfg, params)
 				if err != nil {
 					s.sendToolExecutionError(c, conn, req, err, true)
 					return
 				}
 			}
-			s.mu.Lock()
-			s.state.prefixToMCPServerConfig[conn.Meta().Prefix] = mcpProxyCfg
-			s.mu.Unlock()
 		case cnst.BackendProtoStreamable:
 			mcpProxyCfg, ok := s.state.prefixToMCPServerConfig[conn.Meta().Prefix]
 			if !ok {
@@ -524,13 +526,15 @@ func (s *Server) handlePostMessage(c *gin.Context, conn session.Connection) {
 	}
 }
 
-func (s *Server) getValidMCPKey(config *config.MCPServerConfig, invalidate bool) error {
+func (s *Server) getValidMCPKey(config *config.MCPServerConfig, invalidate bool) (string, error) {
 	var key string
 	switch config.Name {
 	case "gaode-sse", "tencent-sse":
 		key = "key"
 	case "baidu-sse":
 		key = "ak"
+	default:
+		return "", fmt.Errorf("unknown map provider: %s", config.Name)
 	}
 
 	provider := strings.TrimSuffix(config.Name, "-sse")
@@ -541,16 +545,16 @@ func (s *Server) getValidMCPKey(config *config.MCPServerConfig, invalidate bool)
 		invalidKey := values.Get(key)
 		err := s.db.InvalidateMcpKey(context.Background(), provider, invalidKey)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	value, err := s.db.GetValidMcpKey(context.Background(), provider)
 	if err != nil {
-		return err
+		return "", err
 	}
 	values.Set(key, value)
 	url.RawQuery = values.Encode()
 	config.URL = url.String()
-	return nil
+	return value, nil
 }
