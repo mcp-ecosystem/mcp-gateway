@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-postgres
+  template:
+    metadata:
+      labels:
+        app: mcp-postgres
+    spec:
+      containers:
+      - name: mcp-postgres
+        image: {{ .Values.postgres.image }}
+        env:
+          - name: POSTGRES_DB
+            value: {{ .Values.postgres.env.POSTGRES_DB }}
+          - name: POSTGRES_USER
+            value: {{ .Values.postgres.env.POSTGRES_USER }}
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: password
+          - name: TZ
+            value: {{ .Values.postgres.env.TZ }}
+        ports:
+        - containerPort: {{ .Values.postgres.service.port }}
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          {{- toYaml .Values.postgres.resources | nindent 10 }}
+      volumes:
+      - name: postgres-data
+        emptyDir: {}

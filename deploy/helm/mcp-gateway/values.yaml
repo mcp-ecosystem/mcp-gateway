@@ -1,0 +1,224 @@
+# Default values for mcp-gateway.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: ghcr.io/mcp-ecosystem/mcp-gateway/mcp-gateway
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+# This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  type: ClusterIP
+  port: 5235
+  ports:
+    - name: mcp-gateway
+      port: 5235
+    - name: mcp-gateway-notifier
+      port: 5245
+
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  LOG_LEVEL: "info"
+  DEBUG: "false"
+
+config:
+# Logger configuration for apiserver
+  APISERVER_LOGGER_LEVEL: "info"
+  APISERVER_LOGGER_FORMAT: "json"
+  APISERVER_LOGGER_OUTPUT: "stdout"
+  APISERVER_LOGGER_FILE_PATH: "/var/log/mcp-gateway/apiserver.log"
+  APISERVER_LOGGER_MAX_SIZE: "100"
+  APISERVER_LOGGER_MAX_BACKUPS: "3"
+  APISERVER_LOGGER_MAX_AGE: "7"
+  APISERVER_LOGGER_COMPRESS: "true"
+  APISERVER_LOGGER_COLOR: "false"
+  APISERVER_LOGGER_STACKTRACE: "true"
+
+  # Logger configuration for mcp-gateway
+  LOGGER_LEVEL: "info"
+  LOGGER_FORMAT: "json"
+  LOGGER_OUTPUT: "stdout"
+  LOGGER_FILE_PATH: "/var/log/mcp-gateway/mcp-gateway.log"
+  LOGGER_MAX_SIZE: "100"
+  LOGGER_MAX_BACKUPS: "3"
+  LOGGER_MAX_AGE: "7"
+  LOGGER_COMPRESS: "true"
+  LOGGER_COLOR: "false"
+  LOGGER_STACKTRACE: "true"
+
+  # Notifier Configuration
+  APISERVER_NOTIFIER_ROLE: "sender"
+  APISERVER_NOTIFIER_TYPE: "api"
+  ## Signal Notifier Settings
+  APISERVER_NOTIFIER_SIGNAL: "SIGHUP"
+  APISERVER_NOTIFIER_SIGNAL_PID: "/data/mcp-gateway.pid"
+  ## API Notifier Settings
+  APISERVER_NOTIFIER_API_PORT: "5245"
+  APISERVER_NOTIFIER_API_TARGET_URL: "http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload"
+  ## Redis Notifier Settings
+  APISERVER_NOTIFIER_REDIS_ADDR: "localhost:6379"
+  APISERVER_NOTIFIER_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
+  APISERVER_NOTIFIER_REDIS_DB: "0"
+  APISERVER_NOTIFIER_REDIS_TOPIC: "mcp-gateway:reload"
+
+  # Notifier Configuration
+  NOTIFIER_ROLE: "receiver"
+  NOTIFIER_TYPE: "api"
+  ## Signal Notifier Settings
+  NOTIFIER_SIGNAL: "SIGHUP"
+  NOTIFIER_SIGNAL_PID: "/data/mcp-gateway.pid"
+  ## API Notifier Settings
+  NOTIFIER_API_PORT: "5245"
+  NOTIFIER_API_TARGET_URL: "http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload"
+  ## Redis Notifier Settings
+  NOTIFIER_REDIS_ADDR: "localhost:6379"
+  NOTIFIER_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
+  NOTIFIER_REDIS_DB: "0"
+  NOTIFIER_REDIS_TOPIC: "mcp-gateway:reload"
+
+  # Session storage type: memory or redis
+  SESSION_STORAGE_TYPE: "memory"
+  SESSION_REDIS_ADDR: "localhost:6379"
+  SESSION_REDIS_PASSWORD: ""
+  SESSION_REDIS_DB: "0"
+  SESSION_REDIS_TOPIC: "mcp-gateway:session"
+  SESSION_REDIS_TTL: "24h"  # Session TTL in Redis
+
+  OPENAI_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1/"
+  OPENAI_API_KEY: "sk-eed837fb0b4a62ee69abc29a983492b7PlsChangeMe"
+  OPENAI_MODEL: "qwen-turbo"
+
+  MCP_GATEWAY_PID: "/data/mcp-gateway.pid"
+  MCP_GATEWAY_PORT: "5245"
+
+  VITE_API_BASE_URL: "/api"
+  VITE_WS_BASE_URL: "/ws"
+  VITE_MCP_GATEWAY_BASE_URL: "/mcp"
+  VITE_BASE_URL: "/"
+
+  APISERVER_JWT_SECRET_KEY: ""
+  APISERVER_JWT_DURATION: "24h"
+
+postgres:
+  image: postgres:16
+  env:
+    POSTGRES_USER: postgres
+    POSTGRES_DB: mcp-gateway
+    SSL_MODE: disable
+    GATEWAY_STORAGE_DISK_PATH: ""
+    TZ: UTC
+  resources:
+    limits:
+      cpu: 150m
+      memory: 192Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    type: ClusterIP
+    port: 5432

@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+          # Static environment variables
+          - name: ENV
+            value: production
+          - name: TZ
+            value: UTC
+            # Database Configuration
+          - name: APISERVER_DB_TYPE
+            value: "postgres"
+          - name: APISERVER_DB_HOST
+            value: "mcp-postgres.mcp-gateway"
+          - name: APISERVER_DB_PORT
+            value: {{ .Values.postgres.service.port | quote }}
+          - name: APISERVER_DB_USER
+            value: {{ .Values.postgres.env.POSTGRES_USER | quote }}
+          - name: APISERVER_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: password
+          - name: APISERVER_DB_NAME
+            value: {{ .Values.postgres.env.POSTGRES_DB | quote }}
+          - name: APISERVER_DB_SSL_MODE
+            value: {{ .Values.postgres.env.SSL_MODE | quote }}
+          - name: GATEWAY_STORAGE_TYPE
+            value: "db"
+          - name: GATEWAY_DB_TYPE
+            value: "postgres"
+          - name: GATEWAY_DB_HOST
+            value: "mcp-postgres.mcp-gateway"
+          - name: GATEWAY_DB_PORT
+            value: {{ .Values.postgres.service.port | quote }}
+          - name: GATEWAY_DB_USER
+            value: {{ .Values.postgres.env.POSTGRES_USER | quote }}
+          - name: GATEWAY_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: password
+          - name: GATEWAY_DB_NAME
+            value: {{ .Values.postgres.env.POSTGRES_DB | quote }}
+          - name: GATEWAY_DB_SSL_MODE
+            value: {{ .Values.postgres.env.SSL_MODE | quote }}
+          - name: GATEWAY_STORAGE_DISK_PATH
+            value: {{ .Values.postgres.env.GATEWAY_STORAGE_DISK_PATH | quote }}
+          # Configurable environment variables from values.yaml
+          {{- if .Values.env }}
+          {{- range $key, $value := .Values.env }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          
+          # Environment variables from secrets
+          {{- if .Values.secretEnv }}
+          {{- range $key, $value := .Values.secretEnv }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-secrets
+                key: {{ $value }}
+          {{- end }}
+          {{- end }}
+        envFrom:
+          - configMapRef:
+              name: app-env
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        volumeMounts:
+        - name: configs
+          mountPath: /app/configs
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health_check
+        #     port: http
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health_check
+        #     port: http
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+      volumes:
+      - name: configs
+        configMap:
+          name: app-env
+          items:
+          - key: mcp-gateway.yaml
+            path: mcp-gateway.yaml
+      - name: data
+        emptyDir: {}

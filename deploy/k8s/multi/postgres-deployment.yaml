@@ -22,7 +22,7 @@ spec:
         - name: POSTGRES_PASSWORD
           value: postgres
         - name: POSTGRES_DB
-          value: mcp_gateway
+          value: mcp-gateway
         - name: TZ
           value: UTC
         ports:
