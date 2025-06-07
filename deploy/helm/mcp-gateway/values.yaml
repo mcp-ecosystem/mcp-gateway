@@ -5,6 +5,7 @@
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
+storage: 1Gi
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: ghcr.io/mcp-ecosystem/mcp-gateway/mcp-gateway
@@ -195,6 +196,7 @@ config:
   NOTIFIER_API_PORT: "5245"
   NOTIFIER_API_TARGET_URL: "http://mcp-gateway.mcp-gateway.svc.cluster.local:5245/_reload"
   ## Redis Notifier Settings
+  NOTIFIER_REDIS_USERNAME: "default"
   NOTIFIER_REDIS_ADDR: "localhost:6379"
   NOTIFIER_REDIS_PASSWORD: "UseStrongPasswordIsAGoodPractice"
   NOTIFIER_REDIS_DB: "0"
@@ -219,15 +221,18 @@ config:
   VITE_WS_BASE_URL: "/ws"
   VITE_MCP_GATEWAY_BASE_URL: "/mcp"
   VITE_BASE_URL: "/"
-
   APISERVER_JWT_SECRET_KEY: ""
   APISERVER_JWT_DURATION: "24h"
+  SUPER_ADMIN_USERNAME: admin
+  SUPER_ADMIN_PASSWORD: admin
 
 postgres:
   image: postgres:16
+  storage: 1Gi
   env:
     POSTGRES_USER: postgres
     POSTGRES_DB: mcp-gateway
+    POSTGRES_PASSWORD: postgres
     SSL_MODE: disable
     GATEWAY_STORAGE_DISK_PATH: ""
     TZ: UTC

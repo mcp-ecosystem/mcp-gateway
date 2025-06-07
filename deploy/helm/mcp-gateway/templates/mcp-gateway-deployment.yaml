@@ -26,20 +26,36 @@ spec:
           - name: APISERVER_DB_TYPE
             value: "postgres"
           - name: APISERVER_DB_HOST
-            value: "mcp-postgres.mcp-gateway"
+            value: "mcp-postgres.{{ .Release.Namespace }}.svc.cluster.local"
           - name: APISERVER_DB_PORT
             value: {{ .Values.postgres.service.port | quote }}
           - name: APISERVER_DB_USER
-            value: {{ .Values.postgres.env.POSTGRES_USER | quote }}
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: username
           - name: APISERVER_DB_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: mcp-postgres-secret
                 key: password
           - name: APISERVER_DB_NAME
-            value: {{ .Values.postgres.env.POSTGRES_DB | quote }}
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: database
           - name: APISERVER_DB_SSL_MODE
             value: {{ .Values.postgres.env.SSL_MODE | quote }}
+          - name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: mcp-gateway-secret
+                key: open_api_key
+          - name: APISERVER_JWT_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: mcp-gateway-secret
+                key: apiserver_jwt_secret_key
           - name: GATEWAY_STORAGE_TYPE
             value: "db"
           - name: GATEWAY_DB_TYPE
@@ -112,4 +128,5 @@ spec:
           - key: mcp-gateway.yaml
             path: mcp-gateway.yaml
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: mcp-gateway-pvc

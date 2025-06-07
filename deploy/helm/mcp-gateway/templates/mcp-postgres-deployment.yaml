@@ -17,9 +17,15 @@ spec:
         image: {{ .Values.postgres.image }}
         env:
           - name: POSTGRES_DB
-            value: {{ .Values.postgres.env.POSTGRES_DB }}
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: database
           - name: POSTGRES_USER
-            value: {{ .Values.postgres.env.POSTGRES_USER }}
+            valueFrom:
+              secretKeyRef:
+                name: mcp-postgres-secret
+                key: username
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
@@ -27,6 +33,8 @@ spec:
                 key: password
           - name: TZ
             value: {{ .Values.postgres.env.TZ }}
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
         ports:
         - containerPort: {{ .Values.postgres.service.port }}
         volumeMounts:
@@ -36,4 +44,5 @@ spec:
           {{- toYaml .Values.postgres.resources | nindent 10 }}
       volumes:
       - name: postgres-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: mcp-postgres-pvc

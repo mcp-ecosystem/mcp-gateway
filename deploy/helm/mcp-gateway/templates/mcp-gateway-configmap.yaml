@@ -65,7 +65,6 @@ data:
   SESSION_REDIS_TTL: {{ .Values.config.SESSION_REDIS_TTL | quote }}
 
   OPENAI_BASE_URL: {{ .Values.config.OPENAI_BASE_URL | quote }}
-  OPENAI_API_KEY: {{ .Values.config.OPENAI_API_KEY | quote }}
   OPENAI_MODEL: {{ .Values.config.OPENAI_MODEL | quote }}
 
   MCP_GATEWAY_PID: {{ .Values.config.MCP_GATEWAY_PID | quote }}
@@ -76,7 +75,6 @@ data:
   VITE_MCP_GATEWAY_BASE_URL: {{ .Values.config.VITE_MCP_GATEWAY_BASE_URL | quote }}
   VITE_BASE_URL: {{ .Values.config.VITE_BASE_URL | quote }}
 
-  APISERVER_JWT_SECRET_KEY: {{ .Values.config.APISERVER_JWT_SECRET_KEY | quote }}
   APISERVER_JWT_DURATION: {{ .Values.config.APISERVER_JWT_DURATION | quote }}
 
   mcp-gateway.yaml: |-
