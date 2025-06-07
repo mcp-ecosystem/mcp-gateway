@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: app-env
+  name: "{{ .Release.Name }}-configmap"
 data:
   # Logger configuration for apiserver
   APISERVER_LOGGER_LEVEL: {{ .Values.config.APISERVER_LOGGER_LEVEL | quote }}

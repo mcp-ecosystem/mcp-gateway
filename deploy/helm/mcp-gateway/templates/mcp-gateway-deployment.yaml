@@ -81,7 +81,7 @@ spec:
           {{- end }}
         envFrom:
           - configMapRef:
-              name: app-env
+              name: "{{ .Release.Name }}-configmap"
         ports:
         - containerPort: {{ .Values.service.port }}
         volumeMounts:
@@ -107,7 +107,7 @@ spec:
       volumes:
       - name: configs
         configMap:
-          name: app-env
+          name: "{{ .Release.Name }}-configmap"
           items:
           - key: mcp-gateway.yaml
             path: mcp-gateway.yaml

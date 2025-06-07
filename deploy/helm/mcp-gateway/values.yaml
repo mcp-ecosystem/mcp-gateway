@@ -13,6 +13,25 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
+dashboard:
+  replicaCount: 1   
+  image:
+    repository: ghcr.io/mcp-ecosystem/mcp-gateway/web
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 80
+    api:
+      port: 5234
+    ports:
+      - name: http
+        port: 80
+      - name: my-web-api
+        port: 5234
+
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 # This is to override the chart name.
