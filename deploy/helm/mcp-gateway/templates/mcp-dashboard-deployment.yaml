@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dashboard
+spec:
+  replicas: {{ .Values.dashboard.replicaCount }}
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.dashboard.image.repository }}:{{ .Values.dashboard.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.dashboard.image.pullPolicy }}
+          env:
+            - name: TZ
+              value: UTC
+            - name: ENV
+              value: production
+          envFrom:
+            - configMapRef:
+                name: "{{ .Release.Name }}-configmap"
+          ports:
+            - containerPort: {{ .Values.dashboard.service.port }}
+            - containerPort: {{ .Values.dashboard.service.api.port }}
+          volumeMounts:
+            - name: configs
+              mountPath: /app/configs
+            - name: i18n-files
+              mountPath: /app/configs/i18n
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: configs
+          configMap:
+            name: "{{ .Release.Name }}-dashboard-configmap"
+            items:
+            - key: apiserver.yaml
+              path: apiserver.yaml
+        - name: i18n-files
+          configMap:
+            name: "{{ .Release.Name }}-dashboard-configmap"
+            items:
+            - key: en.toml
+              path: en.toml
+            - key: zh.toml
+              path: zh.toml

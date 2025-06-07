@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-dashboard
+spec:
+  type: {{ .Values.dashboard.service.type }}
+  ports:
+  {{- range $key, $value := .Values.dashboard.service.ports }}
+    - name: {{ $value.name }}
+      port: {{ $value.port }}
+      targetPort: {{ $value.port }}
+  {{- end }}
+  selector:
+    app: web
