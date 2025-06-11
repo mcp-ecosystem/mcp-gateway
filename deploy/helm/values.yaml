@@ -15,7 +15,9 @@ image:
   tag: "latest"
 
 dashboard:
-  replicaCount: 1   
+  replicaCount: 1
+  SUPER_ADMIN_USERNAME: ""
+  SUPER_ADMIN_PASSWORD: ""
   image:
     repository: ghcr.io/amoylab/unla/web
     # This sets the pull policy for images.
@@ -223,8 +225,6 @@ config:
   VITE_BASE_URL: "/"
   APISERVER_JWT_SECRET_KEY: ""
   APISERVER_JWT_DURATION: "24h"
-  SUPER_ADMIN_USERNAME: admin
-  SUPER_ADMIN_PASSWORD: admin
 
 postgres:
   image: postgres:16
