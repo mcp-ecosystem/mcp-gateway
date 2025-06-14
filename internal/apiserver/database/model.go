@@ -4,20 +4,22 @@ import "time"
 
 // Session represents a chat session
 type Session struct {
-	ID        string    `json:"id"`
-	CreatedAt time.Time `json:"createdAt"`
-	Title     string    `json:"title"`
+	PK        int64     `json:"pk" gorm:"primaryKey;autoIncrement;column:pk"`
+	ID        string    `json:"id" gorm:"column:id;type:varchar(64);uniqueIndex"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at"`
+	Title     string    `json:"title" gorm:"column:title;type:varchar(255)"`
 }
 
 // Message represents a chat message
 type Message struct {
-	ID         string    `json:"id"`
-	SessionID  string    `json:"session_id"`
-	Content    string    `json:"content"`
-	Sender     string    `json:"sender"`
-	Timestamp  time.Time `json:"timestamp"`
-	ToolCalls  string    `json:"toolCalls,omitempty"`
-	ToolResult string    `json:"toolResult,omitempty"`
+	PK         int64     `json:"pk" gorm:"primaryKey;autoIncrement;column:pk"`
+	ID         string    `json:"id" gorm:"column:id;type:varchar(64);uniqueIndex"`
+	SessionID  string    `json:"session_id" gorm:"column:session_id;type:varchar(64);index"`
+	Content    string    `json:"content" gorm:"column:content;type:text"`
+	Sender     string    `json:"sender" gorm:"column:sender;type:varchar(50)"`
+	Timestamp  time.Time `json:"timestamp" gorm:"column:timestamp;index"`
+	ToolCalls  string    `json:"toolCalls,omitempty" gorm:"column:tool_calls;type:text"`
+	ToolResult string    `json:"toolResult,omitempty" gorm:"column:tool_result;type:text"`
 }
 
 // UserRole represents the role of a user
