@@ -61,7 +61,7 @@
     "react-dropzone": "^14.3.8",
     "react-i18next": "^15.5.1",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.30.0",
+    "react-router-dom": "^6.30.1",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
