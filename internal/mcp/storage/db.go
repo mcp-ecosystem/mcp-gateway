@@ -571,6 +571,7 @@ func sqliteMigrateMCPConfig(db *gorm.DB) error {
 	`).Error; err != nil {
 		return err
 	}
+
 	if err := db.Migrator().DropTable(backupTableName); err != nil {
 		return err
 	}
