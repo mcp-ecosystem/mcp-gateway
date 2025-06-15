@@ -550,9 +550,11 @@ func sqliteMigrateMCPConfig(db *gorm.DB) error {
 	const oldTableName = "mcp_configs"
 	const backupTableName = "mcp_configs_old"
 
+	// If the table doesn't exist at all, this is a fresh DB — just create it.
 	if !db.Migrator().HasTable(oldTableName) {
-		return nil
+		return db.AutoMigrate(&MCPConfig{})
 	}
+
 	if db.Migrator().HasColumn(oldTableName, "id") {
 		return nil // Already migrated
 	}
