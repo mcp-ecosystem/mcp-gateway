@@ -50,7 +50,7 @@
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.13",
     "framer-motion": "^11.18.2",
-    "i18next": "^25.1.2",
+    "i18next": "^25.2.1",
     "i18next-browser-languagedetector": "^8.1.0",
     "js-yaml": "^4.1.0",
     "monaco-editor": "^0.52.2",
