@@ -56,8 +56,17 @@ func NewDBStore(logger *zap.Logger, cfg *config.StorageConfig) (*DBStore, error)
 		return nil, err
 	}
 
+	if DatabaseType(cfg.Database.Type) == SQLite {
+		if err := sqliteMigrateMCPConfig(db); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := db.AutoMigrate(&MCPConfig{}); err != nil {
+			return nil, err
+		}
+	}
 	// Auto migrate the schema
-	if err := db.AutoMigrate(&MCPConfig{}, &MCPConfigVersion{}, &ActiveVersion{}); err != nil {
+	if err := db.AutoMigrate(&MCPConfigVersion{}, &ActiveVersion{}); err != nil {
 		return nil, err
 	}
 
@@ -535,4 +544,36 @@ func (s *DBStore) ListUpdated(_ context.Context, since time.Time) ([]*config.MCP
 	}
 
 	return configs, nil
+}
+
+func sqliteMigrateMCPConfig(db *gorm.DB) error {
+	const oldTableName = "mcp_configs"
+	const backupTableName = "mcp_configs_old"
+
+	if !db.Migrator().HasTable(oldTableName) {
+		return nil
+	}
+	if db.Migrator().HasColumn(oldTableName, "id") {
+		return nil // Already migrated
+	}
+
+	if err := db.Migrator().RenameTable(oldTableName, backupTableName); err != nil {
+		return err
+	}
+
+	if err := db.AutoMigrate(&MCPConfig{}); err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+	INSERT INTO mcp_configs (name, tenant, created_at, updated_at, routers, servers, tools, mcp_servers)
+	SELECT name, '', created_at, updated_at, routers, servers, tools, mcp_servers FROM mcp_configs_old
+	`).Error; err != nil {
+		return err
+	}
+	if err := db.Migrator().DropTable(backupTableName); err != nil {
+		return err
+	}
+
+	return nil
 }
