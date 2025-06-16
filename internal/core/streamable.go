@@ -10,9 +10,9 @@ import (
 	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/pkg/version"
 
-	"github.com/google/uuid"
 	"github.com/amoylab/unla/internal/mcp/session"
 	"github.com/amoylab/unla/pkg/mcp"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
@@ -225,6 +225,17 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			}
 		case cnst.BackendProtoStdio:
 		case cnst.BackendProtoSSE:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			tools, err = transport.FetchTools(c.Request.Context())
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch tools", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
 		case cnst.BackendProtoStreamable:
 			transport := s.state.GetTransport(conn.Meta().Prefix)
 			if transport == nil {
@@ -270,6 +281,18 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 			result = s.callHTTPTool(c, req, conn, params)
 		case cnst.BackendProtoStdio:
 		case cnst.BackendProtoSSE:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				errMsg := "Server configuration not found"
+				s.sendProtocolError(c, req.Id, errMsg, http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+				return
+			}
+
+			result, err = transport.CallTool(c.Request.Context(), params, mergeRequestInfo(conn.Meta().Request, c.Request))
+			if err != nil {
+				s.sendToolExecutionError(c, conn, req, err, true)
+				return
+			}
 		case cnst.BackendProtoStreamable:
 			transport := s.state.GetTransport(conn.Meta().Prefix)
 			if transport == nil {
