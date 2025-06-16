@@ -7,13 +7,13 @@ import (
 
 	"github.com/amoylab/unla/internal/common/cnst"
 
-	"github.com/mark3labs/mcp-go/client"
-	"github.com/mark3labs/mcp-go/client/transport"
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/amoylab/unla/internal/common/config"
 	"github.com/amoylab/unla/internal/template"
 	"github.com/amoylab/unla/pkg/mcp"
 	"github.com/amoylab/unla/pkg/version"
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
 )
 
 // SSETransport implements Transport using Server-Sent Events
@@ -134,6 +134,7 @@ func (t *SSETransport) FetchTools(ctx context.Context) ([]mcp.ToolSchema, error)
 		}
 	}
 
+	t.Stop(ctx)
 	return tools, nil
 }
 
@@ -182,5 +183,6 @@ func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, 
 		return nil, fmt.Errorf("failed to call tool: %w", err)
 	}
 
+	t.Stop(ctx)
 	return convertMCPGoResult(mcpResult), nil
 }
