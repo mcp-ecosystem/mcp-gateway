@@ -2,7 +2,7 @@ import { Input, Select, SelectItem, Button, Checkbox, Accordion, AccordionItem, 
 import { Icon } from "@iconify/react";
 import { useTranslation } from 'react-i18next';
 
-import { Gateway, ToolConfig, ServerConfig } from '../../../types/gateway';
+import { Gateway, ToolConfig, ServerConfig, ArgConfig } from '../../../types/gateway';
 
 interface ToolsConfigProps {
   parsedConfig: Gateway;
@@ -85,28 +85,28 @@ export function ToolsConfig({
 
     let newKey = "Content-Type";
     let count = 1;
-    
+
     const commonHeaders = [
-      "Authorization", 
-      "Accept", 
-      "X-API-Key", 
-      "User-Agent", 
+      "Authorization",
+      "Accept",
+      "X-API-Key",
+      "User-Agent",
     ];
-    
+
     for (const header of commonHeaders) {
       if (!headersOrder.includes(header)) {
         newKey = header;
         break;
       }
     }
-    
+
     if (headersOrder.includes(newKey)) {
       while (headersOrder.includes(`X-Header-${count}`)) {
         count++;
       }
       newKey = `X-Header-${count}`;
     }
-    
+
     headers[newKey] = "";
     headersOrder.push(newKey);
 
@@ -142,14 +142,14 @@ export function ToolsConfig({
     <div className="space-y-4">
       <Accordion variant="splitted">
         {tools.map((tool: ToolConfig, index: number) => (
-          <AccordionItem 
-            key={index} 
+          <AccordionItem
+            key={index}
             title={tool.name || `Tool ${index + 1}`}
             subtitle={tool.description}
             startContent={
-              <Icon 
-                icon="lucide:wrench" 
-                className="text-primary-500" 
+              <Icon
+                icon="lucide:wrench"
+                className="text-primary-500"
               />
             }
           >
@@ -190,9 +190,9 @@ export function ToolsConfig({
               <div className="bg-content1 p-4 rounded-medium border border-content2">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-md font-medium">Headers</h4>
-                  <Button 
-                    size="sm" 
-                    color="primary" 
+                  <Button
+                    size="sm"
+                    color="primary"
                     variant="flat"
                     startContent={<Icon icon="lucide:plus" />}
                     onPress={() => addHeader(index)}
@@ -200,7 +200,7 @@ export function ToolsConfig({
                     {t('gateway.add_header')}
                   </Button>
                 </div>
-                
+
                 <div className="space-y-3">
                   {(tool.headersOrder || Object.keys(tool.headers || {})).map((key: string, headerIndex: number) => (
                     <div key={headerIndex} className="flex gap-2">
@@ -216,9 +216,9 @@ export function ToolsConfig({
                         onChange={(e) => updateHeader(index, headerIndex, 'value', e.target.value)}
                         placeholder="Header值"
                       />
-                      <Button 
-                        isIconOnly 
-                        color="danger" 
+                      <Button
+                        isIconOnly
+                        color="danger"
                         variant="light"
                         className="self-end mb-1"
                         onPress={() => removeHeader(index, headerIndex)}
@@ -257,7 +257,7 @@ export function ToolsConfig({
                 </div>
 
                 <div className="space-y-3">
-                  {(tool.args || []).map((arg: { name: string; position: string; required: boolean; type: string; description: string; default: string }, argIndex: number) => (
+                  {(tool.args || []).map((arg: ArgConfig, argIndex: number) => (
                     <div key={argIndex} className="flex flex-col gap-2 p-3 border border-content2 rounded-md bg-content1">
                       <div className="flex items-center gap-2">
                         <Input
@@ -314,6 +314,7 @@ export function ToolsConfig({
                           <SelectItem key="array">{t('gateway.type_array')}</SelectItem>
                           <SelectItem key="object">{t('gateway.type_object')}</SelectItem>
                         </Select>
+
                         <div className="flex items-center gap-2">
                           <Checkbox
                             isSelected={arg.required || false}
@@ -330,6 +331,321 @@ export function ToolsConfig({
                           </Checkbox>
                         </div>
                       </div>
+
+                      {/* 嵌套参数配置 - 当类型为 array 或 object 时显示 */}
+                      {(arg.type === 'array' || arg.type === 'object') && (
+                        <div className="bg-content2 p-3 rounded-md border border-content3 ml-4">
+                          <h5 className="text-sm font-medium mb-2">
+                            {arg.type === 'array' ? t('gateway.array_items_config') : t('gateway.object_properties_config')}
+                          </h5>
+
+                          {arg.type === 'array' && (
+                            <div className="space-y-2">
+                              <Select
+                                label={t('gateway.array_item_type')}
+                                selectedKeys={[arg.items?.type || "string"]}
+                                onChange={(e) => {
+                                  const updatedArgs = [...(tool.args || [])];
+                                  updatedArgs[argIndex] = {
+                                    ...updatedArgs[argIndex],
+                                    items: {
+                                      ...updatedArgs[argIndex].items,
+                                      type: e.target.value
+                                    }
+                                  };
+                                  updateTool(index, 'args', updatedArgs);
+                                }}
+                              >
+                                <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
+                                <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
+                                <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                                <SelectItem key="object">{t('gateway.type_object')}</SelectItem>
+                              </Select>
+
+                              {/* 如果数组元素是对象，显示对象属性配置 */}
+                              {arg.items?.type === 'object' && (
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm">{t('gateway.object_properties')}</span>
+                                    <Button
+                                      size="sm"
+                                      color="primary"
+                                      variant="flat"
+                                      startContent={<Icon icon="lucide:plus" />}
+                                      onPress={() => {
+                                        const updatedArgs = [...(tool.args || [])];
+                                        const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                        const newPropertyName = `property${Object.keys(currentItems.properties || {}).length + 1}`;
+                                        updatedArgs[argIndex] = {
+                                          ...updatedArgs[argIndex],
+                                          items: {
+                                            ...currentItems,
+                                            properties: {
+                                              ...currentItems.properties,
+                                              [newPropertyName]: {
+                                                type: 'string',
+                                                description: ''
+                                              }
+                                            }
+                                          }
+                                        };
+                                        updateTool(index, 'args', updatedArgs);
+                                      }}
+                                    >
+                                      {t('gateway.add_property')}
+                                    </Button>
+                                  </div>
+
+                                  {arg.items?.properties && Object.entries(arg.items.properties).map(([propName, propConfig]: [string, any], propIndex: number) => (
+                                    <div key={propIndex} className="grid grid-cols-1 lg:grid-cols-12 gap-2 p-3 border border-content3 rounded-md bg-content1">
+                                      <div className="lg:col-span-6">
+                                        <Input
+                                          label={t('gateway.property_name')}
+                                          value={propName}
+                                          onChange={(e) => {
+                                            const updatedArgs = [...(tool.args || [])];
+                                            const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                            const newProperties = { ...currentItems.properties };
+
+                                            // 删除旧的属性名，添加新的属性名
+                                            delete newProperties[propName];
+                                            newProperties[e.target.value] = propConfig;
+
+                                            updatedArgs[argIndex] = {
+                                              ...updatedArgs[argIndex],
+                                              items: {
+                                                ...currentItems,
+                                                properties: newProperties
+                                              }
+                                            };
+                                            updateTool(index, 'args', updatedArgs);
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="lg:col-span-6">
+                                        <Select
+                                          label={t('gateway.property_type')}
+                                          selectedKeys={[propConfig.type || "string"]}
+                                          onChange={(e) => {
+                                            const updatedArgs = [...(tool.args || [])];
+                                            const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                            updatedArgs[argIndex] = {
+                                              ...updatedArgs[argIndex],
+                                              items: {
+                                                ...currentItems,
+                                                properties: {
+                                                  ...currentItems.properties,
+                                                  [propName]: {
+                                                    ...propConfig,
+                                                    type: e.target.value
+                                                  }
+                                                }
+                                              }
+                                            };
+                                            updateTool(index, 'args', updatedArgs);
+                                          }}
+                                        >
+                                          <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
+                                          <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
+                                          <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                                        </Select>
+                                      </div>
+                                      <div className="lg:col-span-11">
+                                        <Input
+                                          label={t('gateway.property_description')}
+                                          value={propConfig.description || ""}
+                                          onChange={(e) => {
+                                            const updatedArgs = [...(tool.args || [])];
+                                            const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                            updatedArgs[argIndex] = {
+                                              ...updatedArgs[argIndex],
+                                              items: {
+                                                ...currentItems,
+                                                properties: {
+                                                  ...currentItems.properties,
+                                                  [propName]: {
+                                                    ...propConfig,
+                                                    description: e.target.value
+                                                  }
+                                                }
+                                              }
+                                            };
+                                            updateTool(index, 'args', updatedArgs);
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="lg:col-span-1 flex items-end">
+                                        <Button
+                                          isIconOnly
+                                          color="danger"
+                                          variant="light"
+                                          size="sm"
+                                          onPress={() => {
+                                            const updatedArgs = [...(tool.args || [])];
+                                            const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                            const newProperties = { ...currentItems.properties };
+                                            delete newProperties[propName];
+                                            updatedArgs[argIndex] = {
+                                              ...updatedArgs[argIndex],
+                                              items: {
+                                                ...currentItems,
+                                                properties: newProperties
+                                              }
+                                            };
+                                            updateTool(index, 'args', updatedArgs);
+                                          }}
+                                        >
+                                          <Icon icon="lucide:x" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {arg.type === 'object' && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm">{t('gateway.object_properties')}</span>
+                                <Button
+                                  size="sm"
+                                  color="primary"
+                                  variant="flat"
+                                  startContent={<Icon icon="lucide:plus" />}
+                                  onPress={() => {
+                                    const updatedArgs = [...(tool.args || [])];
+                                    const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                    const newPropertyName = `property${Object.keys(currentItems.properties || {}).length + 1}`;
+                                    updatedArgs[argIndex] = {
+                                      ...updatedArgs[argIndex],
+                                      items: {
+                                        ...currentItems,
+                                        properties: {
+                                          ...currentItems.properties,
+                                          [newPropertyName]: {
+                                            type: 'string',
+                                            description: ''
+                                          }
+                                        }
+                                      }
+                                    };
+                                    updateTool(index, 'args', updatedArgs);
+                                  }}
+                                >
+                                  {t('gateway.add_property')}
+                                </Button>
+                              </div>
+
+                              {arg.items?.properties && Object.entries(arg.items.properties).map(([propName, propConfig]: [string, any], propIndex: number) => (
+                                <div key={propIndex} className="grid grid-cols-1 lg:grid-cols-12 gap-2 p-3 border border-content3 rounded-md bg-content1">
+                                  <div className="lg:col-span-6">
+                                    <Input
+                                      label={t('gateway.property_name')}
+                                      value={propName}
+                                      onChange={(e) => {
+                                        const updatedArgs = [...(tool.args || [])];
+                                        const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                        const newProperties = { ...currentItems.properties };
+
+                                        // 删除旧的属性名，添加新的属性名
+                                        delete newProperties[propName];
+                                        newProperties[e.target.value] = propConfig;
+
+                                        updatedArgs[argIndex] = {
+                                          ...updatedArgs[argIndex],
+                                          items: {
+                                            ...currentItems,
+                                            properties: newProperties
+                                          }
+                                        };
+                                        updateTool(index, 'args', updatedArgs);
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="lg:col-span-6">
+                                    <Select
+                                      label={t('gateway.property_type')}
+                                      selectedKeys={[propConfig.type || "string"]}
+                                      onChange={(e) => {
+                                        const updatedArgs = [...(tool.args || [])];
+                                        const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                        updatedArgs[argIndex] = {
+                                          ...updatedArgs[argIndex],
+                                          items: {
+                                            ...currentItems,
+                                            properties: {
+                                              ...currentItems.properties,
+                                              [propName]: {
+                                                ...propConfig,
+                                                type: e.target.value
+                                              }
+                                            }
+                                          }
+                                        };
+                                        updateTool(index, 'args', updatedArgs);
+                                      }}
+                                    >
+                                      <SelectItem key="string">{t('gateway.type_string')}</SelectItem>
+                                      <SelectItem key="number">{t('gateway.type_number')}</SelectItem>
+                                      <SelectItem key="boolean">{t('gateway.type_boolean')}</SelectItem>
+                                    </Select>
+                                  </div>
+                                  <div className="lg:col-span-11">
+                                    <Input
+                                      label={t('gateway.property_description')}
+                                      value={propConfig.description || ""}
+                                      onChange={(e) => {
+                                        const updatedArgs = [...(tool.args || [])];
+                                        const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                        updatedArgs[argIndex] = {
+                                          ...updatedArgs[argIndex],
+                                          items: {
+                                            ...currentItems,
+                                            properties: {
+                                              ...currentItems.properties,
+                                              [propName]: {
+                                                ...propConfig,
+                                                description: e.target.value
+                                              }
+                                            }
+                                          }
+                                        };
+                                        updateTool(index, 'args', updatedArgs);
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="lg:col-span-1 flex items-end">
+                                    <Button
+                                      isIconOnly
+                                      color="danger"
+                                      variant="light"
+                                      size="sm"
+                                      onPress={() => {
+                                        const updatedArgs = [...(tool.args || [])];
+                                        const currentItems = updatedArgs[argIndex].items || { type: 'object', properties: {} };
+                                        const newProperties = { ...currentItems.properties };
+                                        delete newProperties[propName];
+                                        updatedArgs[argIndex] = {
+                                          ...updatedArgs[argIndex],
+                                          items: {
+                                            ...currentItems,
+                                            properties: newProperties
+                                          }
+                                        };
+                                        updateTool(index, 'args', updatedArgs);
+                                      }}
+                                    >
+                                      <Icon icon="lucide:x" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <Input
                         label={t('gateway.argument_description')}
@@ -358,8 +674,8 @@ export function ToolsConfig({
                         placeholder={t('gateway.argument_default')}
                       />
                       <div className="flex justify-end">
-                        <Button 
-                          color="danger" 
+                        <Button
+                          color="danger"
                           variant="flat"
                           size="sm"
                           startContent={<Icon icon="lucide:trash-2" />}
@@ -398,9 +714,9 @@ export function ToolsConfig({
               </div>
 
               <div className="flex justify-end">
-                <Button 
-                  color="danger" 
-                  variant="flat" 
+                <Button
+                  color="danger"
+                  variant="flat"
                   size="sm"
                   startContent={<Icon icon="lucide:trash-2" />}
                   onPress={() => {
@@ -425,10 +741,10 @@ export function ToolsConfig({
           startContent={<Icon icon="lucide:plus" />}
           onPress={() => {
             const updatedTools = [...tools];
-            updatedTools.push({ 
-              name: "", 
-              description: "", 
-              method: "GET", 
+            updatedTools.push({
+              name: "",
+              description: "",
+              method: "GET",
               endpoint: "",
               headers: {
                 "Content-Type": "application/json"

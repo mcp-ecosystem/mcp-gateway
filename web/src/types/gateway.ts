@@ -96,6 +96,9 @@ export interface ArgConfig {
 export interface ItemsConfig {
   type: string;
   enum?: string[];
+  properties?: Record<string, unknown>;
+  items?: ItemsConfig;
+  required?: string[];
 }
 
 export interface KeyValueItem {
