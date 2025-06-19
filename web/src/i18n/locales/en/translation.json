@@ -294,7 +294,15 @@
     "server_name_limit": "{{count}}/{{max}} characters",
     "name_length_error": "Name length cannot exceed 50 characters",
     "sse_prefix": "SSE Prefix",
-    "sse_prefix_placeholder": "Enter SSE prefix"
+    "sse_prefix_placeholder": "Enter SSE prefix",
+    "array_items_config": "Array Items Configuration",
+    "object_properties_config": "Object Properties Configuration",
+    "array_item_type": "Array Item Type",
+    "object_properties": "Object Properties",
+    "add_property": "Add Property",
+    "property_name": "Property Name",
+    "property_type": "Property Type",
+    "property_description": "Property Description"
   },
   "chat": {
     "title": "Chat",

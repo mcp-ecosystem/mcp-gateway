@@ -296,7 +296,15 @@
     "direct_to_mcp_gateway": "直接访问MCP Gateway(5235):",
     "name_length_error": "名称长度不能超过50个字符",
     "sse_prefix": "SSE 前缀",
-    "sse_prefix_placeholder": "请输入 SSE 前缀"
+    "sse_prefix_placeholder": "请输入 SSE 前缀",
+    "array_items_config": "数组项配置",
+    "object_properties_config": "对象属性配置",
+    "array_item_type": "数组项类型",
+    "object_properties": "对象属性",
+    "add_property": "添加属性",
+    "property_name": "属性名称",
+    "property_type": "属性类型",
+    "property_description": "属性描述"
   },
   "chat": {
     "title": "聊天",

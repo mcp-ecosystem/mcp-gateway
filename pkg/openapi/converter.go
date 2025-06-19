@@ -74,7 +74,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create base MCP configuration
 	mcpConfig := &config.MCPConfig{
 		Name:      doc.Info.Title + "_" + rs,
-		Tenant:    "/default", // Default tenant prefix
+		Tenant:    "default", // Default tenant prefix
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Routers:   make([]config.RouterConfig, 0),
