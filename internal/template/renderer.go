@@ -167,9 +167,6 @@ func preprocessArgs(args map[string]any) map[string]any {
 
 	for k, v := range args {
 		switch val := v.(type) {
-		case []any:
-			ss, _ := json.Marshal(val)
-			processed[k] = string(ss)
 		case float64:
 			// If the float64 equals its integer conversion, it's an integer
 			if val == float64(int64(val)) {
@@ -182,4 +179,17 @@ func preprocessArgs(args map[string]any) map[string]any {
 		}
 	}
 	return processed
+}
+
+func NormalizeJSONStringValues(args map[string]any) {
+	for key, val := range args {
+		strVal, ok := val.(string)
+		if !ok || (len(strVal) > 0 && strVal[0] != '{' && strVal[0] != '[') {
+			continue
+		}
+		var parsed any
+		if err := json.Unmarshal([]byte(strVal), &parsed); err == nil {
+			args[key] = parsed
+		}
+	}
 }
