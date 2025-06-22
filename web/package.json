@@ -42,9 +42,11 @@
   "dependencies": {
     "@heroui/react": "2.7.8",
     "@iconify/react": "latest",
+    "@lobehub/icons": "^2.5.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@monaco-editor/react": "^4.7.0",
     "@types/uuid": "^10.0.0",
+    "antd": "^5.26.1",
     "axios": "^1.8.4",
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.13",

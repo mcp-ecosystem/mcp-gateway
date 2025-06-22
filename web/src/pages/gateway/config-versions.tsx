@@ -6,11 +6,11 @@ import ReactDiffViewer from 'react-diff-viewer-continued';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
-import LocalIcon from '../../components/LocalIcon';
-import { useTheme } from '../../hooks/useTheme';
-import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '../../services/api';
-import type { MCPConfigVersion } from '../../types/mcp';
-import {Tenant} from '../../types/user';
+import LocalIcon from '@/components/LocalIcon';
+import { useTheme } from '@/hooks/useTheme';
+import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '@/services/api';
+import type { MCPConfigVersion } from '@/types/mcp';
+import {Tenant} from '@/types/user';
 
 export function ConfigVersionsPage() {
   const { t } = useTranslation();

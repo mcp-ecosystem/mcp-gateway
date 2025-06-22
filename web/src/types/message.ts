@@ -7,6 +7,7 @@ export interface Message {
   isStreaming?: boolean;
   toolCalls?: ToolCall[];
   toolResult?: ToolResult;
+  reasoning_content?: string;
 }
 
 export interface BackendMessage {
@@ -14,6 +15,7 @@ export interface BackendMessage {
   content: string;
   sender: string;
   timestamp: string;
+  reasoning_content?: string;
   toolCalls?: string;
   toolResult?: string;
 }

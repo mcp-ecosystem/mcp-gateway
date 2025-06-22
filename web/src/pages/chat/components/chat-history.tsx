@@ -1,12 +1,12 @@
+
 import { Card, CardBody, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input } from '@heroui/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import LocalIcon from '../../../components/LocalIcon';
-import { getChatSessions, deleteChatSession, updateChatSessionTitle } from '../../../services/api';
-import { wsService } from '../../../services/websocket';
-import { toast } from '../../../utils/toast';
+import LocalIcon from '@/components/LocalIcon';
+import { getChatSessions, deleteChatSession, updateChatSessionTitle } from '@/services/api';
+import { toast } from '@/utils/toast';
 
 interface ChatHistoryProps {
   selectedChat: string | null;
@@ -65,8 +65,13 @@ export function ChatHistory({ selectedChat, onSelectChat, isCollapsed }: ChatHis
   }, [fetchSessions]);
 
   const handleNewChat = () => {
-    wsService.cleanup();
-    const newSessionId = wsService.getSessionId();
+    // Generate new session ID and navigate to new chat
+    const newSessionId = globalThis.crypto?.randomUUID?.() || 
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
     navigate(`/chat/${newSessionId}`);
   };
 

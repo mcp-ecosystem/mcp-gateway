@@ -17,7 +17,7 @@ interface MonacoGlobal {
 
 (globalThis as unknown as MonacoGlobal).MonacoEnvironment = {
   getWorkerUrl: function (_moduleId: string, _label: string) {
-    // 项目只使用YAML，所有情况都使用基础worker
+    // Use base worker for all cases since project only uses YAML
     return '/monaco-editor/vs/base/worker/workerMain.js';
   }
 };

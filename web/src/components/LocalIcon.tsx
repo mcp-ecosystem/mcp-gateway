@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import iconMap from '../icons/icon-map.json';
+import iconMap from '@/icons/icon-map.json';
 
 interface LocalIconProps {
   icon: string;
@@ -31,7 +31,6 @@ const LocalIcon: React.FC<LocalIconProps> = ({
     fetch(iconPath)
       .then(response => response.text())
       .then(svg => {
-        // 修改SVG的宽高属性
         const modifiedSvg = svg
           .replace(/width="[^"]*"/, `width="${width}"`)
           .replace(/height="[^"]*"/, `height="${height}"`);

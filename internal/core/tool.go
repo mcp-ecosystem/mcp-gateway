@@ -148,6 +148,9 @@ func (s *Server) executeHTTPTool(conn session.Connection, tool *config.ToolConfi
 	// Fill default values for missing arguments
 	fillDefaultArgs(tool, args)
 
+	// Normalize JSON string values in arguments
+	template.NormalizeJSONStringValues(args)
+
 	// Log tool execution at info level
 	s.logger.Info("executing HTTP tool",
 		zap.String("tool", tool.Name),

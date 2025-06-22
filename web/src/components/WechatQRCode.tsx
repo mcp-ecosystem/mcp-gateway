@@ -8,7 +8,6 @@ import {
 } from "@heroui/react";
 import { useTranslation } from 'react-i18next';
 
-// 导入二维码图片
 import wechatQrcode from '/wechat-qrcode.png';
 
 interface WechatQRCodeProps {

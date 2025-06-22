@@ -1,4 +1,4 @@
-import { Gateway } from '../../../types/gateway';
+import { Gateway } from '@/types/gateway';
 
 // Default configuration object for new or empty configurations
 export const defaultConfig: Gateway = {

@@ -329,6 +329,9 @@ other = "聊天会话获取成功"
 [SuccessChatMessages]
 other = "聊天消息获取成功"
 
+[SuccessChatMessageSaved]
+other = "聊天消息保存成功"
+
 [SuccessChatCreated]
 other = "聊天创建成功"
 

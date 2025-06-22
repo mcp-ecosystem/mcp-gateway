@@ -87,6 +87,16 @@ func (db *Postgres) CreateSession(ctx context.Context, sessionId string) error {
 	return db.db.WithContext(ctx).Create(session).Error
 }
 
+// CreateSessionWithTitle creates a new session with the given sessionId and title
+func (db *Postgres) CreateSessionWithTitle(ctx context.Context, sessionId string, title string) error {
+	session := &Session{
+		ID:        sessionId,
+		CreatedAt: time.Now(),
+		Title:     title,
+	}
+	return db.db.WithContext(ctx).Create(session).Error
+}
+
 // UpdateSessionTitle updates the title of a session
 func (db *Postgres) UpdateSessionTitle(ctx context.Context, sessionID string, title string) error {
 	return db.db.WithContext(ctx).

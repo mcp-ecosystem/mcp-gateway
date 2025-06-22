@@ -1,8 +1,8 @@
 import { Input, Button, Chip, Accordion, AccordionItem } from "@heroui/react";
 import { useTranslation } from 'react-i18next';
 
-import LocalIcon from '../../../components/LocalIcon';
-import { Gateway, RouterConfig, ServerConfig } from '../../../types/gateway';
+import LocalIcon from '@/components/LocalIcon';
+import { Gateway, RouterConfig, ServerConfig } from '@/types/gateway';
 
 interface ServersConfigProps {
   parsedConfig: Gateway;

@@ -43,7 +43,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 		return nil, err
 	}
 
-	// 根据版本选择处理方法
+	// Select handler based on API version
 	if strings.HasPrefix(version, OpenAPIVersion2) {
 		// handler Swagger 2.0
 		return c.convertSwagger2(specData)
@@ -74,7 +74,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 	// Create base MCP configuration
 	mcpConfig := &config.MCPConfig{
 		Name:      doc.Info.Title + "_" + rs,
-		Tenant:    "/default", // Default tenant prefix
+		Tenant:    "default", // Default tenant prefix
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Routers:   make([]config.RouterConfig, 0),
@@ -223,6 +223,9 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 										types := prop.Value.Type.Slice()
 										if len(types) > 0 {
 											arg.Type = types[0]
+											if arg.Type == "array" && prop.Value.Items != nil && prop.Value.Items.Value != nil {
+												arg.Items = buildNestedArg(prop.Value.Items.Value)
+											}
 										}
 									}
 
@@ -249,7 +252,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 				var bodyTemplate strings.Builder
 				bodyTemplate.WriteString("{\n")
 				for i, arg := range bodyArgs {
-					bodyTemplate.WriteString(fmt.Sprintf(`    "%s": "{{.Args.%s}}"`, arg.Name, arg.Name))
+					bodyTemplate.WriteString(fmt.Sprintf(`    "%s": {{ toJSON .Args.%s}}`, arg.Name, arg.Name))
 					if i < len(bodyArgs)-1 {
 						bodyTemplate.WriteString(",\n")
 					} else {
@@ -335,4 +338,49 @@ func contains(slice []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func buildNestedArg(schema *openapi3.Schema) config.ItemsConfig {
+	var items config.ItemsConfig
+
+	if schema.Type != nil {
+		types := schema.Type.Slice()
+		if len(types) > 0 {
+			schemaType := types[0]
+			items.Type = schemaType
+
+			if schemaType == "object" && schema.Properties != nil {
+				properties := make(map[string]any)
+				for childName, childProp := range schema.Properties {
+					propType := "string"
+					if childProp.Value.Type != nil && len(childProp.Value.Type.Slice()) > 0 {
+						propType = childProp.Value.Type.Slice()[0]
+					}
+					propSchema := map[string]any{
+						"type":        propType,
+						"description": childProp.Value.Description,
+					}
+					// 递归处理嵌套 object/array
+					if propType == "object" {
+						nested := buildNestedArg(childProp.Value)
+						if len(nested.Properties) > 0 {
+							propSchema["properties"] = nested.Properties
+						}
+					} else if propType == "array" && childProp.Value.Items != nil && childProp.Value.Items.Value != nil {
+						nested := buildNestedArg(childProp.Value.Items.Value)
+						propSchema["items"] = nested
+					}
+					properties[childName] = propSchema
+				}
+				items.Properties = properties
+				items.Required = schema.Required
+			} else if schemaType == "array" && schema.Items != nil && schema.Items.Value != nil {
+				nested := buildNestedArg(schema.Items.Value)
+				items.Type = "array"
+				items.Properties = nil
+				items.Items = &nested
+			}
+		}
+	}
+	return items
 }

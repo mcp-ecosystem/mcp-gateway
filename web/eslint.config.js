@@ -48,6 +48,15 @@ export default [
         HTMLInputElement: 'readonly',
         MutationObserver: 'readonly',
         MutationRecord: 'readonly',
+        localStorage: 'readonly',
+        crypto: 'readonly',
+        AbortController: 'readonly',
+        Response: 'readonly',
+        RequestInit: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        AbortSignal: 'readonly',
+        TextDecoder: 'readonly',
       }
     },
     plugins: {

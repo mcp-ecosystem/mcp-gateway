@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import LocalIcon from '../../components/LocalIcon';
-import api from '../../services/api';
-import { toast } from '../../utils/toast';
+import LocalIcon from '@/components/LocalIcon';
+import api from '@/services/api';
+import { toast } from '@/utils/toast';
 
 export function LoginPage() {
   const { t } = useTranslation();

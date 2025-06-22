@@ -3,9 +3,9 @@ import { t } from 'i18next';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import LocalIcon from '../../../components/LocalIcon';
-import { importOpenAPI } from '../../../services/api';
-import { toast } from "../../../utils/toast.ts";
+import LocalIcon from '@/components/LocalIcon';
+import { importOpenAPI } from '@/services/api';
+import { toast } from "@/utils/toast.ts";
 
 interface OpenAPIImportProps {
   onSuccess?: () => void;

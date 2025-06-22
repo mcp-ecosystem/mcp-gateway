@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/common/cnst"
+	"github.com/gin-gonic/gin"
 )
 
 // ErrorCode represents an HTTP status code
@@ -75,7 +75,6 @@ func (e *I18nError) WithParam(key string, value interface{}) *I18nError {
 
 // Error implements the error interface
 func (e *I18nError) Error() string {
-	// 使用默认语言翻译消息
 	t := GetTranslator()
 	if t != nil {
 		translated := t.Translate(e.MessageID, defaultLang, e.Data)
@@ -84,12 +83,10 @@ func (e *I18nError) Error() string {
 		}
 	}
 
-	// 如果没有翻译，返回默认消息
 	if len(e.Data) == 0 {
 		return e.DefaultMessage
 	}
 
-	// 尝试格式化消息
 	msg := e.DefaultMessage
 	for k, v := range e.Data {
 		placeholder := fmt.Sprintf("{{.%s}}", k)

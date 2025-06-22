@@ -19,9 +19,9 @@ import {
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import LocalIcon from '../../components/LocalIcon';
-import { getTenants, createTenant, updateTenant, deleteTenant } from '../../services/api';
-import {Tenant, CreateTenantForm, UpdateTenantForm} from '../../types/user';
+import LocalIcon from '@/components/LocalIcon';
+import { getTenants, createTenant, updateTenant, deleteTenant } from '@/services/api';
+import {Tenant, CreateTenantForm, UpdateTenantForm} from '@/types/user';
 
 export function TenantManagement() {
   const { t } = useTranslation();

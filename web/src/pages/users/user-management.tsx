@@ -20,10 +20,10 @@ import {
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import LocalIcon from '../../components/LocalIcon';
-import { MultiSelectAutocomplete } from "../../components/ui/MultiSelectAutocomplete";
-import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
-import {User, Tenant, CreateUserForm, UpdateUserForm} from '../../types/user';
+import LocalIcon from '@/components/LocalIcon';
+import { MultiSelectAutocomplete } from "@/components/ui/MultiSelectAutocomplete";
+import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '@/services/api';
+import {User, Tenant, CreateUserForm, UpdateUserForm} from '@/types/user';
 
 export function UserManagement() {
   const { t } = useTranslation();

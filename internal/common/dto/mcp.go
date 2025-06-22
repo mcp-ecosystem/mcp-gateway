@@ -101,6 +101,9 @@ type ArgConfig struct {
 type ItemsConfig struct {
 	Type string   `json:"type"`
 	Enum []string `json:"enum,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
+	Items      *ItemsConfig   `json:"items,omitempty"`
+	Required   []string       `json:"required,omitempty"`
 }
 
 
@@ -248,9 +251,29 @@ func FromArgConfigs(cfgs []config.ArgConfig) []ArgConfig {
 
 // FromItemsConfig converts a config.ItemsConfig to dto.ItemsConfig
 func FromItemsConfig(cfg config.ItemsConfig) ItemsConfig {
+	var props map[string]any
+	if cfg.Properties != nil {
+		props = make(map[string]any)
+		for k, v := range cfg.Properties {
+			// 如果属性本身是 ItemsConfig，递归转换
+			if vv, ok := v.(config.ItemsConfig); ok {
+				props[k] = FromItemsConfig(vv)
+			} else {
+				props[k] = v
+			}
+		}
+	}
+	var items *ItemsConfig
+	if cfg.Items != nil {
+		tmp := FromItemsConfig(*cfg.Items)
+		items = &tmp
+	}
 	return ItemsConfig{
 		Type: cfg.Type,
 		Enum: cfg.Enum,
+		Properties: props,
+		Items:      items,
+		Required:   cfg.Required,
 	}
 }
 

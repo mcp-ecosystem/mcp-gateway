@@ -98,6 +98,8 @@ type (
 		Type       string         `json:"type" yaml:"type"`
 		Enum       []string       `json:"enum,omitempty" yaml:"enum,omitempty"`
 		Properties map[string]any `json:"properties,omitempty" yaml:"properties,omitempty"`
+		Items      *ItemsConfig   `json:"items,omitempty" yaml:"items,omitempty"`
+		Required   []string       `json:"required,omitempty" yaml:"required,omitempty"`
 	}
 
 	// MCPConfigVersion represents a version of an MCP configuration
@@ -164,7 +166,7 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			} else {
 				items["type"] = arg.Items.Type
 				// If items is an object type, recursively process its properties
-				if arg.Items.Type == "object" && arg.Items.Properties != nil {
+				if arg.Items.Properties != nil {
 					items["properties"] = arg.Items.Properties
 				}
 			}

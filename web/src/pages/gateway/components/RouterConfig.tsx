@@ -2,8 +2,8 @@ import { Input, Select, SelectItem, Button, Switch, Chip, Accordion, AccordionIt
 import { useState } from "react";
 import { useTranslation } from 'react-i18next';
 
-import LocalIcon from '../../../components/LocalIcon';
-import { Gateway, CORSConfig, Tenant } from '../../../types/gateway';
+import LocalIcon from '@/components/LocalIcon';
+import { Gateway, CORSConfig, Tenant } from '@/types/gateway';
 
 interface RouterConfigProps {
   parsedConfig: Gateway;
@@ -65,7 +65,6 @@ export function RouterConfig({
 
     return (
       <div className="space-y-4">
-        {/* 允许的源 */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-md font-medium">{t('gateway.allow_origins')}</h4>
@@ -107,7 +106,6 @@ export function RouterConfig({
           />
         </div>
 
-        {/* 允许的方法 */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-md font-medium">{t('gateway.allow_methods')}</h4>
@@ -135,7 +133,6 @@ export function RouterConfig({
           </Select>
         </div>
 
-        {/* 允许的头部 */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-md font-medium">{t('gateway.allow_headers')}</h4>
@@ -186,7 +183,6 @@ export function RouterConfig({
           </datalist>
         </div>
 
-        {/* 暴露的头部 */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-md font-medium">{t('gateway.expose_headers')}</h4>
@@ -234,7 +230,6 @@ export function RouterConfig({
           </datalist>
         </div>
 
-        {/* 允许携带凭证 */}
         <div className="flex items-center gap-2">
           <Switch
             size="sm"

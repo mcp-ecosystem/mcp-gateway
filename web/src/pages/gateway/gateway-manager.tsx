@@ -34,7 +34,11 @@ import React from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router-dom';
 
-import LocalIcon from '../../components/LocalIcon';
+import {ConfigEditor} from './components/ConfigEditor';
+import OpenAPIImport from './components/OpenAPIImport';
+import {defaultConfig} from './constants/defaultConfig';
+
+import LocalIcon from '@/components/LocalIcon';
 import {
   createMCPServer,
   deleteMCPServer,
@@ -44,14 +48,11 @@ import {
   getUserAuthorizedTenants,
   syncMCPServers,
   updateMCPServer
-} from '../../services/api';
-import type {Gateway, ServerConfig, RouterConfig, Tenant, YAMLConfig} from '../../types/gateway';
-import {toast} from '../../utils/toast';
+} from '@/services/api';
+import type {Gateway, ServerConfig, RouterConfig, Tenant, YAMLConfig} from '@/types/gateway';
+import {toast} from '@/utils/toast';
 
 
-import {ConfigEditor} from './components/ConfigEditor';
-import OpenAPIImport from './components/OpenAPIImport';
-import {defaultConfig} from './constants/defaultConfig';
 
 declare global {
   interface Window {
@@ -780,7 +781,6 @@ export function GatewayManager() {
                               </div>
                             </div>
 
-                            {/* 显示MCP后端配置 */}
                             {server.mcpServers && server.mcpServers.length > 0 && (
                               <div className="space-y-2">
                                 <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
@@ -844,7 +844,7 @@ export function GatewayManager() {
                                 <h4 className="text-sm font-semibold mb-1">{t('gateway.all_tools')}:</h4>
                                 <div className="flex flex-wrap gap-1">
                                   {(server.tools || []).map((tool) => {
-                                    const toolConfig = tool as import('../../types/gateway').ToolConfig;
+                                    const toolConfig = tool as import('@/types/gateway').ToolConfig;
                                     return (
                                       <Chip
                                         key={toolConfig.name}
@@ -866,7 +866,6 @@ export function GatewayManager() {
                         );
                       })}
 
-                      {/* 处理只有routers和mcpServers的情况，比如proxy-mcp-exp.yaml */}
                       {(!server.servers || server.servers.length === 0) && (
                         <div className="space-y-3">
                           {server.routers && server.routers.length > 0 && (
@@ -1434,7 +1433,7 @@ export function GatewayManager() {
                       <h4 className="text-sm font-semibold mb-2">{t('gateway.all_tools')}</h4>
                       <div className="flex flex-wrap gap-1">
                         {(currentModalServer.tools || []).map((tool) => {
-                          const toolConfig = tool as import('../../types/gateway').ToolConfig;
+                          const toolConfig = tool as import('@/types/gateway').ToolConfig;
                           return (
                             <Chip
                               key={toolConfig.name}

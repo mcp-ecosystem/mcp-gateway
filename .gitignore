@@ -72,3 +72,5 @@ packages/react-devtools-timeline/dist
 data
 dist
 bin
+
+.history/*

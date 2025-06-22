@@ -570,4 +570,38 @@ export const updateChatSessionTitle = async (sessionId: string, title: string) =
   }
 };
 
+export const saveChatMessage = async (message: {
+  id: string;
+  session_id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: string;
+  reasoning_content?: string;
+  toolCalls?: Array<{
+    id: string;
+    type: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  toolResult?: {
+    toolCallId: string;
+    name: string;
+    result: unknown;
+  };
+}) => {
+  try {
+    const response = await api.post('/chat/messages', {
+      ...message,
+      toolCalls: message.toolCalls ? JSON.stringify(message.toolCalls) : undefined,
+      toolResult: message.toolResult ? JSON.stringify(message.toolResult) : undefined,
+    });
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.save_chat_message');
+    throw error;
+  }
+};
+
 export default api;

@@ -2,8 +2,8 @@ import { Input, Select, SelectItem, Button, Switch, Accordion, AccordionItem } f
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import LocalIcon from '../../../components/LocalIcon';
-import type { Gateway, MCPServerConfig } from '../../../types/gateway';
+import LocalIcon from '@/components/LocalIcon';
+import type { Gateway, MCPServerConfig } from '@/types/gateway';
 
 interface MCPServersConfigProps {
   parsedConfig: Gateway;
@@ -271,13 +271,13 @@ export function MCPServersConfig({
                               className="flex-1"
                               value={key}
                               onChange={(e) => updateEnvVariable(index, envIndex, 'key', e.target.value)}
-                              placeholder="环境变量名称"
+                              placeholder={t('gateway.env_key_placeholder')}
                             />
                             <Input
                               className="flex-1"
                               value={String(value)}
                               onChange={(e) => updateEnvVariable(index, envIndex, 'value', e.target.value)}
-                              placeholder="环境变量值"
+                              placeholder={t('gateway.env_value_placeholder')}
                             />
                             <Button
                               color="danger"

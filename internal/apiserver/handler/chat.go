@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/amoylab/unla/internal/apiserver/database"
 	"github.com/amoylab/unla/internal/i18n"
@@ -178,4 +179,133 @@ func (h *Chat) HandleUpdateChatSessionTitle(c *gin.Context) {
 		zap.String("remote_addr", c.ClientIP()))
 
 	i18n.Success(i18n.SuccessChatUpdated).Send(c)
+}
+
+// HandleSaveChatMessage handles saving a chat message
+func (h *Chat) HandleSaveChatMessage(c *gin.Context) {
+	var request struct {
+		ID               string `json:"id" binding:"required"`
+		SessionID        string `json:"session_id" binding:"required"`
+		Content          string `json:"content"`
+		ReasoningContent string `json:"reasoning_content,omitempty"`
+		Sender           string `json:"sender" binding:"required,oneof=user bot"`
+		Timestamp        string `json:"timestamp" binding:"required"`
+		ToolCalls        string `json:"toolCalls,omitempty"`
+		ToolResult       string `json:"toolResult,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Warn("invalid request body",
+			zap.Error(err),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Invalid request body"))
+		return
+	}
+
+	// Require at least one of: content, toolCalls, toolResult, or reasoningContent
+	if request.Content == "" && request.ToolCalls == "" && request.ToolResult == "" && request.ReasoningContent == "" {
+		h.logger.Warn("message has no content",
+			zap.String("message_id", request.ID),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Message must have content, tool calls, tool result, or reasoning content"))
+		return
+	}
+
+	// Parse timestamp
+	timestamp, err := time.Parse(time.RFC3339, request.Timestamp)
+	if err != nil {
+		h.logger.Warn("invalid timestamp format",
+			zap.Error(err),
+			zap.String("timestamp", request.Timestamp),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrBadRequest.WithParam("Reason", "Invalid timestamp format"))
+		return
+	}
+
+	h.logger.Info("saving chat message",
+		zap.String("session_id", request.SessionID),
+		zap.String("message_id", request.ID),
+		zap.String("sender", request.Sender),
+		zap.String("remote_addr", c.ClientIP()))
+
+	// Check if session exists, if not create it
+	exists, err := h.db.SessionExists(c.Request.Context(), request.SessionID)
+	if err != nil {
+		h.logger.Error("failed to check session existence",
+			zap.Error(err),
+			zap.String("session_id", request.SessionID),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to check session"))
+		return
+	}
+
+	if !exists {
+		// Session doesn't exist, create it
+		// If this is the first user message, create session with title from message content
+		if request.Sender == "user" && request.Content != "" {
+			title := request.Content
+			runes := []rune(title)
+			if len(runes) > 50 {
+				title = string(runes[:50]) + "..."
+			}
+			err = h.db.CreateSessionWithTitle(c.Request.Context(), request.SessionID, title)
+			if err != nil {
+				h.logger.Error("failed to create chat session with title",
+					zap.Error(err),
+					zap.String("session_id", request.SessionID),
+					zap.String("title", title),
+					zap.String("remote_addr", c.ClientIP()))
+				i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to create session"))
+				return
+			}
+			h.logger.Debug("auto-created chat session with title from first user message",
+				zap.String("session_id", request.SessionID),
+				zap.String("title", title),
+				zap.String("remote_addr", c.ClientIP()))
+		} else {
+			// Create session without title
+			err = h.db.CreateSession(c.Request.Context(), request.SessionID)
+			if err != nil {
+				h.logger.Error("failed to create chat session",
+					zap.Error(err),
+					zap.String("session_id", request.SessionID),
+					zap.String("remote_addr", c.ClientIP()))
+				i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to create session"))
+				return
+			}
+			h.logger.Debug("auto-created chat session",
+				zap.String("session_id", request.SessionID),
+				zap.String("remote_addr", c.ClientIP()))
+		}
+	}
+
+	message := &database.Message{
+		ID:               request.ID,
+		SessionID:        request.SessionID,
+		Content:          request.Content,
+		ReasoningContent: request.ReasoningContent,
+		Sender:           request.Sender,
+		Timestamp:        timestamp,
+		ToolCalls:        request.ToolCalls,
+		ToolResult:       request.ToolResult,
+	}
+
+	err = h.db.SaveMessage(c.Request.Context(), message)
+	if err != nil {
+		h.logger.Error("failed to save chat message",
+			zap.Error(err),
+			zap.String("session_id", request.SessionID),
+			zap.String("message_id", request.ID),
+			zap.String("remote_addr", c.ClientIP()))
+		i18n.RespondWithError(c, i18n.ErrInternalServer.WithParam("Reason", "Failed to save message"))
+		return
+	}
+
+	h.logger.Debug("successfully saved chat message",
+		zap.String("session_id", request.SessionID),
+		zap.String("message_id", request.ID),
+		zap.String("sender", request.Sender),
+		zap.String("remote_addr", c.ClientIP()))
+
+	i18n.Success(i18n.SuccessChatMessageSaved).Send(c)
 }
