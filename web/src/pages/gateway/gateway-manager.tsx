@@ -81,7 +81,7 @@ export function GatewayManager() {
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
   const [tenantInputValue, setTenantInputValue] = React.useState('');
-  const [viewMode, setViewMode] = React.useState<string>('card');
+  const [viewMode, setViewMode] = React.useState<string>('table');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
   });

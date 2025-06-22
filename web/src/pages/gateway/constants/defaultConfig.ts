@@ -7,6 +7,7 @@ export const defaultConfig: Gateway = {
   routers: [],
   servers: [],
   tools: [],
+  prompts: [],
   mcpServers: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()

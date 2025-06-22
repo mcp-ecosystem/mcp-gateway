@@ -296,7 +296,20 @@
     "direct_to_mcp_gateway": "直接访问MCP Gateway(5235):",
     "name_length_error": "名称长度不能超过50个字符",
     "sse_prefix": "SSE 前缀",
-    "sse_prefix_placeholder": "请输入 SSE 前缀"
+    "sse_prefix_placeholder": "请输入 SSE 前缀",
+    "prompt": "提示词",
+    "prompts": "提示词",     
+    "prompt_name": "提示词名称",
+    "arguments": "参数",
+    "required": "必填",
+    "remove_prompt": "删除提示词",
+    "add_prompt": "添加提示词",
+    "prompt_response": "提示词对话",
+    "add_prompt_response": "添加对话",
+    "prompt_response_role": "角色",
+    "prompt_response_type": "内容类型",
+    "prompt_response_text": "文本内容",
+    "remove_prompt_response": "删除对话"
   },
   "chat": {
     "title": "聊天",

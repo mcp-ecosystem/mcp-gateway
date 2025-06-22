@@ -13,6 +13,8 @@ func (s *State) getRuntime(prefix string) runtimeUnit {
 		return runtimeUnit{
 			tools:       make(map[toolName]*config.ToolConfig),
 			toolSchemas: make([]mcp.ToolSchema, 0),
+			prompts:       make(map[promptName]*config.PromptConfig),
+			promptSchemas: make([]mcp.PromptSchema, 0),
 		}
 	}
 	return runtime
@@ -128,4 +130,20 @@ func (s *State) GetSSEPrefix(prefix string) string {
 		return runtime.router.SSEPrefix
 	}
 	return ""
+}
+
+func (s *State) GetPrompt(prefix, name string) *config.PromptConfig {
+	runtime, ok := s.runtime[uriPrefix(prefix)]
+	if !ok {
+		return nil
+	}
+	return runtime.prompts[promptName(name)]
+}
+
+func (s *State) GetPromptSchemas(prefix string) []mcp.PromptSchema {
+	runtime, ok := s.runtime[uriPrefix(prefix)]
+	if !ok {
+		return nil
+	}
+	return runtime.promptSchemas
 }

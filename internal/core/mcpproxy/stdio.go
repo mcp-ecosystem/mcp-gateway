@@ -274,3 +274,13 @@ func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams
 
 	return result, nil
 }
+
+// FetchPrompts returns all prompts (stub implementation)
+func (t *StdioTransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
+	return nil, nil
+}
+
+// FetchPrompt returns a specific prompt by name (stub implementation)
+func (t *StdioTransport) FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error) {
+	return nil, nil
+}

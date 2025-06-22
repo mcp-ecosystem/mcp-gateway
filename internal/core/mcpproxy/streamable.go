@@ -176,3 +176,13 @@ func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolP
 
 	return convertMCPGoResult(res), nil
 }
+
+// FetchPrompts returns all prompts (stub implementation)
+func (t *StreamableTransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
+	return nil, nil
+}
+
+// FetchPrompt returns a specific prompt by name (stub implementation)
+func (t *StreamableTransport) FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error) {
+	return nil, nil
+}

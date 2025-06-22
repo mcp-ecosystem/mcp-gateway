@@ -27,6 +27,7 @@ type (
 		Routers    []RouterConfig    `json:"routers,omitempty" yaml:"routers,omitempty"`
 		Servers    []ServerConfig    `json:"servers,omitempty" yaml:"servers,omitempty"`
 		Tools      []ToolConfig      `json:"tools,omitempty" yaml:"tools,omitempty"`
+		Prompts    []PromptConfig    `json:"prompts,omitempty" yaml:"prompts,omitempty"`
 		McpServers []MCPServerConfig `json:"mcpServers,omitempty" yaml:"mcpServers,omitempty"` // proxy mcp servers
 	}
 
@@ -110,6 +111,7 @@ type (
 		Routers    string          `json:"routers" yaml:"routers"`
 		Servers    string          `json:"servers" yaml:"servers"`
 		Tools      string          `json:"tools" yaml:"tools"`
+		Prompts    string          `json:"prompts" yaml:"prompts"`
 		McpServers string          `json:"mcp_servers" yaml:"mcp_servers"`
 		IsActive   bool            `json:"is_active" yaml:"is_active"` // indicates if this version is currently active
 		Hash       string          `json:"hash" yaml:"hash"`           // hash of the configuration content
@@ -118,6 +120,29 @@ type (
 	// Auth represents authentication configuration
 	Auth struct {
 		Mode cnst.AuthMode `json:"mode" yaml:"mode"`
+	}
+
+	PromptConfig struct {
+		Name        string              `json:"name" yaml:"name"`
+		Description string              `json:"description" yaml:"description"`
+		Arguments   []PromptArgument    `json:"arguments" yaml:"arguments"`
+		PromptResponse []PromptResponse `json:"promptResponse,omitempty" yaml:"promptResponse,omitempty"`
+	}
+
+	PromptArgument struct {
+		Name        string `json:"name" yaml:"name"`
+		Description string `json:"description" yaml:"description"`
+		Required    bool   `json:"required" yaml:"required"`
+	}
+
+	PromptResponse struct {
+		Role    string                `json:"role" yaml:"role"`
+		Content PromptResponseContent `json:"content" yaml:"content"`
+	}
+
+	PromptResponseContent struct {
+		Type string `json:"type" yaml:"type"`
+		Text string `json:"text" yaml:"text"`
 	}
 )
 
@@ -167,5 +192,33 @@ func (t *ToolConfig) ToToolSchema() mcp.ToolSchema {
 			Properties: properties,
 			Required:   required,
 		},
+	}
+}
+
+// ToPromptSchema converts a PromptConfig to a PromptSchema
+func (t *PromptConfig) ToPromptSchema() mcp.PromptSchema {
+	args := make([]mcp.PromptArgumentSchema, len(t.Arguments))
+	for i, a := range t.Arguments {
+		args[i] = mcp.PromptArgumentSchema{
+			Name:        a.Name,
+			Description: a.Description,
+			Required:    a.Required,
+		}
+	}
+	var responses []mcp.PromptResponseSchema
+	for _, r := range t.PromptResponse {
+		responses = append(responses, mcp.PromptResponseSchema{
+			Role: r.Role,
+			Content: mcp.PromptResponseContentSchema{
+				Type: r.Content.Type,
+				Text: r.Content.Text,
+			},
+		})
+	}
+	return mcp.PromptSchema{
+		Name:          t.Name,
+		Description:   t.Description,
+		Arguments:     args,
+		PromptResponse: responses,
 	}
 }

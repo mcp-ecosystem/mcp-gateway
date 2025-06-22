@@ -186,3 +186,13 @@ func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, 
 	t.Stop(ctx)
 	return convertMCPGoResult(mcpResult), nil
 }
+
+// FetchPrompts returns all prompts (stub implementation)
+func (t *SSETransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
+	return nil, nil
+}
+
+// FetchPrompt returns a specific prompt by name (stub implementation)
+func (t *SSETransport) FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error) {
+	return nil, nil
+}

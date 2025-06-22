@@ -88,6 +88,7 @@ func (s *DBStore) Create(_ context.Context, server *config.MCPConfig) error {
 					"routers":     model.Routers,
 					"servers":     model.Servers,
 					"tools":       model.Tools,
+					"prompts":     model.Prompts,
 					"mcp_servers": model.McpServers,
 					"updated_at":  time.Now(),
 				}).Error; err != nil {
@@ -407,6 +408,7 @@ func (s *DBStore) ListVersions(ctx context.Context, tenant, name string) ([]*con
 			Routers:    v.Routers,
 			Servers:    v.Servers,
 			Tools:      v.Tools,
+			Prompts:    v.Prompts,
 			McpServers: v.McpServers,
 			IsActive:   v.Version == activeVersionMap[v.Name],
 			Hash:       v.Hash,
@@ -462,6 +464,7 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, tenant, name string, ver
 			Routers:    versionModel.Routers,
 			Servers:    versionModel.Servers,
 			Tools:      versionModel.Tools,
+			Prompts:    versionModel.Prompts,
 			McpServers: versionModel.McpServers,
 			Hash:       versionModel.Hash,
 		}
@@ -478,12 +481,13 @@ func (s *DBStore) SetActiveVersion(ctx context.Context, tenant, name string, ver
 			Routers:    versionModel.Routers,
 			Servers:    versionModel.Servers,
 			Tools:      versionModel.Tools,
+			Prompts:    versionModel.Prompts,
 			McpServers: versionModel.McpServers,
 		}
 
 		if err := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "name"}, {Name: "tenant"}},
-			DoUpdates: clause.AssignmentColumns([]string{"updated_at", "routers", "servers", "tools", "mcp_servers", "deleted_at"}),
+			DoUpdates: clause.AssignmentColumns([]string{"updated_at", "routers", "servers", "tools", "prompts", "mcp_servers", "deleted_at"}),
 		}).Create(mcpConfig).Error; err != nil {
 			return err
 		}

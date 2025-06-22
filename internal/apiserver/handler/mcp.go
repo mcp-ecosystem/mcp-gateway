@@ -353,6 +353,7 @@ func (h *MCP) HandleListMCPServers(c *gin.Context) {
 			Tenant:     server.Tenant,
 			McpServers: dto.FromMCPServerConfigs(server.McpServers),
 			Tools:      dto.FromToolConfigs(server.Tools),
+			Prompts:    dto.FromPromptConfigs(server.Prompts),
 			Servers:    dto.FromServerConfigs(server.Servers),
 			Routers:    dto.FromRouterConfigs(server.Routers),
 			CreatedAt:  server.CreatedAt,

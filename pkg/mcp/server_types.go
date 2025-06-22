@@ -222,6 +222,31 @@ type (
 		// Additional information about the error
 		Data any `json:"data,omitempty"`
 	}
+
+	// PromptSchema and related types
+
+	PromptSchema struct {
+		Name        string                 `json:"name" yaml:"name"`
+		Description string                 `json:"description" yaml:"description"`
+		Arguments   []PromptArgumentSchema `json:"arguments" yaml:"arguments"`
+		PromptResponse []PromptResponseSchema `json:"promptResponse,omitempty" yaml:"promptResponse,omitempty"`
+	}
+
+	PromptArgumentSchema struct {
+		Name        string `json:"name" yaml:"name"`
+		Description string `json:"description" yaml:"description"`
+		Required    bool   `json:"required" yaml:"required"`
+	}
+
+	PromptResponseSchema struct {
+		Role    string                `json:"role" yaml:"role"`
+		Content PromptResponseContentSchema `json:"content" yaml:"content"`
+	}
+
+	PromptResponseContentSchema struct {
+		Type string `json:"type" yaml:"type"`
+		Text string `json:"text" yaml:"text"`
+	}	
 )
 
 // NewInitializeRequest creates a new initialize request
@@ -346,3 +371,4 @@ func NewCallToolResultError(text string) *CallToolResult {
 		IsError: true,
 	}
 }
+

@@ -12,6 +12,7 @@ import {MCPServersConfig} from './MCPServersConfig';
 import {RouterConfig} from './RouterConfig';
 import {ServersConfig} from './ServersConfig';
 import {ToolsConfig} from './ToolsConfig';
+import {PromptsConfig} from './PromptsConfig';
 
 export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditing }: ConfigEditorProps) {
   const { t } = useTranslation();
@@ -185,6 +186,12 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
                 updateConfig={updateConfig}
                 tenants={tenants}
               />
+            </Tab>
+            <Tab key="prompts" title={t('gateway.prompts')}>
+              <PromptsConfig
+                parsedConfig={parsedConfig || defaultConfig}
+                updateConfig={updateConfig}
+              />              
             </Tab>
           </Tabs>
         </div>
