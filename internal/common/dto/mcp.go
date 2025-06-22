@@ -11,6 +11,7 @@ type MCPServer struct {
 	Tenant     string            `json:"tenant"`
 	McpServers []MCPServerConfig `json:"mcpServers,omitempty"`
 	Tools      []ToolConfig      `json:"tools,omitempty"`
+	Prompts    []PromptConfig    `json:"prompts,omitempty"`
 	Servers    []ServerConfig    `json:"servers,omitempty"`
 	Routers    []RouterConfig    `json:"routers,omitempty"`
 	CreatedAt  time.Time         `json:"createdAt"`
@@ -26,6 +27,7 @@ type MCPConfig struct {
 	Routers    []RouterConfig    `json:"routers,omitempty"`
 	Servers    []ServerConfig    `json:"servers,omitempty"`
 	Tools      []ToolConfig      `json:"tools,omitempty"`
+	Prompts    []PromptConfig    `json:"prompts,omitempty"`
 	McpServers []MCPServerConfig `json:"mcpServers,omitempty"`
 }
 
@@ -101,6 +103,30 @@ type ItemsConfig struct {
 	Enum []string `json:"enum,omitempty"`
 }
 
+
+type PromptConfig struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Arguments   []PromptArgument    `json:"arguments"`
+	PromptResponse []PromptResponse `json:"promptResponse,omitempty"`
+}
+
+type PromptArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+}
+
+type PromptResponse struct {
+	Role    string                `json:"role"`
+	Content PromptResponseContent `json:"content"`
+}
+
+type PromptResponseContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 // FromConfig converts a config.MCPConfig to dto.MCPServer
 func FromConfig(cfg *config.MCPConfig) MCPServer {
 	return MCPServer{
@@ -108,6 +134,7 @@ func FromConfig(cfg *config.MCPConfig) MCPServer {
 		Tenant:     cfg.Tenant,
 		McpServers: FromMCPServerConfigs(cfg.McpServers),
 		Tools:      FromToolConfigs(cfg.Tools),
+		Prompts:    FromPromptConfigs(cfg.Prompts),
 		Servers:    FromServerConfigs(cfg.Servers),
 		Routers:    FromRouterConfigs(cfg.Routers),
 		CreatedAt:  cfg.CreatedAt,
@@ -255,5 +282,58 @@ func FromAuthConfig(cfg *config.Auth) *Auth {
 	}
 	return &Auth{
 		Mode: string(cfg.Mode),
+	}
+}
+
+// FromPromptConfigs converts a slice of config.PromptConfig to dto.PromptConfig
+func FromPromptConfigs(cfgs []config.PromptConfig) []PromptConfig {
+	if cfgs == nil {
+		return nil
+	}
+	result := make([]PromptConfig, len(cfgs))
+	for i, cfg := range cfgs {
+		result[i] = PromptConfig{
+			Name:        cfg.Name,
+			Description: cfg.Description,
+			Arguments:   FromPromptArguments(cfg.Arguments),
+			PromptResponse: FromPromptResponses(cfg.PromptResponse),
+		}
+	}
+	return result
+}
+
+func FromPromptArguments(cfgs []config.PromptArgument) []PromptArgument {
+	if cfgs == nil {
+		return nil
+	}
+	result := make([]PromptArgument, len(cfgs))
+	for i, cfg := range cfgs {
+		result[i] = PromptArgument{
+			Name:        cfg.Name,
+			Description: cfg.Description,
+			Required:    cfg.Required,
+		}
+	}
+	return result
+}
+
+func FromPromptResponses(cfgs []config.PromptResponse) []PromptResponse {
+	if cfgs == nil {
+		return nil
+	}
+	result := make([]PromptResponse, len(cfgs))
+	for i, cfg := range cfgs {
+		result[i] = PromptResponse{
+			Role:    cfg.Role,
+			Content: FromPromptResponseContent(cfg.Content),
+		}
+	}
+	return result
+}
+
+func FromPromptResponseContent(cfg config.PromptResponseContent) PromptResponseContent {
+	return PromptResponseContent{
+		Type: cfg.Type,
+		Text: cfg.Text,
 	}
 }

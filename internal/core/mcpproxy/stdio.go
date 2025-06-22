@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/amoylab/unla/internal/template"
 
@@ -273,4 +274,20 @@ func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams
 	}
 
 	return result, nil
+}
+
+// FetchPrompts returns all prompts
+func (t *StdioTransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
+	return nil, &HTTPError{
+		StatusCode: http.StatusOK,
+		Message:    "",
+	}
+}
+
+// FetchPrompt returns a specific prompt by name
+func (t *StdioTransport) FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error) {
+	return nil, &HTTPError{
+		StatusCode: http.StatusNotFound,
+		Message:    "Prompt not found",
+	}
 }

@@ -1,3 +1,5 @@
+import type { PromptConfig } from './prompt';
+
 export interface Tenant {
   id: number;
   name: string;
@@ -19,6 +21,7 @@ export interface Gateway {
   tenant: string;
   mcpServers?: MCPServerConfig[];
   tools?: ToolConfig[];
+  prompts?: PromptConfig[];
   servers?: ServerConfig[];
   routers?: RouterConfig[];
   createdAt: string;

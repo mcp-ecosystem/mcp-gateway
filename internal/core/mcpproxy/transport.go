@@ -37,6 +37,11 @@ type Transport interface {
 
 	// IsRunning returns true if the transport is running
 	IsRunning() bool
+
+	// FetchPrompts fetches the list of available prompts
+	FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error)
+	// FetchPrompt fetches a specific prompt by name
+	FetchPrompt(ctx context.Context, name string) (*mcp.PromptSchema, error)
 }
 
 // NewTransport creates transport based on the configuration

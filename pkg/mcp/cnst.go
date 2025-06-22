@@ -15,6 +15,8 @@ const (
 	Ping                    = "ping"
 	ToolsList               = "tools/list"
 	ToolsCall               = "tools/call"
+	PromptsList             = "prompts/list"
+	PromptsGet              = "prompts/get"		
 )
 
 // Response
@@ -33,8 +35,6 @@ const (
 	SamplingCreateMessage = "sampling/createMessage"
 	LoggingSetLevel       = "logging/setLevel"
 
-	PromptsGet             = "prompts/get"
-	PromptsList            = "prompts/list"
 	ResourcesList          = "resources/list"
 	ResourcesTemplatesList = "resources/templates/list"
 	ResourcesRead          = "resources/read"

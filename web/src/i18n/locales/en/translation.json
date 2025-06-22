@@ -294,7 +294,20 @@
     "server_name_limit": "{{count}}/{{max}} characters",
     "name_length_error": "Name length cannot exceed 50 characters",
     "sse_prefix": "SSE Prefix",
-    "sse_prefix_placeholder": "Enter SSE prefix"
+    "sse_prefix_placeholder": "Enter SSE prefix",
+    "prompt": "Prompt",
+    "prompts": "Prompts",    
+    "prompt_name": "Prompt Name",
+    "arguments": "Arguments",
+    "required": "Required",
+    "remove_prompt": "Remove Prompt",
+    "add_prompt": "Add Prompt",
+    "prompt_response": "Prompt Response",
+    "add_prompt_response": "Add Response",
+    "prompt_response_role": "Role",
+    "prompt_response_type": "Content Type",
+    "prompt_response_text": "Text",
+    "remove_prompt_response": "Remove Response"
   },
   "chat": {
     "title": "Chat",

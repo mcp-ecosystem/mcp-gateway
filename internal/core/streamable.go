@@ -288,6 +288,144 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		s.sendSuccessResponse(c, conn, req, result, false)
 		return
 
+	case mcp.PromptsList:
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var prompts []mcp.PromptSchema
+		var err error
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			prompts = s.state.GetPromptSchemas(conn.Meta().Prefix)
+			if len(prompts) == 0 {
+				prompts = []mcp.PromptSchema{}
+			}
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch prompts", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+
+			prompts, err = transport.FetchPrompts(c.Request.Context())
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch prompts", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
+		s.sendSuccessResponse(c, conn, req, struct {
+			Prompts []mcp.PromptSchema `json:"prompts"`
+		}{
+			Prompts: prompts,
+		}, false)
+		return
+
+	case mcp.PromptsGet:
+		protoType := s.state.GetProtoType(conn.Meta().Prefix)
+		if protoType == "" {
+			s.sendProtocolError(c, req.Id, "Server configuration not found", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+			return
+		}
+
+		var params struct {
+			Name string `json:"name"`
+			Arguments map[string]string `json:"arguments"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil || params.Name == "" {
+			s.sendProtocolError(c, req.Id, "Invalid prompt get parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
+
+		var prompt *mcp.PromptSchema
+		var err error
+		switch protoType {
+		case cnst.BackendProtoHttp:
+			prompts := s.state.GetPromptSchemas(conn.Meta().Prefix)
+			for i := range prompts {
+				if prompts[i].Name == params.Name {
+					prompt = &prompts[i]
+					break
+				}
+			}
+			s.logger.Info("PromptsGet-prompt found", zap.String("params.Name", params.Name), zap.String("promptname", prompt.Name))
+		case cnst.BackendProtoStdio, cnst.BackendProtoSSE, cnst.BackendProtoStreamable:
+			transport := s.state.GetTransport(conn.Meta().Prefix)
+			if transport == nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch prompt", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+			prompt, err = transport.FetchPrompt(c.Request.Context(), params.Name)
+			if err != nil {
+				s.sendProtocolError(c, req.Id, "Failed to fetch prompt", http.StatusInternalServerError, mcp.ErrorCodeInternalError)
+				return
+			}
+		default:
+			s.sendProtocolError(c, req.Id, "Unsupported protocol type", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
+			return
+		}
+
+		if prompt == nil {
+			s.sendProtocolError(c, req.Id, "Prompt not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
+			return
+		}
+
+		// Build the response with argument substitution
+		var argsMap map[string]string
+		if req.Params != nil {
+			_ = json.Unmarshal(req.Params, &params)	
+		}
+		argsMap = params.Arguments
+		
+		resp := struct {
+			Description string `json:"description"`
+			Messages    []struct {
+				Role    string `json:"role"`
+				Content struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				} `json:"content"`
+			} `json:"messages"`
+		}{
+			Description: prompt.Description,
+		}
+					
+		for _, msg := range prompt.PromptResponse {
+			text := msg.Content.Text
+			// Replace {argument} placeholders with values from argsMap
+			for _, arg := range prompt.Arguments {
+				if val, ok := argsMap[arg.Name]; ok {
+					text = strings.ReplaceAll(text, "{"+arg.Name+"}", val)
+				}
+			}
+			resp.Messages = append(resp.Messages, struct {
+				Role    string `json:"role"`
+				Content struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				} `json:"content"`
+			}{
+				Role: msg.Role,
+				Content: struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				}{
+					Type: msg.Content.Type,
+					Text: text,
+				},
+			})
+		}
+
+		s.sendSuccessResponse(c, conn, req, resp, false)
+		return
+
 	default:
 		s.sendProtocolError(c, req.Id, "Method not found", http.StatusNotFound, mcp.ErrorCodeMethodNotFound)
 		return
