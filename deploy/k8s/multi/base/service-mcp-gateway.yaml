@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-gateway
+  namespace: unla
+spec:
+  type: NodePort
+  ports:
+    - port: 5235
+      targetPort: 5235
+      nodePort: 30235
+      name: mcp-gateway
+    - port: 5245
+      targetPort: 5245
+      nodePort: 30245
+      name: mcp-gateway-notifier
+  selector:
+    app: mcp-gateway

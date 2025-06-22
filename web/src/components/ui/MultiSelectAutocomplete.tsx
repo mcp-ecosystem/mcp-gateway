@@ -1,6 +1,7 @@
 import { Autocomplete, AutocompleteItem, Button, Chip } from '@heroui/react'
-import { Icon } from '@iconify/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+import LocalIcon from '../LocalIcon';
 
 export interface MultiSelectAutocompleteProps {
   items: string[]
@@ -8,7 +9,6 @@ export interface MultiSelectAutocompleteProps {
   selectedItems?: string[]
   onSelectionChange?: (items: string[]) => void
   allowCustomValues?: boolean
-  placeholder?: string
   className?: string
 }
 
@@ -25,7 +25,6 @@ export function MultiSelectAutocomplete({
   label,
   selectedItems: externalSelectedItems,
   onSelectionChange,
-  placeholder,
   className,
 }: MultiSelectAutocompleteProps) {
   const [items] = useState<string[]>(defaultItems)
@@ -94,12 +93,11 @@ export function MultiSelectAutocomplete({
   }, [changeFilledWithin])
 
   return (
-    <div onClick={(e) => e.stopPropagation()} role="presentation" tabIndex={-1}>
+    <div role="presentation" tabIndex={-1}>
       <Autocomplete
         ref={inputRef}
         items={filteredItems}
         label={label}
-        placeholder={placeholder}
         className={className}
         classNames={{
           base: 'overflow-hidden',
@@ -111,10 +109,9 @@ export function MultiSelectAutocomplete({
               <Chip
                 key={item}
                 variant="flat"
-                className="bg-white rounded-lg min-w-0"
+                className="bg-default-100 dark:bg-default-50 rounded-lg min-w-0"
                 endContent={
-                  <Icon
-                    icon="lucide:x"
+                  <LocalIcon icon="lucide:x"
                     className="rounded-full hover:bg-default/40 p-1 cursor-pointer size-5 mr-1"
                     onClick={() => handleRemoveItem(item)}
                   />
@@ -137,7 +134,7 @@ export function MultiSelectAutocomplete({
                 onSelectionChange?.([])
               }}
             >
-              <Icon icon="lucide:x" className="size-4" />
+              <LocalIcon icon="lucide:x" className="size-4" />
             </Button>
           )
         }
@@ -166,7 +163,7 @@ export function MultiSelectAutocomplete({
             textValue={item.label}
             endContent={
               selectedItems.includes(item.value) && (
-                <Icon icon="lucide:check" className="size-4" />
+                <LocalIcon icon="lucide:check" className="size-4" />
               )
             }
           >

@@ -1,5 +1,4 @@
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Tooltip } from '@heroui/react';
-import { Icon } from '@iconify/react';
 import dayjs from 'dayjs';
 import yaml from 'js-yaml';
 import { useEffect, useState, useCallback } from 'react';
@@ -7,10 +6,11 @@ import ReactDiffViewer from 'react-diff-viewer-continued';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
-import { useTheme } from '../../hooks/useTheme';
-import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '../../services/api';
-import type { MCPConfigVersion } from '../../types/mcp';
-import {Tenant} from '../../types/user';
+import LocalIcon from '@/components/LocalIcon';
+import { useTheme } from '@/hooks/useTheme';
+import { getMCPConfigVersions, setActiveVersion, getMCPConfigNames, getTenants } from '@/services/api';
+import type { MCPConfigVersion } from '@/types/mcp';
+import {Tenant} from '@/types/user';
 
 export function ConfigVersionsPage() {
   const { t } = useTranslation();
@@ -221,7 +221,7 @@ export function ConfigVersionsPage() {
                 variant="flat"
                 onPress={() => handleSetActive(record.name, record.version)}
               >
-                <Icon icon="heroicons:arrow-uturn-left" className="h-4 w-4" />
+                <LocalIcon icon="heroicons:arrow-uturn-left" className="h-4 w-4" />
               </Button>
             </Tooltip>
           )}
@@ -236,7 +236,7 @@ export function ConfigVersionsPage() {
                     variant="flat"
                     onPress={() => handleCompareWithPrevious(record)}
                   >
-                    <Icon icon="heroicons:chevron-left" className="h-4 w-4" />
+                    <LocalIcon icon="heroicons:chevron-left" className="h-4 w-4" />
                   </Button>
                 </Tooltip>
               )}
@@ -249,7 +249,7 @@ export function ConfigVersionsPage() {
                     variant="flat"
                     onPress={() => handleCompareWithLatest(record)}
                   >
-                    <Icon icon="heroicons:chevron-right" className="h-4 w-4" />
+                    <LocalIcon icon="heroicons:chevron-right" className="h-4 w-4" />
                   </Button>
                 </Tooltip>
               )}
@@ -343,8 +343,7 @@ export function ConfigVersionsPage() {
                     className={`text-gray-600 ${showDiffOnly ? 'bg-gray-100' : ''}`}
                     title={showDiffOnly ? t('mcp.configVersions.show_all') : t('mcp.configVersions.show_diff_only')}
                   >
-                    <Icon
-                      icon="fluent-mdl2:chevron-fold-10"
+                    <LocalIcon icon="fluent-mdl2:chevron-fold-10"
                       className={`w-5 h-5 transition-transform duration-200 ${showDiffOnly ? 'rotate-180' : ''}`}
                     />
                   </Button>

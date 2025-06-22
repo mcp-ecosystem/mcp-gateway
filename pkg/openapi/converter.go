@@ -43,7 +43,7 @@ func (c *Converter) Convert(specData []byte) (*config.MCPConfig, error) {
 		return nil, err
 	}
 
-	// 根据版本选择处理方法
+	// Select handler based on API version
 	if strings.HasPrefix(version, OpenAPIVersion2) {
 		// handler Swagger 2.0
 		return c.convertSwagger2(specData)

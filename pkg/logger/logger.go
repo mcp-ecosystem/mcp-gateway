@@ -26,7 +26,6 @@ var (
 
 // NewLogger creates a new logger based on configuration
 func NewLogger(cfg *config.LoggerConfig) (*zap.Logger, error) {
-	// 设置默认配置
 	setLoggerDefaults(cfg)
 	// Create encoder config
 	encoder := getEncoder(cfg)

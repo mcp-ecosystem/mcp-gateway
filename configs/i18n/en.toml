@@ -329,6 +329,9 @@ other = "Chat sessions retrieved successfully"
 [SuccessChatMessages]
 other = "Chat messages retrieved successfully"
 
+[SuccessChatMessageSaved]
+other = "Chat message saved successfully"
+
 [SuccessChatCreated]
 other = "Chat created successfully"
 

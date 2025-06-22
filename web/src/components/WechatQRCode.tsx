@@ -4,12 +4,10 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Modal,
 } from "@heroui/react";
 import { useTranslation } from 'react-i18next';
 
-import { AccessibleModal } from "./AccessibleModal";
-
-// 导入二维码图片
 import wechatQrcode from '/wechat-qrcode.png';
 
 interface WechatQRCodeProps {
@@ -21,7 +19,7 @@ export function WechatQRCode({ isOpen, onOpenChange }: WechatQRCodeProps) {
   const { t } = useTranslation();
   
   return (
-    <AccessibleModal isOpen={isOpen} onOpenChange={onOpenChange} size="sm">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm">
       <ModalContent>
         <ModalHeader>{t('common.join_wechat')}</ModalHeader>
         <ModalBody>
@@ -45,6 +43,6 @@ export function WechatQRCode({ isOpen, onOpenChange }: WechatQRCodeProps) {
           </Button>
         </ModalFooter>
       </ModalContent>
-    </AccessibleModal>
+    </Modal>
   );
 }

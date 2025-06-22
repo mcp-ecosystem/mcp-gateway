@@ -3,7 +3,7 @@ logger:
   level: "${APISERVER_LOGGER_LEVEL:info}"                                         # debug, info, warn, error
   format: "${APISERVER_LOGGER_FORMAT:console}"                                    # json, console
   output: "${APISERVER_LOGGER_OUTPUT:stdout}"                                     # stdout, file
-  file_path: "${APISERVER_LOGGER_FILE_PATH:/var/log/unla/apiserver.log}"   # path to log file when output is file
+  file_path: "${APISERVER_LOGGER_FILE_PATH:/var/log/unla/apiserver.log}"          # path to log file when output is file
   max_size: ${APISERVER_LOGGER_MAX_SIZE:100}                                      # max size of log file in MB
   max_backups: ${APISERVER_LOGGER_MAX_BACKUPS:3}                                  # max number of backup files
   max_age: ${APISERVER_LOGGER_MAX_AGE:7}                                          # max age of backup files in days
@@ -13,7 +13,7 @@ logger:
 
 # i18n configuration
 i18n:
-  path: "${APISERVER_I18N_PATH:./configs/i18n}"                                     # path to i18n translation files
+  path: "${APISERVER_I18N_PATH:/etc/unla/i18n}"                                   # path to i18n translation files
 
 # Super admin configuration
 super_admin:

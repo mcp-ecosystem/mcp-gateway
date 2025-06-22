@@ -1,0 +1,36 @@
+# not production ready, only for development or testing!
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: unla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        env:
+        - name: POSTGRES_USER
+          value: unla
+        - name: POSTGRES_PASSWORD
+          value: unla
+        - name: POSTGRES_DB
+          value: unla
+        - name: TZ
+          value: UTC
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        emptyDir: {}  # Data will be lost when pod restarts, not production ready

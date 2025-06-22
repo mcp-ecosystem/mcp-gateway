@@ -1,13 +1,13 @@
-import { Button, Input, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
-import { Icon } from '@iconify/react';
+import { Button, Input, ModalContent, ModalHeader, ModalBody, ModalFooter, Modal } from "@heroui/react";
 import axios from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+
 import api from '../services/api';
 import { toast } from '../utils/toast';
 
-import { AccessibleModal } from "./AccessibleModal";
+import LocalIcon from './LocalIcon';
 
 interface ChangePasswordDialogProps {
   isOpen: boolean;
@@ -51,7 +51,7 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
   };
 
   return (
-    <AccessibleModal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{t('auth.change_password')}</ModalHeader>
         <ModalBody>
@@ -62,7 +62,7 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
               placeholder={t('auth.current_password_placeholder')}
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              startContent={<Icon icon="lucide:lock" className="text-default-400" />}
+              startContent={<LocalIcon icon="lucide:lock" className="text-default-400" />}
             />
             <Input
               label={t('auth.new_password')}
@@ -70,7 +70,7 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
               placeholder={t('auth.new_password_placeholder')}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              startContent={<Icon icon="lucide:lock" className="text-default-400" />}
+              startContent={<LocalIcon icon="lucide:lock" className="text-default-400" />}
             />
             <Input
               label={t('auth.confirm_password')}
@@ -78,7 +78,7 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
               placeholder={t('auth.confirm_password_placeholder')}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              startContent={<Icon icon="lucide:lock" className="text-default-400" />}
+              startContent={<LocalIcon icon="lucide:lock" className="text-default-400" />}
             />
           </div>
         </ModalBody>
@@ -91,6 +91,6 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
           </Button>
         </ModalFooter>
       </ModalContent>
-    </AccessibleModal>
+    </Modal>
   );
 }

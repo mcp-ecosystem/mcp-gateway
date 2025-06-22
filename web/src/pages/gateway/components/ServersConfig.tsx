@@ -1,8 +1,8 @@
 import { Input, Button, Chip, Accordion, AccordionItem } from "@heroui/react";
-import { Icon } from "@iconify/react";
 import { useTranslation } from 'react-i18next';
 
-import { Gateway, RouterConfig, ServerConfig } from '../../../types/gateway';
+import LocalIcon from '@/components/LocalIcon';
+import { Gateway, RouterConfig, ServerConfig } from '@/types/gateway';
 
 interface ServersConfigProps {
   parsedConfig: Gateway;
@@ -65,7 +65,7 @@ export function ServersConfig({
             title={server.name || `Server ${index + 1}`}
             subtitle={server.description}
             startContent={
-              <Icon icon="lucide:server" className="text-primary-500" />
+              <LocalIcon icon="lucide:server" className="text-primary-500" />
             }
           >
             <div className="space-y-4">
@@ -150,7 +150,7 @@ export function ServersConfig({
                   color="danger" 
                   variant="flat" 
                   size="sm"
-                  startContent={<Icon icon="lucide:trash-2" />}
+                  startContent={<LocalIcon icon="lucide:trash-2" />}
                   onPress={() => removeServer(index)}
                 >
                   {t('gateway.remove_server')}
@@ -165,7 +165,7 @@ export function ServersConfig({
         <Button
           color="primary"
           variant="flat"
-          startContent={<Icon icon="lucide:plus" />}
+          startContent={<LocalIcon icon="lucide:plus" />}
           onPress={addServer}
         >
           {t('gateway.add_server')}

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-server
+  namespace: unla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-server
+  template:
+    metadata:
+      labels:
+        app: mock-server
+    spec:
+      containers:
+      - name: mock-server
+        imagePullPolicy: IfNotPresent
+        # image: ghcr.io/amoylab/unla/mock-server:latest
+        image: registry.ap-southeast-1.aliyuncs.com/amoylab/unla-mock-server:latest
+        env:
+        - name: ENV
+          value: production
+        - name: TZ
+          value: UTC
+        envFrom:
+          - configMapRef:
+              name: unla-env
+        ports:
+        - containerPort: 5236

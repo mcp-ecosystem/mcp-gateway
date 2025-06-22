@@ -54,7 +54,7 @@ COPY deploy/docker/allinone/nginx.conf /etc/nginx/nginx.conf
 RUN mkdir -p /app/data
 COPY configs/apiserver.yaml /etc/unla/
 COPY configs/mcp-gateway.yaml /etc/unla/
-COPY configs/i18n /app/configs/i18n/
+COPY configs/i18n /etc/unla/i18n
 
 COPY --from=builder /app/bin/mcp-gateway /usr/local/bin/
 COPY --from=builder /app/bin/mock-server /usr/local/bin/

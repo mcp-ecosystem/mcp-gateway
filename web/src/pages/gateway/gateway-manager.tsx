@@ -27,7 +27,6 @@ import {
   Tabs,
   useDisclosure
 } from "@heroui/react";
-import {Icon} from '@iconify/react';
 import copy from 'copy-to-clipboard';
 import yaml from 'js-yaml';
 import {configureMonacoYaml} from 'monaco-yaml';
@@ -35,6 +34,11 @@ import React from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router-dom';
 
+import {ConfigEditor} from './components/ConfigEditor';
+import OpenAPIImport from './components/OpenAPIImport';
+import {defaultConfig} from './constants/defaultConfig';
+
+import LocalIcon from '@/components/LocalIcon';
 import {
   createMCPServer,
   deleteMCPServer,
@@ -44,14 +48,11 @@ import {
   getUserAuthorizedTenants,
   syncMCPServers,
   updateMCPServer
-} from '../../services/api';
-import type {Gateway, ServerConfig, RouterConfig, Tenant, YAMLConfig} from '../../types/gateway';
-import {toast} from '../../utils/toast';
+} from '@/services/api';
+import type {Gateway, ServerConfig, RouterConfig, Tenant, YAMLConfig} from '@/types/gateway';
+import {toast} from '@/utils/toast';
 
 
-import {ConfigEditor} from './components/ConfigEditor';
-import OpenAPIImport from './components/OpenAPIImport';
-import {defaultConfig} from './constants/defaultConfig';
 
 declare global {
   interface Window {
@@ -460,7 +461,7 @@ export function GatewayManager() {
           <Button
             color="primary"
             onPress={onCreateOpen}
-            startContent={<Icon icon="material-symbols:add" />}
+            startContent={<LocalIcon icon="material-symbols:add" />}
             aria-label={t('gateway.add')}
             isDisabled={isOpen || isCreateOpen || isImportOpen}
           >
@@ -470,7 +471,7 @@ export function GatewayManager() {
             color="secondary"
             variant="flat"
             onPress={onImportOpen}
-            startContent={<Icon icon="material-symbols:upload" />}
+            startContent={<LocalIcon icon="material-symbols:upload" />}
             className="bg-purple-500 hover:bg-purple-600 text-white"
             aria-label={t('gateway.import_openapi')}
             isDisabled={isOpen || isCreateOpen || isImportOpen}
@@ -481,7 +482,7 @@ export function GatewayManager() {
             color="default"
             onPress={handleSync}
             isLoading={isLoading}
-            startContent={<Icon icon="material-symbols:sync" />}
+            startContent={<LocalIcon icon="material-symbols:sync" />}
             aria-label={t('gateway.sync')}
             isDisabled={isOpen || isCreateOpen || isImportOpen}
           >
@@ -517,7 +518,7 @@ export function GatewayManager() {
             onSelectionChange={handleTenantSelect}
             menuTrigger="focus"
             isClearable
-            startContent={<Icon icon="lucide:search" className="text-gray-400" />}
+            startContent={<LocalIcon icon="lucide:search" className="text-gray-400" />}
             listboxProps={{
               emptyContent: t('common.no_results')
             }}
@@ -553,7 +554,7 @@ export function GatewayManager() {
             key="card"
             title={
               <div className="flex items-center gap-1">
-                <Icon icon="material-symbols:grid-view" className="text-lg" />
+                <LocalIcon icon="material-symbols:grid-view" className="text-lg" />
                 <span>{t('gateway.card_view')}</span>
               </div>
             }
@@ -562,7 +563,7 @@ export function GatewayManager() {
             key="table"
             title={
               <div className="flex items-center gap-1">
-                <Icon icon="material-symbols:table-rows" className="text-lg" />
+                <LocalIcon icon="material-symbols:table-rows" className="text-lg" />
                 <span>{t('gateway.table_view')}</span>
               </div>
             }
@@ -573,7 +574,7 @@ export function GatewayManager() {
       <div className={`flex-1 ${isOpen || isCreateOpen || isImportOpen ? 'pointer-events-none opacity-50' : ''}`}>
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
-            <Icon icon="lucide:loader-2" className="animate-spin text-2xl" />
+            <LocalIcon icon="lucide:loader-2" className="animate-spin text-2xl" />
           </div>
         ) : viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -585,7 +586,7 @@ export function GatewayManager() {
                       <h3 className="text-lg font-semibold truncate">{server.name}</h3>
                       {server.tenant && (
                         <div className="flex items-center gap-1">
-                          <Icon icon="lucide:building" className="text-sm text-default-500" />
+                          <LocalIcon icon="lucide:building" className="text-sm text-default-500" />
                           <span className="text-sm text-default-500">{t('gateway.tenant_name')}:</span>
                           <Chip
                             color="primary"
@@ -610,7 +611,7 @@ export function GatewayManager() {
                         aria-label={t('gateway.edit')}
                         isDisabled={isOpen || isCreateOpen || isImportOpen}
                       >
-                        <Icon icon="lucide:edit" className="text-lg" />
+                        <LocalIcon icon="lucide:edit" className="text-lg" />
                       </Button>
                       <Dropdown>
                         <DropdownTrigger>
@@ -622,7 +623,7 @@ export function GatewayManager() {
                             aria-label={t('common.actions')}
                             isDisabled={isOpen || isCreateOpen || isImportOpen}
                           >
-                            <Icon icon="lucide:more-vertical" className="text-lg" />
+                            <LocalIcon icon="lucide:more-vertical" className="text-lg" />
                           </Button>
                         </DropdownTrigger>
                         <DropdownMenu aria-label={t('common.actions')}>
@@ -630,7 +631,7 @@ export function GatewayManager() {
                             key="delete"
                             className="text-danger"
                             color="danger"
-                            startContent={<Icon icon="lucide:trash-2" />}
+                            startContent={<LocalIcon icon="lucide:trash-2" />}
                             onPress={() => handleDelete(server)}
                           >
                             {t('gateway.delete')}
@@ -639,7 +640,7 @@ export function GatewayManager() {
                             key="export"
                             className="text-green-500"
                             color="primary"
-                            startContent={<Icon icon="lucide:download" />}
+                            startContent={<LocalIcon icon="lucide:download" />}
                             onPress={() => handleExport(server)}
                           >
                             {t('gateway.export')}
@@ -696,7 +697,7 @@ export function GatewayManager() {
                                                     `nginx-sse-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`nginx-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`nginx-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                               <div className="flex items-center gap-2">
@@ -713,7 +714,7 @@ export function GatewayManager() {
                                                     `nginx-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`nginx-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`nginx-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -736,7 +737,7 @@ export function GatewayManager() {
                                                     `direct-sse-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`direct-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`direct-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                               <div className="flex items-center gap-2">
@@ -753,7 +754,7 @@ export function GatewayManager() {
                                                     `direct-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`direct-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`direct-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -765,7 +766,7 @@ export function GatewayManager() {
                                         </div>
                                       </PopoverContent>
                                     </Popover>
-                                    <Icon icon="lucide:arrow-right" className="text-sm" />
+                                    <LocalIcon icon="lucide:arrow-right" className="text-sm" />
                                     <Chip
                                       variant="flat"
                                       size="sm"
@@ -780,7 +781,6 @@ export function GatewayManager() {
                               </div>
                             </div>
 
-                            {/* 显示MCP后端配置 */}
                             {server.mcpServers && server.mcpServers.length > 0 && (
                               <div className="space-y-2">
                                 <h4 className="text-sm font-semibold">{t('gateway.backend_config')}</h4>
@@ -844,7 +844,7 @@ export function GatewayManager() {
                                 <h4 className="text-sm font-semibold mb-1">{t('gateway.all_tools')}:</h4>
                                 <div className="flex flex-wrap gap-1">
                                   {(server.tools || []).map((tool) => {
-                                    const toolConfig = tool as import('../../types/gateway').ToolConfig;
+                                    const toolConfig = tool as import('@/types/gateway').ToolConfig;
                                     return (
                                       <Chip
                                         key={toolConfig.name}
@@ -866,7 +866,6 @@ export function GatewayManager() {
                         );
                       })}
 
-                      {/* 处理只有routers和mcpServers的情况，比如proxy-mcp-exp.yaml */}
                       {(!server.servers || server.servers.length === 0) && (
                         <div className="space-y-3">
                           {server.routers && server.routers.length > 0 && (
@@ -906,7 +905,7 @@ export function GatewayManager() {
                                                     `nginx-sse-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`nginx-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`nginx-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                               <div className="flex items-center gap-2">
@@ -923,7 +922,7 @@ export function GatewayManager() {
                                                     `nginx-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`nginx-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`nginx-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -946,7 +945,7 @@ export function GatewayManager() {
                                                     `direct-sse-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`direct-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`direct-sse-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                               <div className="flex items-center gap-2">
@@ -963,7 +962,7 @@ export function GatewayManager() {
                                                     `direct-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
-                                                  <Icon icon={copiedStates[`direct-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                                  <LocalIcon icon={copiedStates[`direct-mcp-${server.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -975,7 +974,7 @@ export function GatewayManager() {
                                         </div>
                                       </PopoverContent>
                                     </Popover>
-                                    <Icon icon="lucide:arrow-right" className="text-sm" />
+                                    <LocalIcon icon="lucide:arrow-right" className="text-sm" />
                                     <Chip
                                       variant="flat"
                                       size="sm"
@@ -1064,7 +1063,7 @@ export function GatewayManager() {
                       variant="light"
                       size="sm"
                       className="w-full text-left justify-start"
-                      endContent={<Icon icon="lucide:external-link" className="text-sm" />}
+                      endContent={<LocalIcon icon="lucide:external-link" className="text-sm" />}
                       onPress={() => {
                         setCurrentModalServer(server);
                         setIsRoutingModalOpen(true);
@@ -1078,7 +1077,7 @@ export function GatewayManager() {
                       variant="light"
                       size="sm"
                       className="w-full text-left justify-start"
-                      endContent={<Icon icon="lucide:external-link" className="text-sm" />}
+                      endContent={<LocalIcon icon="lucide:external-link" className="text-sm" />}
                       onPress={() => {
                         setCurrentModalServer(server);
                         setIsToolsModalOpen(true);
@@ -1096,7 +1095,7 @@ export function GatewayManager() {
                       <Button
                         variant="light"
                         size="sm"
-                        startContent={<Icon icon="lucide:history" />}
+                        startContent={<LocalIcon icon="lucide:history" />}
                         onPress={() => {
                           navigate(`/config-versions?name=${server.name}`);
                         }}
@@ -1111,7 +1110,7 @@ export function GatewayManager() {
                         onPress={() => handleEdit(server)}
                         aria-label={t('gateway.edit')}
                       >
-                        <Icon icon="lucide:edit" className="text-lg" />
+                        <LocalIcon icon="lucide:edit" className="text-lg" />
                       </Button>
                       <Button
                         isIconOnly
@@ -1121,7 +1120,7 @@ export function GatewayManager() {
                         onPress={() => handleDelete(server)}
                         aria-label={t('gateway.delete')}
                       >
-                        <Icon icon="lucide:trash-2" className="text-lg" />
+                        <LocalIcon icon="lucide:trash-2" className="text-lg" />
                       </Button>
                     </div>
                   </TableCell>
@@ -1262,7 +1261,7 @@ export function GatewayManager() {
                                           `nginx-sse-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
-                                        <Icon icon={copiedStates[`nginx-sse-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                        <LocalIcon icon={copiedStates[`nginx-sse-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                       </Button>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -1279,7 +1278,7 @@ export function GatewayManager() {
                                           `nginx-mcp-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
-                                        <Icon icon={copiedStates[`nginx-mcp-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                        <LocalIcon icon={copiedStates[`nginx-mcp-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                       </Button>
                                     </div>
                                   </div>
@@ -1302,7 +1301,7 @@ export function GatewayManager() {
                                           `direct-sse-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
-                                        <Icon icon={copiedStates[`direct-sse-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                        <LocalIcon icon={copiedStates[`direct-sse-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                       </Button>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -1319,7 +1318,7 @@ export function GatewayManager() {
                                           `direct-mcp-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
-                                        <Icon icon={copiedStates[`direct-mcp-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
+                                        <LocalIcon icon={copiedStates[`direct-mcp-${currentModalServer?.name}-${idx}`] ? "lucide:check" : "lucide:copy"} className="text-sm" />
                                       </Button>
                                     </div>
                                   </div>
@@ -1331,7 +1330,7 @@ export function GatewayManager() {
                               </div>
                             </PopoverContent>
                           </Popover>
-                          <Icon icon="lucide:arrow-right" className="text-sm" />
+                          <LocalIcon icon="lucide:arrow-right" className="text-sm" />
                           <Chip
                             variant="flat"
                             size="sm"
@@ -1434,7 +1433,7 @@ export function GatewayManager() {
                       <h4 className="text-sm font-semibold mb-2">{t('gateway.all_tools')}</h4>
                       <div className="flex flex-wrap gap-1">
                         {(currentModalServer.tools || []).map((tool) => {
-                          const toolConfig = tool as import('../../types/gateway').ToolConfig;
+                          const toolConfig = tool as import('@/types/gateway').ToolConfig;
                           return (
                             <Chip
                               key={toolConfig.name}

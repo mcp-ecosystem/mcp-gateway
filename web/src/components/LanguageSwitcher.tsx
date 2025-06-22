@@ -1,6 +1,7 @@
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
-import { Icon } from '@iconify/react';
 import { useTranslation } from 'react-i18next';
+
+import LocalIcon from './LocalIcon';
 
 const languages = [
   { code: 'en', name: 'English' },
@@ -22,6 +23,8 @@ export function LanguageSwitcher() {
    */
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode);
+    // Explicitly save to localStorage to ensure persistence
+    window.localStorage.setItem('i18nextLng', languageCode);
   };
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
@@ -31,7 +34,7 @@ export function LanguageSwitcher() {
       <DropdownTrigger>
         <Button
           variant="light"
-          startContent={<Icon icon="lucide:languages" className="text-lg" />}
+          startContent={<LocalIcon icon="lucide:languages" className="text-lg" />}
           aria-label={t('common.switch_language')}
         >
           {currentLanguage.name}

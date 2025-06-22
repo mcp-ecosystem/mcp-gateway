@@ -31,6 +31,16 @@ i18n
     interpolation: {
       escapeValue: false,
     },
+    detection: {
+      // Define the order of detection methods
+      order: ['localStorage', 'navigator', 'htmlTag'],
+      // Keys for localStorage detection
+      lookupLocalStorage: 'i18nextLng',
+      // Cache user language
+      caches: ['localStorage'],
+      // Only use localStorage and browser detection
+      excludeCacheFor: ['cimode'],
+    },
   });
 
 export default i18n; 

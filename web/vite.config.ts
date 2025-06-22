@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
+      MONACO_ENV: {
+        getWorkerUrl: () => '/monaco-editor/vs/base/worker/workerMain.js'
+      }
     },
     resolve: {
       alias: {

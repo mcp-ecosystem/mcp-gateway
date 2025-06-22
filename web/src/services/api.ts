@@ -395,12 +395,18 @@ export const createUser = async (data: {
   tenantIds?: number[];
 }) => {
   try {
+    console.log('API: Creating user with payload:', JSON.stringify(data, null, 2));
     const response = await api.post('/auth/users', data);
     toast.success(t('users.add_success'), {
       duration: 3000,
     });
     return response.data;
   } catch (error) {
+    console.error('API: User creation error:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('API: Error response:', error.response?.data);
+      console.error('API: Error status:', error.response?.status);
+    }
     toast.error(t('users.add_failed'), {
       duration: 3000,
     });
@@ -560,6 +566,40 @@ export const updateChatSessionTitle = async (sessionId: string, title: string) =
     return response.data.data || response.data;
   } catch (error) {
     handleApiError(error, 'errors.rename_chat_session');
+    throw error;
+  }
+};
+
+export const saveChatMessage = async (message: {
+  id: string;
+  session_id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: string;
+  reasoning_content?: string;
+  toolCalls?: Array<{
+    id: string;
+    type: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  toolResult?: {
+    toolCallId: string;
+    name: string;
+    result: unknown;
+  };
+}) => {
+  try {
+    const response = await api.post('/chat/messages', {
+      ...message,
+      toolCalls: message.toolCalls ? JSON.stringify(message.toolCalls) : undefined,
+      toolResult: message.toolResult ? JSON.stringify(message.toolResult) : undefined,
+    });
+    return response.data.data || response.data;
+  } catch (error) {
+    handleApiError(error, 'errors.save_chat_message');
     throw error;
   }
 };

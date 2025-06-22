@@ -1,0 +1,32 @@
+# not production ready, only for development or testing!
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: unla
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        args:
+        - "--appendonly"
+        - "yes"
+        - "--requirepass"
+        - "UseStrongPasswordIsAGoodPractice"
+      volumes:
+      - name: redis-data
+        emptyDir: {}

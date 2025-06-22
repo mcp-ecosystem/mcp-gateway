@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gateway
+  namespace: unla
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+    spec:
+      containers:
+      - name: mcp-gateway
+        imagePullPolicy: IfNotPresent
+        # image: ghcr.io/amoylab/unla/mcp-gateway:latest
+        image: registry.ap-southeast-1.aliyuncs.com/amoylab/unla-mcp-gateway:latest
+        env:
+        - name: ENV
+          value: production
+        - name: TZ
+          value: UTC
+        envFrom:
+          - configMapRef:
+              name: unla-env
+        ports:
+        - containerPort: 5235

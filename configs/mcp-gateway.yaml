@@ -8,7 +8,7 @@ logger:
   level: "${LOGGER_LEVEL:info}"                                           # debug, info, warn, error
   format: "${LOGGER_FORMAT:json}"                                         # json, console
   output: "${LOGGER_OUTPUT:stdout}"                                       # stdout, file
-  file_path: "${LOGGER_FILE_PATH:/var/log/unla/mcp-gateway.log}"   # path to log file when output is file
+  file_path: "${LOGGER_FILE_PATH:/var/log/unla/mcp-gateway.log}"          # path to log file when output is file
   max_size: ${LOGGER_MAX_SIZE:100}                                        # max size of log file in MB
   max_backups: ${LOGGER_MAX_BACKUPS:3}                                    # max number of backup files
   max_age: ${LOGGER_MAX_AGE:7}                                            # max age of backup files in days

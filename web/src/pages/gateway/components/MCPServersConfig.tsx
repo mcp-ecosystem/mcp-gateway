@@ -1,9 +1,9 @@
 import { Input, Select, SelectItem, Button, Switch, Accordion, AccordionItem } from "@heroui/react";
-import { Icon } from "@iconify/react";
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { Gateway, MCPServerConfig } from '../../../types/gateway';
+import LocalIcon from '@/components/LocalIcon';
+import type { Gateway, MCPServerConfig } from '@/types/gateway';
 
 interface MCPServersConfigProps {
   parsedConfig: Gateway;
@@ -200,8 +200,7 @@ export function MCPServersConfig({
             title={server.name || `MCP Server ${index + 1}`}
             subtitle={server.type}
             startContent={
-              <Icon 
-                icon={
+              <LocalIcon icon={
                   server.type === 'stdio' ? 'lucide:terminal' :
                   server.type === 'sse' ? 'lucide:radio' :
                   'lucide:globe'
@@ -272,13 +271,13 @@ export function MCPServersConfig({
                               className="flex-1"
                               value={key}
                               onChange={(e) => updateEnvVariable(index, envIndex, 'key', e.target.value)}
-                              placeholder="环境变量名称"
+                              placeholder={t('gateway.env_key_placeholder')}
                             />
                             <Input
                               className="flex-1"
                               value={String(value)}
                               onChange={(e) => updateEnvVariable(index, envIndex, 'value', e.target.value)}
-                              placeholder="环境变量值"
+                              placeholder={t('gateway.env_value_placeholder')}
                             />
                             <Button
                               color="danger"
@@ -286,7 +285,7 @@ export function MCPServersConfig({
                               isIconOnly
                               onPress={() => removeEnvVariable(index, envIndex)}
                             >
-                              <Icon icon="lucide:x" />
+                              <LocalIcon icon="lucide:x" />
                             </Button>
                           </div>
                         ))}
@@ -295,7 +294,7 @@ export function MCPServersConfig({
                           color="primary"
                           variant="flat"
                           size="sm"
-                          startContent={<Icon icon="lucide:plus" />}
+                          startContent={<LocalIcon icon="lucide:plus" />}
                           onPress={() => addEnvVariable(index)}
                         >
                           {t('gateway.add_env_variable')}
@@ -321,7 +320,7 @@ export function MCPServersConfig({
                   color="danger" 
                   variant="flat" 
                   size="sm"
-                  startContent={<Icon icon="lucide:trash-2" />}
+                  startContent={<LocalIcon icon="lucide:trash-2" />}
                   onPress={() => removeServer(index)}
                 >
                   {t('gateway.remove_server')}
@@ -336,7 +335,7 @@ export function MCPServersConfig({
         <Button
           color="primary"
           variant="flat"
-          startContent={<Icon icon="lucide:plus" />}
+          startContent={<LocalIcon icon="lucide:plus" />}
           onPress={addServer}
         >
           {t('gateway.add_mcp_server')}

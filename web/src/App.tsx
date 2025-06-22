@@ -3,11 +3,26 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/auth/login';
-import { ChatInterface } from './pages/chat/chat-interface';
+import { LLMChatInterface } from './pages/chat/llm-chat-interface';
 import { ConfigVersionsPage } from './pages/gateway/config-versions';
 import { GatewayManager } from './pages/gateway/gateway-manager';
+import LLMSettings from './pages/llm/llm-settings';
 import { TenantManagement } from './pages/users/tenant-management';
 import { UserManagement } from './pages/users/user-management';
+
+// Initialize theme on app startup
+function ThemeInitializer() {
+  React.useEffect(() => {
+    const savedTheme = window.localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  return null;
+}
 
 // Route guard component
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -27,12 +42,13 @@ function MainLayout() {
     <Layout>
       <Routes>
         <Route path="/" element={<GatewayManager />} />
-        <Route path="/chat" element={<ChatInterface />} />
-        <Route path="/chat/:sessionId" element={<ChatInterface />} />
+        <Route path="/chat" element={<LLMChatInterface />} />
+        <Route path="/chat/:sessionId" element={<LLMChatInterface />} />
         <Route path="/gateway/*" element={<GatewayManager />} />
         <Route path="/gateway" element={<PrivateRoute><GatewayManager /></PrivateRoute>} />
         <Route path="/gateway/configs/:name/versions" element={<PrivateRoute><ConfigVersionsPage /></PrivateRoute>} />
         <Route path="/config-versions" element={<PrivateRoute><ConfigVersionsPage /></PrivateRoute>} />
+        <Route path="/llm" element={<PrivateRoute><LLMSettings /></PrivateRoute>} />
         <Route path="/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
         <Route path="/tenants" element={<TenantManagement />} />
       </Routes>
@@ -46,6 +62,7 @@ export default function App() {
       basename={import.meta.env.VITE_BASE_URL}
       future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
     >
+      <ThemeInitializer />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

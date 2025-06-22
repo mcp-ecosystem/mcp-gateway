@@ -17,14 +17,13 @@ import {
   Switch,
   Modal,
 } from '@heroui/react';
-import { Icon } from '@iconify/react';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AccessibleModal } from "../../components/AccessibleModal";
-import { MultiSelectAutocomplete } from "../../components/ui/MultiSelectAutocomplete";
-import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '../../services/api';
-import {User, Tenant, CreateUserForm, UpdateUserForm} from '../../types/user';
+import LocalIcon from '@/components/LocalIcon';
+import { MultiSelectAutocomplete } from "@/components/ui/MultiSelectAutocomplete";
+import { getUsers, createUser, updateUser, deleteUser, toggleUserStatus, getTenants, getUserWithTenants } from '@/services/api';
+import {User, Tenant, CreateUserForm, UpdateUserForm} from '@/types/user';
 
 export function UserManagement() {
   const { t } = useTranslation();
@@ -204,7 +203,7 @@ export function UserManagement() {
         <h1 className="text-2xl font-bold">{t('users.title')}</h1>
         <Button
           color="primary"
-          startContent={<Icon icon="lucide:plus" />}
+          startContent={<LocalIcon icon="lucide:plus" />}
           onPress={onCreateOpen}
         >
           {t('users.add')}
@@ -278,7 +277,7 @@ export function UserManagement() {
       </Table>
 
       {/* Create User Modal */}
-      <AccessibleModal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent>
           <ModalHeader>{t('users.add')}</ModalHeader>
           <ModalBody>
@@ -301,12 +300,15 @@ export function UserManagement() {
               <Select
                 label={t('users.role')}
                 selectedKeys={[createForm.role]}
-                onSelectionChange={(keys) =>
+                onSelectionChange={(keys) => {
+                  const newRole = Array.from(keys)[0] as 'admin' | 'normal';
                   setCreateForm({
                     ...createForm,
-                    role: Array.from(keys)[0] as 'admin' | 'normal',
-                  })
-                }
+                    role: newRole,
+                    // Clear tenant associations when switching to admin role
+                    tenantIds: newRole === 'admin' ? [] : createForm.tenantIds,
+                  });
+                }}
               >
                 <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
                 <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
@@ -320,7 +322,6 @@ export function UserManagement() {
                     label={t('users.select_tenants')}
                     selectedItems={getSelectedTenantItems(createForm.tenantIds)}
                     onSelectionChange={handleCreateTenantSelect}
-                    placeholder={t('users.select_tenant')}
                     allowCustomValues={false}
                     className="mb-4"
                   />
@@ -335,13 +336,17 @@ export function UserManagement() {
             <Button
               color="primary"
               onPress={handleCreate}
-              isDisabled={!createForm.username || !createForm.password}
+              isDisabled={
+                !createForm.username || 
+                !createForm.password ||
+                (createForm.role === 'normal' && (!createForm.tenantIds || createForm.tenantIds.length === 0))
+              }
             >
               {t('common.create')}
             </Button>
           </ModalFooter>
         </ModalContent>
-      </AccessibleModal>
+      </Modal>
 
       {/* Update User Modal */}
       <Modal isOpen={isUpdateOpen} onClose={onUpdateClose} size="lg">
@@ -366,12 +371,15 @@ export function UserManagement() {
               <Select
                 label={t('users.role')}
                 selectedKeys={[updateForm.role || '']}
-                onSelectionChange={(keys) =>
+                onSelectionChange={(keys) => {
+                  const newRole = Array.from(keys)[0] as 'admin' | 'normal';
                   setUpdateForm({
                     ...updateForm,
-                    role: Array.from(keys)[0] as 'admin' | 'normal',
-                  })
-                }
+                    role: newRole,
+                    // Clear tenant associations when switching to admin role
+                    tenantIds: newRole === 'admin' ? [] : updateForm.tenantIds,
+                  });
+                }}
               >
                 <SelectItem key="admin">{t('users.role_admin')}</SelectItem>
                 <SelectItem key="normal">{t('users.role_normal')}</SelectItem>
@@ -397,7 +405,6 @@ export function UserManagement() {
                     label={t('users.select_tenants')}
                     selectedItems={getSelectedTenantItems(updateForm.tenantIds)}
                     onSelectionChange={handleUpdateTenantSelect}
-                    placeholder={t('users.select_tenant')}
                     allowCustomValues={false}
                     className="mb-4"
                   />
@@ -417,7 +424,7 @@ export function UserManagement() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <AccessibleModal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">{t('users.delete_title')}</ModalHeader>
           <ModalBody>
@@ -433,7 +440,7 @@ export function UserManagement() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </AccessibleModal>
+      </Modal>
     </div>
   );
 }

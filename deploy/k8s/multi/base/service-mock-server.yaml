@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-server
+  namespace: unla
+spec:
+  type: NodePort
+  ports:
+    - port: 5236
+      targetPort: 5236
+      nodePort: 30236
+  selector:
+    app: mock-server

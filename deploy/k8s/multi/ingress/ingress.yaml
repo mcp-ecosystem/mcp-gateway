@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unla
+  namespace: unla
+spec:
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-gateway
+                port:
+                  number: 5235
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 5234
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80 

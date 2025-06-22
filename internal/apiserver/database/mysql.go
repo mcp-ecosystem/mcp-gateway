@@ -83,6 +83,15 @@ func (db *MySQL) CreateSession(ctx context.Context, sessionId string) error {
 	return db.db.WithContext(ctx).Create(session).Error
 }
 
+func (db *MySQL) CreateSessionWithTitle(ctx context.Context, sessionId string, title string) error {
+	session := &Session{
+		ID:        sessionId,
+		CreatedAt: time.Now(),
+		Title:     title,
+	}
+	return db.db.WithContext(ctx).Create(session).Error
+}
+
 func (db *MySQL) UpdateSessionTitle(ctx context.Context, sessionID string, title string) error {
 	return db.db.WithContext(ctx).
 		Model(&Session{}).

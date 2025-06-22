@@ -4,12 +4,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/amoylab/unla/internal/common/config"
-	"github.com/amoylab/unla/internal/template"
-	"github.com/amoylab/unla/pkg/mcp"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/amoylab/unla/internal/common/config"
+	"github.com/amoylab/unla/internal/template"
+	"github.com/amoylab/unla/pkg/mcp"
 )
 
 // CreateResponseHandlerChain create a chain of response handlers
@@ -79,7 +80,7 @@ func (h *TextHandler) Handle(resp *http.Response, tool *config.ToolConfig, tmplC
 	} else {
 		var respData map[string]any
 		if err := json.Unmarshal(respBody, &respData); err != nil {
-			// 非JSON格式的响应，忽略解析错误
+			// Non-JSON response, ignore parse error
 		}
 		// Preprocess response data to handle []any type
 		respData = preprocessResponseData(respData)

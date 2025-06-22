@@ -1,11 +1,11 @@
 import { Card, CardBody, Button } from '@heroui/react';
-import { Icon } from '@iconify/react';
 import { t } from 'i18next';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import { importOpenAPI } from '../../../services/api';
-import { toast } from "../../../utils/toast.ts";
+import LocalIcon from '@/components/LocalIcon';
+import { importOpenAPI } from '@/services/api';
+import { toast } from "@/utils/toast.ts";
 
 interface OpenAPIImportProps {
   onSuccess?: () => void;
@@ -53,7 +53,7 @@ const OpenAPIImport: React.FC<OpenAPIImportProps> = ({ onSuccess }) => {
           }`}
         >
           <input {...getInputProps()} />
-          <Icon icon="lucide:upload" className="text-4xl mb-4 text-primary" />
+          <LocalIcon icon="lucide:upload" className="text-4xl mb-4 text-primary" />
           {isDragActive ? (
             <p className="text-lg text-primary">Drop the OpenAPI specification file here...</p>
           ) : (

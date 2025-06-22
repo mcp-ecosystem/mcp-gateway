@@ -4,14 +4,15 @@ import yaml from 'js-yaml';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
-import {getTenants} from '../../../services/api';
-import {ConfigEditorProps, Gateway, Tenant} from '../../../types/gateway';
 import {defaultConfig} from '../constants/defaultConfig';
 
 import {MCPServersConfig} from './MCPServersConfig';
 import {RouterConfig} from './RouterConfig';
 import {ServersConfig} from './ServersConfig';
 import {ToolsConfig} from './ToolsConfig';
+
+import {getTenants} from '@/services/api';
+import {ConfigEditorProps, Gateway, Tenant} from '@/types/gateway';
 
 export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditing }: ConfigEditorProps) {
   const { t } = useTranslation();
@@ -29,7 +30,6 @@ export function ConfigEditor({ config, onChange, isDark, editorOptions, isEditin
       ...newData,
     };
 
-    // 在 YAML 模式 + 编辑中，name 锁定为原始 name
     if (isYamlMode && isEditing && parsedConfig?.name?.trim()) {
       updated.name = parsedConfig.name;
     }

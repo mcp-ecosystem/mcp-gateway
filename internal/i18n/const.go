@@ -131,12 +131,13 @@ const (
 
 // Chat related success messages
 const (
-	SuccessChatSessions = "SuccessChatSessions"
-	SuccessChatMessages = "SuccessChatMessages"
-	SuccessChatCreated  = "SuccessChatCreated"
-	SuccessChatUpdated  = "SuccessChatUpdated"
-	SuccessChatDeleted  = "SuccessChatDeleted"
-	SuccessChatHistory  = "SuccessChatHistory"
+	SuccessChatSessions     = "SuccessChatSessions"
+	SuccessChatMessages     = "SuccessChatMessages"
+	SuccessChatMessageSaved = "SuccessChatMessageSaved"
+	SuccessChatCreated      = "SuccessChatCreated"
+	SuccessChatUpdated      = "SuccessChatUpdated"
+	SuccessChatDeleted      = "SuccessChatDeleted"
+	SuccessChatHistory      = "SuccessChatHistory"
 )
 
 // General success messages

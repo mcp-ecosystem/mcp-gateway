@@ -13,8 +13,8 @@ import (
 
 	"github.com/amoylab/unla/internal/common/cnst"
 
-	"github.com/gin-gonic/gin"
 	"github.com/amoylab/unla/internal/common/config"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -136,7 +136,6 @@ func (n *APINotifier) NotifyUpdate(ctx context.Context, server *config.MCPConfig
 	var req *http.Request
 	var err error
 
-	// 确保 URL 以 /_reload 结尾
 	reloadURL := n.targetURL
 	if !strings.HasSuffix(reloadURL, "/_reload") {
 		if !strings.HasSuffix(reloadURL, "/") {

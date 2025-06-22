@@ -17,6 +17,8 @@ type Database interface {
 	GetMessagesWithPagination(ctx context.Context, sessionID string, page, pageSize int) ([]*Message, error)
 	// CreateSession creates a new session with the given sessionId.
 	CreateSession(ctx context.Context, sessionId string) error
+	// CreateSessionWithTitle creates a new session with the given sessionId and title.
+	CreateSessionWithTitle(ctx context.Context, sessionId string, title string) error
 	// SessionExists checks if a session exists.
 	SessionExists(ctx context.Context, sessionID string) (bool, error)
 	// GetSessions gets all chat sessions with their latest message.
