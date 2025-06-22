@@ -278,10 +278,7 @@ func (t *StdioTransport) CallTool(ctx context.Context, params mcp.CallToolParams
 
 // FetchPrompts returns all prompts
 func (t *StdioTransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
-	return nil, &HTTPError{
-		StatusCode: http.StatusOK,
-		Message:    "",
-	}
+	return []mcp.PromptSchema{}, nil
 }
 
 // FetchPrompt returns a specific prompt by name
