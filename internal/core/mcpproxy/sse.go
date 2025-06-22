@@ -190,10 +190,7 @@ func (t *SSETransport) CallTool(ctx context.Context, params mcp.CallToolParams, 
 
 // FetchPrompts returns all prompts
 func (t *SSETransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
-	return nil, &HTTPError{
-		StatusCode: http.StatusOK,
-		Message:    "",
-	}
+	return []mcp.PromptSchema{}, nil
 }
 
 // FetchPrompt returns a specific prompt by name
