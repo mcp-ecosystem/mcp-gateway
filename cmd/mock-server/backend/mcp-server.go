@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -307,7 +308,17 @@ func handleEchoTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	// Convert interface{} to json.RawMessage
+	argumentsBytes, ok := request.Params.Arguments.(json.RawMessage)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments type")
+	}
+
+	var arguments map[string]interface{}
+	if err := json.Unmarshal(argumentsBytes, &arguments); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
 	message, ok := arguments["message"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid message argument")
@@ -326,7 +337,17 @@ func handleAddTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	// Convert interface{} to json.RawMessage
+	argumentsBytes, ok := request.Params.Arguments.(json.RawMessage)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments type")
+	}
+
+	var arguments map[string]interface{}
+	if err := json.Unmarshal(argumentsBytes, &arguments); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
 	a, ok1 := arguments["a"].(float64)
 	b, ok2 := arguments["b"].(float64)
 	if !ok1 || !ok2 {
@@ -377,7 +398,17 @@ func handleLongRunningOperationTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	// Convert interface{} to json.RawMessage
+	argumentsBytes, ok := request.Params.Arguments.(json.RawMessage)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments type")
+	}
+
+	var arguments map[string]interface{}
+	if err := json.Unmarshal(argumentsBytes, &arguments); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
 	progressToken := request.Params.Meta.ProgressToken
 	duration, _ := arguments["duration"].(float64)
 	steps, _ := arguments["steps"].(float64)

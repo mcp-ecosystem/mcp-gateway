@@ -80,6 +80,12 @@ type (
 		Arguments json.RawMessage `json:"arguments"`
 	}
 
+	// CallToolRequest represents a tools/call request
+	CallToolRequest struct {
+		JSONRPCRequest
+		Params CallToolParams `json:"params"`
+	}
+
 	// Content represents a content item in a tool call result
 	Content interface {
 		// GetType returns the type of the content
