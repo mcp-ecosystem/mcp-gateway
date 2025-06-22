@@ -180,10 +180,7 @@ func (t *StreamableTransport) CallTool(ctx context.Context, params mcp.CallToolP
 
 // FetchPrompts returns all prompts
 func (t *StreamableTransport) FetchPrompts(ctx context.Context) ([]mcp.PromptSchema, error) {
-	return nil, &HTTPError{
-		StatusCode: http.StatusOK,
-		Message:    "",
-	}
+	return []mcp.PromptSchema{}, nil
 }
 
 // FetchPrompt returns a specific prompt by name
