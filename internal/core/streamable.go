@@ -335,14 +335,13 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		}
 
 		var params struct {
-			Name string `json:"name"`
+			Name      string            `json:"name"`
 			Arguments map[string]string `json:"arguments"`
 		}
 		if err := json.Unmarshal(req.Params, &params); err != nil || params.Name == "" {
 			s.sendProtocolError(c, req.Id, "Invalid prompt get parameters", http.StatusBadRequest, mcp.ErrorCodeInvalidParams)
 			return
 		}
-
 
 		var prompt *mcp.PromptSchema
 		var err error
@@ -378,12 +377,7 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		}
 
 		// Build the response with argument substitution
-		var argsMap map[string]string
-		if req.Params != nil {
-			_ = json.Unmarshal(req.Params, &params)	
-		}
-		argsMap = params.Arguments
-		
+		argsMap := params.Arguments
 		resp := struct {
 			Description string `json:"description"`
 			Messages    []struct {
@@ -396,10 +390,8 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 		}{
 			Description: prompt.Description,
 		}
-					
 		for _, msg := range prompt.PromptResponse {
 			text := msg.Content.Text
-			// Replace {argument} placeholders with values from argsMap
 			for _, arg := range prompt.Arguments {
 				if val, ok := argsMap[arg.Name]; ok {
 					text = strings.ReplaceAll(text, "{"+arg.Name+"}", val)
@@ -422,7 +414,6 @@ func (s *Server) handleMCPRequest(c *gin.Context, req mcp.JSONRPCRequest, conn s
 				},
 			})
 		}
-
 		s.sendSuccessResponse(c, conn, req, resp, false)
 		return
 
