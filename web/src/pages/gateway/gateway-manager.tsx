@@ -73,9 +73,20 @@ const RUNTIME_CONFIG = window.RUNTIME_CONFIG || {};
 
 // Helper to get the gateway base URL
 const getGatewayBaseUrl = () => {
-  const base = RUNTIME_CONFIG.VITE_MCP_GATEWAY_BASE_URL;
+  let base = RUNTIME_CONFIG.VITE_MCP_GATEWAY_BASE_URL;
   if (!base) return '';
-  return base.startsWith('http') ? base : `${window.location.origin}${base}`;
+  // Remove trailing slash if present
+  base = base.replace(/\/+$/, '');
+  if (base.startsWith('http')) {
+    return base;
+  }
+  // Remove trailing slash from window.location.origin just in case
+  const origin = window.location.origin.replace(/\/+$/, '');
+  // Ensure base starts with a slash
+  if (!base.startsWith('/')) {
+    base = '/' + base;
+  }
+  return `${origin}${base}`;
 };
 
 export function GatewayManager() {
