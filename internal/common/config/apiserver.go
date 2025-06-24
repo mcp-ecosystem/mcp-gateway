@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -52,6 +54,11 @@ func (c *DatabaseConfig) GetDSN() string {
 	case "mysql":
 		return c.getMySQLDSN()
 	case "sqlite":
+		// Ensure the directory for the SQLite database exists.
+		// If the directory cannot be created, it's a fatal error.
+		if err := os.MkdirAll(filepath.Dir(c.DBName), 0755); err != nil {
+			panic(fmt.Errorf("failed to create directory for sqlite database: %w", err))
+		}
 		return c.DBName // For SQLite, DBName is the file path
 	default:
 		return ""
