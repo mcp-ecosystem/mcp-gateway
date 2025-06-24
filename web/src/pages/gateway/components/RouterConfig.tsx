@@ -180,6 +180,7 @@ export function RouterConfig({
             <option value="Accept" />
             <option value="Origin" />
             <option value="Mcp-Session-Id" />
+            <option value="mcp-protocol-version" />
           </datalist>
         </div>
 
@@ -226,6 +227,7 @@ export function RouterConfig({
           <datalist id={`common-expose-headers-${index}`}>
             <option value="Content-Length" />
             <option value="Mcp-Session-Id" />
+            <option value="mcp-protocol-version" />			
             <option value="X-Rate-Limit" />
           </datalist>
         </div>
@@ -317,8 +319,8 @@ export function RouterConfig({
                               cors: {
                                 allowOrigins: ['*'],
                                 allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-                                allowHeaders: ['Content-Type', 'Authorization', 'Mcp-Session-Id'],
-                                exposeHeaders: ['Mcp-Session-Id'],
+                                allowHeaders: ['Content-Type', 'Authorization', 'Mcp-Session-Id', 'mcp-protocol-version' ],
+                                exposeHeaders: ['Mcp-Session-Id' ,'mcp-protocol-version'],
                                 allowCredentials: true
                               }
                             } : r

@@ -222,6 +222,8 @@ func initRouter(db database.Database, store storage.Store, ntf notifier.Notifier
 		protected.POST("/chat/messages", chatHandler.HandleSaveChatMessage)
 	}
 
+	// Public runtime config endpoint for frontend
+	r.GET("/api/runtime-config", apiserverHandler.HandleRuntimeConfig)
 
 	r.Static("/web", "./web")
 	return r

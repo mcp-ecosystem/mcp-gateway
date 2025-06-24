@@ -16,16 +16,6 @@ RUN GOOS=linux go build -o apiserver ./cmd/apiserver
 
 FROM node:20.18.0 AS web-builder
 
-ARG VITE_API_BASE_URL=/api
-ARG VITE_WS_BASE_URL=/ws
-ARG VITE_MCP_GATEWAY_BASE_URL=/mcp
-ARG VITE_BASE_URL=/
-
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
-    VITE_WS_BASE_URL=${VITE_WS_BASE_URL} \
-    VITE_MCP_GATEWAY_BASE_URL=${VITE_MCP_GATEWAY_BASE_URL} \
-    VITE_BASE_URL=${VITE_BASE_URL}
-
 WORKDIR /app/web
 
 COPY web/package*.json ./

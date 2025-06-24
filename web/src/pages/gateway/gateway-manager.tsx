@@ -68,6 +68,16 @@ declare global {
   }
 }
 
+// @ts-ignore
+const RUNTIME_CONFIG = window.RUNTIME_CONFIG || {};
+
+// Helper to get the gateway base URL
+const getGatewayBaseUrl = () => {
+  const base = RUNTIME_CONFIG.VITE_MCP_GATEWAY_BASE_URL;
+  if (!base) return '';
+  return base.startsWith('http') ? base : `${window.location.origin}${base}`;
+};
+
 export function GatewayManager() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -82,7 +92,7 @@ export function GatewayManager() {
   const [tenants, setTenants] = React.useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = React.useState<Tenant[]>([]);
   const [tenantInputValue, setTenantInputValue] = React.useState('');
-  const [viewMode, setViewMode] = React.useState<string>('card');
+  const [viewMode, setViewMode] = React.useState<string>('table');
   const [isDark, setIsDark] = React.useState(() => {
     return document.documentElement.classList.contains('dark');
   });
@@ -686,14 +696,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">SSE:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`}
+                                                  {`${getGatewayBaseUrl()}${router.prefix}/sse`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`,
+                                                    `${getGatewayBaseUrl()}${router.prefix}/sse`,
                                                     `nginx-sse-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -703,14 +713,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">Streamable HTTP:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`}
+                                                  {`${getGatewayBaseUrl()}${router.prefix}/mcp`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`,
+                                                    `${getGatewayBaseUrl()}${router.prefix}/mcp`,
                                                     `nginx-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -894,14 +904,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">SSE:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`}
+                                                  {`${getGatewayBaseUrl()}${router.prefix}/sse`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`,
+                                                    `${getGatewayBaseUrl()}${router.prefix}/sse`,
                                                     `nginx-sse-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -911,14 +921,14 @@ export function GatewayManager() {
                                               <div className="flex items-center gap-2">
                                                 <span className="text-xs text-default-500">Streamable HTTP:</span>
                                                 <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                                  {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`}
+                                                  {`${getGatewayBaseUrl()}${router.prefix}/mcp`}
                                                 </code>
                                                 <Button
                                                   isIconOnly
                                                   size="sm"
                                                   variant="light"
                                                   onPress={() => handleCopyWithIcon(
-                                                    `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`,
+                                                    `${getGatewayBaseUrl()}${router.prefix}/mcp`,
                                                     `nginx-mcp-${server.name}-${idx}`
                                                   )}
                                                 >
@@ -1250,14 +1260,14 @@ export function GatewayManager() {
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-default-500">SSE:</span>
                                       <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                        {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`}
+                                        {`${getGatewayBaseUrl()}${router.prefix}/sse`}
                                       </code>
                                       <Button
                                         isIconOnly
                                         size="sm"
                                         variant="light"
                                         onPress={() => handleCopyWithIcon(
-                                          `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/sse`,
+                                          `${getGatewayBaseUrl()}${router.prefix}/sse`,
                                           `nginx-sse-${currentModalServer?.name}-${idx}`
                                         )}
                                       >
@@ -1267,14 +1277,14 @@ export function GatewayManager() {
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-default-500">Streamable HTTP:</span>
                                       <code className="text-xs bg-default-100 px-1 py-1 rounded flex-1 break-all">
-                                        {`${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`}
+                                        {`${getGatewayBaseUrl()}${router.prefix}/mcp`}
                                       </code>
                                       <Button
                                         isIconOnly
                                         size="sm"
                                         variant="light"
                                         onPress={() => handleCopyWithIcon(
-                                          `${import.meta.env.VITE_MCP_GATEWAY_BASE_URL?.startsWith('http') ? import.meta.env.VITE_MCP_GATEWAY_BASE_URL : `${window.location.origin}${import.meta.env.VITE_MCP_GATEWAY_BASE_URL}`}${router.prefix}/mcp`,
+                                          `${getGatewayBaseUrl()}${router.prefix}/mcp`,
                                           `nginx-mcp-${currentModalServer?.name}-${idx}`
                                         )}
                                       >

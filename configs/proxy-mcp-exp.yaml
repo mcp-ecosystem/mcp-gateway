@@ -15,8 +15,10 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"        
       exposeHeaders:
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"
       allowCredentials: true
   - server: "mock-user-sse"
     prefix: "/mcp/sse-proxy"
@@ -31,8 +33,10 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"
       exposeHeaders:
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"
       allowCredentials: true
   - server: "mock-user-mcp"
     prefix: "/mcp/streamable-http-proxy"
@@ -47,8 +51,10 @@ routers:
         - "Content-Type"
         - "Authorization"
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"
       exposeHeaders:
         - "Mcp-Session-Id"
+        - "mcp-protocol-version"
       allowCredentials: true
 
 mcpServers:

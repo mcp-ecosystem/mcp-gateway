@@ -94,6 +94,8 @@ auth:
       - "Content-Type"
       - "Authorization"
       - "Mcp-Session-Id"
+      - "mcp-protocol-version"      
     exposeHeaders:
       - "Mcp-Session-Id"
+      - "mcp-protocol-version"      
     allowCredentials: true
