@@ -1,9 +1,10 @@
-import {HeroUIProvider, ToastProvider} from "@heroui/react";
+import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import { loader } from '@monaco-editor/react';
 import React from "react";
 import ReactDOM from "react-dom/client";
 import axios from "axios";
 import App from "./App.tsx";
+import { LoadingScreen } from "./components/LoadingScreen";
 import './i18n';
 
 import "./index.css";
@@ -43,36 +44,95 @@ if (savedTheme === 'dark') {
   document.documentElement.classList.remove('dark');
 }
 
-// Fetch runtime config before rendering the app
-const fetchRuntimeConfig = async () => {
-  console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
-  try {
-    const response = await axios.get("/api/runtime-config");
-    console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
-    window.RUNTIME_CONFIG = response.data;
-  } catch (error) {
-    console.error("[RUNTIME_CONFIG] Failed to load runtime config:", error);
-    window.RUNTIME_CONFIG = {};
-  }
-
-  console.log("[RUNTIME_CONFIG] Rendering React app...");
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+// Show loading screen immediately
+const rootElement = document.getElementById("root");
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <HeroUIProvider>
-        <ToastProvider placement="bottom-right" />
-        <main className="text-foreground bg-background h-screen overflow-hidden">
-          <App />
-        </main>
+        <LoadingScreen />
       </HeroUIProvider>
-    </React.StrictMode>,
+    </React.StrictMode>
   );
+}
+
+// Define proper types for RUNTIME_CONFIG
+export interface RuntimeConfig {
+  apiBaseUrl: string;
+  debugMode: boolean;
+  version: string;
+  features: {
+    enableExperimental: boolean;
+    [key: string]: boolean;
+  };
+  [key: string]: any; // For any additional properties
+}
+
+// Provide defaults for runtime config
+const defaultRuntimeConfig: RuntimeConfig = {
+  apiBaseUrl: '',
+  debugMode: false,
+  version: '0.0.0',
+  features: {
+    enableExperimental: false
+  }
 };
 
-fetchRuntimeConfig();
-
-// Add global declaration for RUNTIME_CONFIG
 declare global {
   interface Window {
-    RUNTIME_CONFIG: any;
+    RUNTIME_CONFIG: RuntimeConfig;
   }
 }
+
+// Fetch runtime config before rendering the app
+const fetchRuntimeConfig = async () => {
+  // Only log in development mode
+  const isDev = import.meta.env.DEV;
+  
+  try {
+    isDev && console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
+    const response = await axios.get<RuntimeConfig>("/api/runtime-config");
+    isDev && console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
+    
+    // Merge with defaults to ensure all properties exist
+    window.RUNTIME_CONFIG = {
+      ...defaultRuntimeConfig,
+      ...response.data,
+      // Deep merge for nested objects
+      features: {
+        ...defaultRuntimeConfig.features,
+        ...(response.data.features || {})
+      }
+    };
+  } catch (error) {
+    // Always log errors, but with conditional detail level
+    console.error(
+      "[RUNTIME_CONFIG] Failed to load runtime config", 
+      isDev ? error : ''
+    );
+    
+    // Use defaults on error
+    window.RUNTIME_CONFIG = { ...defaultRuntimeConfig };
+  }
+  // Render the main application
+  isDev && console.log("[RUNTIME_CONFIG] Rendering React app...");
+  
+  const rootElement = document.getElementById("root");
+  if (rootElement) {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <HeroUIProvider>
+          <ToastProvider placement="bottom-right" />
+          <main className="text-foreground bg-background h-screen overflow-hidden">
+            <App />
+          </main>
+        </HeroUIProvider>
+      </React.StrictMode>
+    );
+  } else {
+    console.error("[RUNTIME_CONFIG] Root element not found");
+  }
+};
+
+// Start loading the runtime configuration
+fetchRuntimeConfig();
