@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/amoylab/unla/internal/common/cnst"
 
@@ -16,19 +17,24 @@ import (
 // RedisNotifier implements Notifier using Redis pub/sub
 type RedisNotifier struct {
 	logger *zap.Logger
-	client *redis.Client
+	client redis.UniversalClient
 	topic  string
 	role   config.NotifierRole
 }
 
 // NewRedisNotifier creates a new Redis-based notifier
-func NewRedisNotifier(logger *zap.Logger, addr, username, password string, db int, topic string, role config.NotifierRole) (*RedisNotifier, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
+func NewRedisNotifier(logger *zap.Logger, clusterType, addr, masterName, username, password string, db int, topic string, role config.NotifierRole) (*RedisNotifier, error) {
+	addrs := strings.Split(addr, ";")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
 		Username: username,
 		Password: password,
 		DB:       db,
-	})
+	}
+	if clusterType == "sentinel" {
+		redisOptions.MasterName = masterName
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
 	if err := client.Ping(context.Background()).Err(); err != nil {

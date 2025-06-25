@@ -41,13 +41,15 @@ type (
 
 	// SessionRedisConfig represents the Redis configuration for session storage
 	SessionRedisConfig struct {
-		Addr     string        `yaml:"addr"`
-		Username string        `yaml:"username"`
-		Password string        `yaml:"password"`
-		DB       int           `yaml:"db"`
-		Topic    string        `yaml:"topic"`
-		Prefix   string        `yaml:"prefix"`
-		TTL      time.Duration `yaml:"ttl"` // TTL for session data in Redis
+		ClusterType string        `yaml:"cluster_type"` // "single", "cluster" or "sentinel"
+		Addr        string        `yaml:"addr"`         // multiple addresses separated by ;.
+		MasterName  string        `yaml:"master_name"`  // MasterName is the sentinel master name.
+		Username    string        `yaml:"username"`
+		Password    string        `yaml:"password"`
+		DB          int           `yaml:"db"`
+		Topic       string        `yaml:"topic"`
+		Prefix      string        `yaml:"prefix"`
+		TTL         time.Duration `yaml:"ttl"` // TTL for session data in Redis
 	}
 
 	// LoggerConfig represents the logger configuration
