@@ -1,10 +1,7 @@
-<<<<<<< VITE_runtime_varables
+
 import React from 'react';
 import { Spinner } from "@heroui/react";
-=======
-import { Spinner } from "@heroui/react";
-import React from 'react';
->>>>>>> main
+
 
 export const LoadingScreen: React.FC = () => {
   return (
