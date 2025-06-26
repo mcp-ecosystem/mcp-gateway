@@ -1,5 +1,6 @@
 import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import { loader } from '@monaco-editor/react';
+import axios from "axios";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import axios from "axios";
@@ -65,7 +66,11 @@ export interface RuntimeConfig {
     enableExperimental: boolean;
     [key: string]: boolean;
   };
+<<<<<<< VITE_runtime_varables
   [key: string]: any; // For any additional properties
+=======
+  [key: string]: unknown; // For any additional properties
+>>>>>>> main
 }
 
 // Provide defaults for runtime config
@@ -90,9 +95,19 @@ const fetchRuntimeConfig = async () => {
   const isDev = import.meta.env.DEV;
   
   try {
+<<<<<<< VITE_runtime_varables
     isDev && console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
     const response = await axios.get<RuntimeConfig>("/api/runtime-config");
     isDev && console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
+=======
+    if (isDev) {
+      console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
+    }
+    const response = await axios.get<RuntimeConfig>("/api/runtime-config");
+    if (isDev) {
+      console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
+    }
+>>>>>>> main
     
     // Merge with defaults to ensure all properties exist
     window.RUNTIME_CONFIG = {
@@ -115,7 +130,13 @@ const fetchRuntimeConfig = async () => {
     window.RUNTIME_CONFIG = { ...defaultRuntimeConfig };
   }
   // Render the main application
+<<<<<<< VITE_runtime_varables
   isDev && console.log("[RUNTIME_CONFIG] Rendering React app...");
+=======
+  if (isDev) {
+    console.log("[RUNTIME_CONFIG] Rendering React app...");
+  }
+>>>>>>> main
   
   const rootElement = document.getElementById("root");
   if (rootElement) {

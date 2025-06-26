@@ -11,7 +11,11 @@ import {toast} from '../utils/toast';
 
 // Create an axios instance with default config
 const api = axios.create({
+<<<<<<< VITE_runtime_varables
   baseURL: window.RUNTIME_CONFIG?.VITE_API_BASE_URL || '/api',	
+=======
+  baseURL: (window.RUNTIME_CONFIG?.VITE_API_BASE_URL as string) || '/api',	
+>>>>>>> main
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

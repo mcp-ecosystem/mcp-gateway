@@ -54,7 +54,9 @@ notifier:
 
   # Redis configuration (only used when type is redis)
   redis:
+    cluster_type: "${NOTIFIER_REDIS_CLUSTER_TYPE:single}"
     addr: "${NOTIFIER_REDIS_ADDR:localhost:6379}"
+    master_name: "${NOTIFIER_REDIS_MASTER_NAME:}" 	# MasterName is the sentinel master name.
     username: "${NOTIFIER_REDIS_USERNAME:default}"
     password: "${NOTIFIER_REDIS_PASSWORD:UseStrongPasswordIsAGoodPractice}"
     db: ${NOTIFIER_REDIS_DB:0}
@@ -64,7 +66,9 @@ notifier:
 session:
   type: "${SESSION_STORAGE_TYPE:memory}"  # memory or redis
   redis:
+    cluster_type: "${SESSION_REDIS_CLUSTER_TYPE:single}"
     addr: "${SESSION_REDIS_ADDR:localhost:6379}"
+    master_name: "${SESSION_REDIS_MASTER_NAME:}"  # MasterName is the sentinel master name.
     username: "${SESSION_REDIS_USERNAME:default}"
     password: "${SESSION_REDIS_PASSWORD:}"
     db: ${SESSION_REDIS_DB:0}
@@ -79,7 +83,10 @@ auth:
     storage:
       type: "${OAUTH2_STORAGE_TYPE:memory}"  # memory or redis
       redis:
+        cluster_type: "${OAUTH2_REDIS_CLUSTER_TYPE:single}"
         addr: "${OAUTH2_REDIS_ADDR:localhost:6379}"
+        master_name: "${OAUTH2_REDIS_MASTER_NAME:}"  # MasterName is the sentinel master name.
+        username: "${OAUTH2_REDIS_USERNAME:default}"
         password: "${OAUTH2_REDIS_PASSWORD:}"
         db: ${OAUTH2_REDIS_DB:0}
   cors:

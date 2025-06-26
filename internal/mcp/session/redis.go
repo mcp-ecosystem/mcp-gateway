@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 
 	"github.com/redis/go-redis/v9"
@@ -17,7 +19,7 @@ import (
 // RedisStore implements Store using Redis
 type RedisStore struct {
 	logger *zap.Logger
-	client *redis.Client
+	client redis.UniversalClient
 	prefix string
 	topic  string
 	pubsub *redis.PubSub
@@ -32,12 +34,20 @@ var _ Store = (*RedisStore)(nil)
 // NewRedisStore creates a new Redis-based session store
 // func NewRedisStore(logger *zap.Logger, addr, username, password string, db int, topic string) (*RedisStore, error) {
 func NewRedisStore(logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisStore, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
+	addrs := strings.Split(cfg.Addr, ";")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
 		Username: cfg.Username,
 		Password: cfg.Password,
-		DB:       cfg.DB,
-	})
+	}
+	if cfg.ClusterType == cnst.RedisClusterTypeSentinel {
+		redisOptions.MasterName = cfg.MasterName
+	}
+	if cfg.ClusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = cfg.DB
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
 	if err := client.Ping(context.Background()).Err(); err != nil {

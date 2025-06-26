@@ -36,7 +36,7 @@ func NewNotifier(ctx context.Context, logger *zap.Logger, cfg *config.NotifierCo
 	case TypeAPI:
 		return NewAPINotifier(logger, cfg.API.Port, role, cfg.API.TargetURL), nil
 	case TypeRedis:
-		return NewRedisNotifier(logger, cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic, role)
+		return NewRedisNotifier(logger, cfg.Redis.ClusterType, cfg.Redis.Addr, cfg.Redis.MasterName, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic, role)
 	case TypeComposite:
 		notifiers := make([]Notifier, 0)
 		// Add signal notifier
@@ -47,7 +47,7 @@ func NewNotifier(ctx context.Context, logger *zap.Logger, cfg *config.NotifierCo
 		notifiers = append(notifiers, apiNotifier)
 		// Add Redis notifier if configured
 		if cfg.Redis.Addr != "" {
-			redisNotifier, err := NewRedisNotifier(logger, cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic, role)
+			redisNotifier, err := NewRedisNotifier(logger, cfg.Redis.ClusterType, cfg.Redis.Addr, cfg.Redis.MasterName, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Topic, role)
 			if err != nil {
 				return nil, err
 			}
