@@ -15,7 +15,7 @@ func NewStore(logger *zap.Logger, cfg *config.OAuth2StorageConfig) (Store, error
 	case "memory":
 		return NewMemoryStorage(), nil
 	case "redis":
-		return NewRedisStorage(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+		return NewRedisStorage(cfg.Redis.ClusterType, cfg.Redis.Addr, cfg.Redis.MasterName, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB)
 	default:
 		return nil, fmt.Errorf("unsupported auth storage type: %s", cfg.Type)
 	}

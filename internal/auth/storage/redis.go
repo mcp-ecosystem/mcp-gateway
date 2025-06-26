@@ -4,24 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/amoylab/unla/internal/common/errorx"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/amoylab/unla/internal/common/cnst"
+	"github.com/amoylab/unla/internal/common/errorx"
 )
 
 // RedisStorage implements the Store interface using Redis
 type RedisStorage struct {
-	client *redis.Client
+	client redis.UniversalClient
 }
 
 // NewRedisStorage creates a new Redis storage instance
-func NewRedisStorage(addr string, password string, db int) (*RedisStorage, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
+func NewRedisStorage(clusterType, addr, masterName string, username, password string, db int) (*RedisStorage, error) {
+	addrs := strings.Split(addr, ";")
+	redisOptions := &redis.UniversalOptions{
+		Addrs:    addrs,
+		Username: username,
 		Password: password,
-		DB:       db,
-	})
+	}
+	if clusterType == cnst.RedisClusterTypeSentinel {
+		redisOptions.MasterName = masterName
+	}
+	if clusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = db
+	}
+	client := redis.NewUniversalClient(redisOptions)
 
 	// Test connection
 	ctx := context.Background()

@@ -29,10 +29,13 @@ func NewRedisNotifier(logger *zap.Logger, clusterType, addr, masterName, usernam
 		Addrs:    addrs,
 		Username: username,
 		Password: password,
-		DB:       db,
 	}
-	if clusterType == "sentinel" {
+	if clusterType == cnst.RedisClusterTypeSentinel {
 		redisOptions.MasterName = masterName
+	}
+	if clusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = db
 	}
 	client := redis.NewUniversalClient(redisOptions)
 

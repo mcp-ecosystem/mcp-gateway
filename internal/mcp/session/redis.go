@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amoylab/unla/internal/common/cnst"
 	"github.com/amoylab/unla/internal/common/config"
 
 	"github.com/redis/go-redis/v9"
@@ -38,10 +39,13 @@ func NewRedisStore(logger *zap.Logger, cfg config.SessionRedisConfig) (*RedisSto
 		Addrs:    addrs,
 		Username: cfg.Username,
 		Password: cfg.Password,
-		DB:       cfg.DB,
 	}
-	if cfg.ClusterType == "sentinel" {
+	if cfg.ClusterType == cnst.RedisClusterTypeSentinel {
 		redisOptions.MasterName = cfg.MasterName
+	}
+	if cfg.ClusterType != cnst.RedisClusterTypeCluster {
+		// can not set db in cluster mode
+		redisOptions.DB = cfg.DB
 	}
 	client := redis.NewUniversalClient(redisOptions)
 

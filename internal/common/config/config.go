@@ -82,9 +82,12 @@ type (
 		Redis OAuth2RedisConfig `yaml:"redis"`
 	}
 	OAuth2RedisConfig struct {
-		Addr     string `yaml:"addr"`
-		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
+		ClusterType string `yaml:"cluster_type"` // "single", "cluster" or "sentinel"
+		Addr        string `yaml:"addr"`
+		MasterName  string `yaml:"master_name"` // MasterName is the sentinel master name.
+		Username    string `yaml:"username"`
+		Password    string `yaml:"password"`
+		DB          int    `yaml:"db"`
 	}
 )
 
