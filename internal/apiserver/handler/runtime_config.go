@@ -33,17 +33,25 @@ func HandleRuntimeConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		// Keep original environment variables for backward compatibility
-		"VITE_API_BASE_URL":         os.Getenv("VITE_API_BASE_URL"),
-		"VITE_WS_BASE_URL":          os.Getenv("VITE_WS_BASE_URL"),
-		"VITE_MCP_GATEWAY_BASE_URL": os.Getenv("VITE_MCP_GATEWAY_BASE_URL"),
-		"VITE_BASE_URL":             os.Getenv("VITE_BASE_URL"),
+		"VITE_API_BASE_URL":         getEnvOrDefault("VITE_API_BASE_URL", "/api"),
+		"VITE_WS_BASE_URL":          getEnvOrDefault("VITE_WS_BASE_URL", "/api/ws"),
+		"VITE_MCP_GATEWAY_BASE_URL": getEnvOrDefault("VITE_MCP_GATEWAY_BASE_URL", "/mcp"),
+		"VITE_BASE_URL":             getEnvOrDefault("VITE_BASE_URL", "/"),
 		
 		// Add new properties matching our TypeScript interface
-		"apiBaseUrl":                os.Getenv("VITE_API_BASE_URL"),
+		"apiBaseUrl":                getEnvOrDefault("VITE_API_BASE_URL", "/api"),
 		"debugMode":                 debugMode,
 		"version":                   version,
 		"features": gin.H{
 			"enableExperimental": enableExperimental,
 		},
 	})
+}
+
+// getEnvOrDefault returns the value of the environment variable or a default if not set
+func getEnvOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
