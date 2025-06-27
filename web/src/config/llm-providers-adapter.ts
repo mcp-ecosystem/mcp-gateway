@@ -2,7 +2,7 @@
 
 import { AIChatModelCard } from '../types/ai-model';
 import { BuiltinProviderTemplate, LLMModel, convertToLLMModel } from '../types/llm-legacy';
-
+import i18next from 'i18next';
 
 import { getModelsByProvider } from './ai-models';
 import { DEFAULT_MODEL_PROVIDER_LIST } from './llm-providers/index';
@@ -199,4 +199,48 @@ export const buildEndpointURL = (baseURL: string, path: string): string => {
   }
   
   return `${cleanBaseURL}/${cleanPath}`;
+};
+
+/**
+ * Get a provider or model description with i18n support
+ * @param key The i18n key to look up
+ * @param fallback The fallback text to use if translation is not available
+ * @param lng The language to use (optional)
+ * @returns The translated text or fallback
+ */
+function getI18nDescription(key: string, fallback: string, lng?: string): string {
+  try {
+    const translated = i18next.t(key, { lng });
+    return translated === key ? fallback : translated;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Get a provider description with i18n support
+ * @param providerId The ID of the provider (e.g., 'openai', 'google', etc.)
+ * @param fallback The fallback text to use if translation is not available
+ * @param lng The language to use (optional)
+ * @returns The translated text or fallback
+ */
+export const getProviderDescription = (providerId: string, fallback: string, lng?: string): string => {
+  return getI18nDescription(`llm.providerDescriptions.${providerId}`, fallback, lng);
+};
+
+/**
+ * Get a model description with i18n support
+ * @param providerId The ID of the provider (e.g., 'openai', 'google', etc.)
+ * @param modelId The ID of the model (e.g., 'gpt-4', 'palm', etc.)
+ * @param fallback The fallback text to use if translation is not available
+ * @param lng The language to use (optional)
+ * @returns The translated text or fallback
+ */
+export const getModelDescription = (providerId: string, modelId: string, fallback: string, lng?: string): string => {
+  // Try llm.modelDescriptions.{providerId}.{modelId} first, then llm.modelDescriptions.{modelId}
+  const keyWithProvider = `llm.modelDescriptions.${providerId}.${modelId}`;
+  const keyWithoutProvider = `llm.modelDescriptions.${modelId}`;
+  const descWithProvider = getI18nDescription(keyWithProvider, '', lng);
+  if (descWithProvider) return descWithProvider;
+  return getI18nDescription(keyWithoutProvider, fallback, lng);
 };
