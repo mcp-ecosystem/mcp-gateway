@@ -1,7 +1,5 @@
-
-import React from 'react';
 import { Spinner } from "@heroui/react";
-
+import React from 'react';
 
 export const LoadingScreen: React.FC = () => {
   return (

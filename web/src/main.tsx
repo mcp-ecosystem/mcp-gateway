@@ -3,7 +3,7 @@ import { loader } from '@monaco-editor/react';
 import axios from "axios";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import axios from "axios";
+
 import App from "./App.tsx";
 import { LoadingScreen } from "./components/LoadingScreen";
 import './i18n';
@@ -25,10 +25,10 @@ interface MonacoGlobal {
 };
 
 // Configure @monaco-editor/react to use local monaco-editor
-loader.config({ 
-  paths: { 
-    vs: '/monaco-editor/vs' 
-  } 
+loader.config({
+  paths: {
+    vs: '/monaco-editor/vs'
+  }
 });
 
 // Initialize monaco
@@ -66,7 +66,7 @@ export interface RuntimeConfig {
     enableExperimental: boolean;
     [key: string]: boolean;
   };
-  [key: string]: any; // For any additional properties
+  [key: string]: unknown; // For any additional properties
 }
 
 // Provide defaults for runtime config
@@ -89,13 +89,16 @@ declare global {
 const fetchRuntimeConfig = async () => {
   // Only log in development mode
   const isDev = import.meta.env.DEV;
-  
-  try {
-    isDev && console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
-    const response = await axios.get<RuntimeConfig>("/api/runtime-config");
-    isDev && console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
 
-    
+  try {
+    if (isDev) {
+      console.log("[RUNTIME_CONFIG] Fetching /api/runtime-config...");
+    }
+    const response = await axios.get<RuntimeConfig>("/api/runtime-config");
+    if (isDev) {
+      console.log("[RUNTIME_CONFIG] Fetched config:", response.data);
+    }
+
     // Merge with defaults to ensure all properties exist
     window.RUNTIME_CONFIG = {
       ...defaultRuntimeConfig,
@@ -109,18 +112,18 @@ const fetchRuntimeConfig = async () => {
   } catch (error) {
     // Always log errors, but with conditional detail level
     console.error(
-      "[RUNTIME_CONFIG] Failed to load runtime config", 
+      "[RUNTIME_CONFIG] Failed to load runtime config",
       isDev ? error : ''
     );
-    
+
     // Use defaults on error
     window.RUNTIME_CONFIG = { ...defaultRuntimeConfig };
   }
   // Render the main application
+  if (isDev) {
+    console.log("[RUNTIME_CONFIG] Rendering React app...");
+  }
 
-  isDev && console.log("[RUNTIME_CONFIG] Rendering React app...");
-
-  
   const rootElement = document.getElementById("root");
   if (rootElement) {
     ReactDOM.createRoot(rootElement).render(

@@ -68,13 +68,11 @@ declare global {
   }
 }
 
-// @ts-ignore
-const RUNTIME_CONFIG = window.RUNTIME_CONFIG || {};
+const RUNTIME_CONFIG = (window.RUNTIME_CONFIG || {}) as Record<string, unknown>;
 
 // Helper to get the gateway base URL
 const getGatewayBaseUrl = () => {
-  let base = RUNTIME_CONFIG.VITE_MCP_GATEWAY_BASE_URL;
-
+  let base = RUNTIME_CONFIG.VITE_MCP_GATEWAY_BASE_URL as string;
   if (!base) return '';
   // Remove trailing slash if present
   base = base.replace(/\/+$/, '');
