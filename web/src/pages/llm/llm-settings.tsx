@@ -33,7 +33,7 @@ import AddProviderModal from './components/AddProviderModal';
 
 import ProviderIcon from '@/components/ProviderIcon';
 import { findModel } from '@/config/ai-models';
-import { BUILTIN_PROVIDERS, getProviderDefaultConfig, getDefaultBaseURL, buildEndpointURL } from '@/config/llm-providers-adapter';
+import { BUILTIN_PROVIDERS, getProviderDefaultConfig, getDefaultBaseURL, buildEndpointURL, getProviderDescription, getModelDescription as getI18nModelDescription } from '@/config/llm-providers-adapter';
 import { useLLMConfig } from '@/hooks/useLLMConfig';
 import { LLMProvider, LLMModel, FetchedModel } from '@/types/llm';
 import { toast } from '@/utils/toast';
@@ -633,7 +633,10 @@ const LLMSettings: React.FC = () => {
                 <div>
                   <h1 className="text-xl font-bold">{selectedProvider.name}</h1>
                   <p className="text-sm text-muted-foreground">
-                    {selectedProvider.description}
+                    {getProviderDescription(
+                      selectedProvider.id,
+                      selectedProvider.description || selectedProvider.name
+                    )}
                   </p>
                 </div>
               </div>
@@ -826,7 +829,11 @@ const LLMSettings: React.FC = () => {
                           
                           {model.description && (
                             <p className="text-xs text-default-500 mb-2 line-clamp-2 leading-relaxed">
-                              {model.description}
+                              {getI18nModelDescription(
+                                selectedProvider.id,
+                                model.id,
+                                model.description || model.name
+                              )}
                             </p>
                           )}
                           
