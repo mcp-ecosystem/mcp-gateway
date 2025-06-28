@@ -5,9 +5,9 @@ import (
 )
 
 //go:embed VERSION
-var version string
+var Version string
 
 // Get returns the current version of the application
 func Get() string {
-	return version
+	return Version
 }

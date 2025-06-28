@@ -107,7 +107,9 @@ const fetchRuntimeConfig = async () => {
       features: {
         ...defaultRuntimeConfig.features,
         ...(response.data.features || {})
-      }
+      },
+      // Ensure LLM_CONFIG_ADMIN_ONLY is set to 'N' if not present
+      LLM_CONFIG_ADMIN_ONLY: typeof response.data.LLM_CONFIG_ADMIN_ONLY === 'undefined' ? 'N' : response.data.LLM_CONFIG_ADMIN_ONLY
     };
   } catch (error) {
     // Always log errors, but with conditional detail level
