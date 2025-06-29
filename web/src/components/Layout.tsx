@@ -67,6 +67,11 @@ export function Layout({ children }: LayoutProps) {
     fetchUserInfo();
   }, [t]);
 
+  const llmConfigAdminOnly = window.RUNTIME_CONFIG?.LLM_CONFIG_ADMIN_ONLY;
+  const canShowLLM =
+    llmConfigAdminOnly === 'N' ||
+    (llmConfigAdminOnly === 'Y' && userInfo?.role === 'admin');
+
   const menuGroups = [
     {
       key: 'chat-ai',
@@ -78,12 +83,12 @@ export function Layout({ children }: LayoutProps) {
           icon: 'lucide:message-square',
           path: '/chat',
         },
-        {
+        ...(canShowLLM ? [{
           key: 'llm',
           label: t('nav.llm'),
           icon: 'lucide:brain',
           path: '/llm',
-        },
+        }] : []),
       ]
     },
     {
@@ -239,6 +244,9 @@ export function Layout({ children }: LayoutProps) {
               <div className="flex items-center gap-2">
                 <img src={logoImg} alt="MCP Logo" className="w-6 h-6" />
                 <span className="text-xl font-bold">Unla</span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  {window.RUNTIME_CONFIG?.version || 'dev'}
+                </span>
               </div>
             )}
           </div>

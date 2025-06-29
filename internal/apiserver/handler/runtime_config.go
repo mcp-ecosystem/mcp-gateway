@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/amoylab/unla/pkg/version"
 )
 
 // HandleRuntimeConfig serves frontend runtime config as JSON
@@ -17,11 +18,8 @@ func HandleRuntimeConfig(c *gin.Context) {
 			debugMode = parsed
 		}
 	}
-	// Get version from environment or default to "production"
-	version := os.Getenv("APP_VERSION")
-	if version == "" {
-		version = "production"
-	}
+
+	versionStr := version.Version
 
 	// Check if experimental features are enabled
 	enableExperimental := false
@@ -41,10 +39,11 @@ func HandleRuntimeConfig(c *gin.Context) {
 		// Add new properties matching our TypeScript interface
 		"apiBaseUrl":                getEnvOrDefault("VITE_API_BASE_URL", "/api"),
 		"debugMode":                 debugMode,
-		"version":                   version,
+		"version":                   versionStr,
 		"features": gin.H{
 			"enableExperimental": enableExperimental,
 		},
+		"LLM_CONFIG_ADMIN_ONLY":     getEnvOrDefault("LLM_CONFIG_ADMIN_ONLY", "N"),
 	})
 }
 
