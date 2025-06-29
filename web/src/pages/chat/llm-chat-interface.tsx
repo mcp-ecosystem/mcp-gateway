@@ -19,7 +19,7 @@ import { ChatMessage } from './components/chat-message';
 
 import LocalIcon from '@/components/LocalIcon';
 import { useLLMConfig } from '@/hooks/useLLMConfig';
-import { getMCPServers, getChatMessages, saveChatMessage } from '@/services/api';
+import { getMCPServers, getChatMessages, saveChatMessage, getCurrentUser } from '@/services/api';
 import { llmChatService } from '@/services/llm-chat';
 import { mcpService } from '@/services/mcp';
 import { Gateway } from '@/types/gateway';
@@ -53,6 +53,8 @@ export function LLMChatInterface() {
 
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
   const [isToolsExpanded, setIsToolsExpanded] = useState(false);
+
+  const [userInfo, setUserInfo] = useState<{ username: string; role: string } | null>(null);
 
   // Redirect to new session if no sessionId provided
   useEffect(() => {
@@ -545,6 +547,23 @@ export function LLMChatInterface() {
     }
   };
 
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await getCurrentUser();
+        setUserInfo(response.data);
+      } catch (error) {
+        // Optionally handle error
+      }
+    };
+    fetchUserInfo();
+  }, []);
+
+  const llmConfigAdminOnly = window.RUNTIME_CONFIG?.LLM_CONFIG_ADMIN_ONLY;
+  const canShowLLM =
+    llmConfigAdminOnly === 'N' ||
+    (llmConfigAdminOnly === 'Y' && userInfo?.role === 'admin');
+
   return (
     <div className="flex h-[calc(100vh-8rem)]">
       <ChatHistory
@@ -647,16 +666,18 @@ export function LLMChatInterface() {
                   ))}
                 </Select>
 
-                <Tooltip content={t('llm.openSettings')}>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    isIconOnly
-                    onPress={() => navigate('/llm')}
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </Tooltip>
+                {canShowLLM && (
+                  <Tooltip content={t('llm.openSettings')}>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      isIconOnly
+                      onPress={() => navigate('/llm')}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </Tooltip>
+                )}
               </div>
             </div>
 
